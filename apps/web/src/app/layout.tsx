@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "my-better-t-app",
-  description: "my-better-t-app",
+  title: "SquadMap — Real-Time Group Location Sharing",
+  description: "Track live squad positions, ETAs, and trip destinations without sign-up.",
 };
 
 export default function RootLayout({
@@ -29,11 +29,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <ClerkProvider>
           <Providers>
-            <div className="grid grid-rows-[auto_1fr] h-svh">
-              <Header />
+            <div className="min-h-screen bg-stone-50">
               {children}
             </div>
           </Providers>
@@ -42,3 +44,4 @@ export default function RootLayout({
     </html>
   );
 }
+
