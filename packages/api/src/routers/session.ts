@@ -159,4 +159,76 @@ export const sessionRouter = router({
         participant,
       };
     }),
+
+  updateLocation: publicProcedure
+    .input(
+      z.object({
+        participantId: z.string(),
+        lat: z.number(),
+        lng: z.number(),
+        speed: z.number().optional(),
+        accuracy: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const participant = await prisma.participant.findUnique({
+        where: { id: input.participantId },
+        include: { session: true },
+      });
+
+      if (!participant) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Participant not found" });
+      }
+
+      // Check if participant is within 100m of destination (approx 0.001 deg lat/lng)
+      const dLat = Math.abs(participant.session.destinationLat - input.lat);
+      const dLng = Math.abs(participant.session.destinationLng - input.lng);
+      const isArrived = dLat < 0.001 && dLng < 0.001;
+
+      const updated = await prisma.participant.update({
+        where: { id: input.participantId },
+        data: {
+          lastLat: input.lat,
+          lastLng: input.lng,
+          lastSpeed: input.speed || null,
+          lastAccuracy: input.accuracy || null,
+          lastSeenAt: new Date(),
+          isArrived: isArrived || participant.isArrived,
+        },
+      });
+
+      return updated;
+    }),
+
+  sendMessage: publicProcedure
+    .input(
+      z.object({
+        code: z.string(),
+        participantId: z.string(),
+        content: z.string().min(1).max(500),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const session = await prisma.session.findUnique({
+        where: { code: input.code.toUpperCase() },
+      });
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Session room not found" });
+      }
+
+      const message = await prisma.message.create({
+        data: {
+          sessionId: session.id,
+          participantId: input.participantId,
+          content: input.content.trim(),
+        },
+        include: {
+          participant: true,
+        },
+      });
+
+      return message;
+    }),
 });
+

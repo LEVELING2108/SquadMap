@@ -1,7 +1,9 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import {
@@ -19,6 +21,16 @@ import {
   Navigation
 } from "lucide-react";
 import { toast } from "sonner";
+
+const MapComponent = dynamic(() => import("@/components/MapComponent"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-stone-100 text-xs font-medium text-slate-500">
+      Loading Outdoor Interactive Map...
+    </div>
+  ),
+});
+
 
 export default function RoomPage({ params }: { params: Promise<{ code: string }> }) {
   const resolvedParams = use(params);
@@ -40,6 +52,17 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [myName, setMyName] = useState<string | null>(null);
+  const [chatInput, setChatInput] = useState("");
+
+  const updateLocationMutation = useMutation(trpc.session.updateLocation.mutationOptions());
+  const sendMessageMutation = useMutation(trpc.session.sendMessage.mutationOptions({
+    onSuccess: () => {
+      setChatInput("");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to send message");
+    },
+  }));
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -50,23 +73,47 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     }
   }, [code]);
 
-  // Request client GPS location
+  // Request client GPS location & stream to backend
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setUserCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserCoords({ lat, lng });
+
+        if (myParticipantId) {
+          updateLocationMutation.mutate({
+            participantId: myParticipantId,
+            lat,
+            lng,
+            speed: pos.coords.speed || undefined,
+            accuracy: pos.coords.accuracy || undefined,
+          });
+        }
       },
       (err) => console.log("GPS watch error:", err.message),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [myParticipantId]);
+
+  const handleSendMessage = (contentToSend?: string) => {
+    const text = contentToSend || chatInput;
+    if (!text.trim()) return;
+    if (!myParticipantId) {
+      toast.error("Please join the trip session room first!");
+      return;
+    }
+    sendMessageMutation.mutate({
+      code,
+      participantId: myParticipantId,
+      content: text.trim(),
+    });
+  };
+
 
   const handleCopyLink = () => {
     const shareUrl = `${window.location.origin}/join/${code}`;
@@ -188,44 +235,18 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         </div>
       </header>
 
-      {/* Main Interactive Map Viewport (Light Canvas Theme) */}
+      {/* Main Interactive Map Viewport */}
       <div className="flex-1 w-full h-full relative bg-stone-100 flex items-center justify-center">
-        {/* Subtle Map Grid Pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-70 pointer-events-none" />
+        <MapComponent
+          destination={{
+            name: session.destinationName,
+            lat: session.destinationLat,
+            lng: session.destinationLng,
+          }}
+          participants={session.participants}
+          userCoords={userCoords}
+        />
 
-        {/* Destination Pin Marker */}
-        <div className="absolute z-20 flex flex-col items-center animate-bounce">
-          <div className="bg-red-500/10 border border-red-500/30 p-2 rounded-full backdrop-blur-xs">
-            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-md text-white font-bold">
-              ★
-            </div>
-          </div>
-          <div className="mt-1 bg-white border border-slate-200 text-slate-900 text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-red-600" />
-            <span>{session.destinationName}</span>
-          </div>
-        </div>
-
-        {/* Squad Member Map Markers */}
-        <div className="absolute z-20 top-1/3 left-1/4 flex flex-col items-center">
-          <div className="w-8 h-8 rounded-full bg-emerald-700 border-2 border-white flex items-center justify-center font-bold text-xs text-white shadow-md">
-            {session.participants[0]?.displayName.charAt(0) || "A"}
-          </div>
-          <span className="mt-1 text-[11px] font-semibold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-full shadow-xs">
-            {session.participants[0]?.displayName} (Host)
-          </span>
-        </div>
-
-        {session.participants.length > 1 && (
-          <div className="absolute z-20 bottom-1/3 right-1/4 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center font-bold text-xs text-white shadow-md">
-              {session.participants[1]?.displayName.charAt(0) || "B"}
-            </div>
-            <span className="mt-1 text-[11px] font-semibold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-full shadow-xs">
-              {session.participants[1]?.displayName}
-            </span>
-          </div>
-        )}
 
         {/* Floating Action Controls */}
         <div className="absolute bottom-28 left-4 right-4 z-20 max-w-4xl mx-auto flex items-center justify-between pointer-events-none">
@@ -364,7 +385,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               {["On my way! 🚗", "Almost there 🏁", "Where are you? 📍", "Stuck in traffic 🚦"].map((chip) => (
                 <button
                   key={chip}
-                  onClick={() => toast.success(`Sent quick reply: "${chip}"`)}
+                  onClick={() => handleSendMessage(chip)}
                   className="bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 px-3 py-1 rounded-full whitespace-nowrap transition-colors cursor-pointer font-medium"
                 >
                   {chip}
@@ -397,20 +418,30 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               )}
             </div>
 
-            {/* Input */}
-            <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
+            {/* Input Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="p-3 border-t border-slate-200 bg-white flex gap-2"
+            >
               <input
                 type="text"
                 placeholder="Type a message..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600"
               />
               <button
-                onClick={() => toast.success("Message sent!")}
-                className="bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                type="submit"
+                disabled={sendMessageMutation.isPending}
+                className="bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
-                Send
+                {sendMessageMutation.isPending ? "Sending..." : "Send"}
               </button>
-            </div>
+            </form>
+
           </div>
         </div>
       )}
