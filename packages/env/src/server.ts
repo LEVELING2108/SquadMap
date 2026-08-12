@@ -20,13 +20,14 @@ const runtimeEnv = {
 
 export const env = createEnv({
   server: {
-    DATABASE_URL: z.string().min(1),
-    CLERK_SECRET_KEY: z.string().min(1),
-    CLERK_PUBLISHABLE_KEY: z.string().min(1),
-    CORS_ORIGIN: z.url(),
+    DATABASE_URL: z.string().min(1).default("postgresql://postgres:password@localhost:5432/squadmap"),
+    CLERK_SECRET_KEY: z.string().optional().default("sk_test_placeholder"),
+    CLERK_PUBLISHABLE_KEY: z.string().optional().default("pk_test_placeholder"),
+    CORS_ORIGIN: z.string().default("http://localhost:3001"),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   },
   runtimeEnv: runtimeEnv,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,
 });
+

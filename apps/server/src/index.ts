@@ -16,7 +16,17 @@ app.use(
   }),
 );
 
-app.use(clerkMiddleware());
+app.use((req, res, next) => {
+  try {
+    if (env.CLERK_SECRET_KEY && env.CLERK_SECRET_KEY !== "sk_test_placeholder") {
+      return clerkMiddleware()(req, res, next);
+    }
+  } catch (err) {
+    console.warn("Clerk middleware skipped:", err);
+  }
+  next();
+});
+
 
 app.use(
   "/trpc",
