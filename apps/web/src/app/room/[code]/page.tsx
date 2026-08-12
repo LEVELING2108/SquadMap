@@ -4,7 +4,8 @@ import { use, useState, useEffect } from "react";
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+
 import { trpc } from "@/utils/trpc";
 import {
   MapPin,
