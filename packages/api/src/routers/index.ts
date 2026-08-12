@@ -1,9 +1,11 @@
 import { protectedProcedure, publicProcedure, router } from "../index";
+import { sessionRouter } from "./session";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
     return "OK";
   }),
+  session: sessionRouter,
   privateData: protectedProcedure.query(({ ctx }) => {
     return {
       message: "This is private",
@@ -12,3 +14,4 @@ export const appRouter = router({
   }),
 });
 export type AppRouter = typeof appRouter;
+

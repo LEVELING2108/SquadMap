@@ -1,10 +1,60 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated"
-  moduleFormat = "esm"
-  runtime = "nodejs"
+  provider     = "prisma-client-js"
+  output       = "../generated"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+
+model Session {
+  id              String        @id @default(cuid())
+  code            String        @unique
+  title           String?
+  destinationName String
+  destinationLat  Float
+  destinationLng  Float
+  hostId          String?
+  isActive        Boolean       @default(true)
+  expiresAt       DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  participants    Participant[]
+  messages        Message[]
+
+  @@index([code])
+}
+
+model Participant {
+  id           String    @id @default(cuid())
+  sessionId    String
+  session      Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  displayName  String
+  color        String    @default("#3B82F6")
+  isHost       Boolean   @default(false)
+  isArrived    Boolean   @default(false)
+  lastLat      Float?
+  lastLng      Float?
+  lastAccuracy Float?
+  lastSpeed    Float?
+  lastSeenAt   DateTime  @default(now())
+  joinedAt     DateTime  @default(now())
+
+  messages     Message[]
+
+  @@index([sessionId])
+}
+
+model Message {
+  id            String      @id @default(cuid())
+  sessionId     String
+  session       Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  content       String
+  createdAt     DateTime    @default(now())
+
+  @@index([sessionId])
 }

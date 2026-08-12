@@ -1,7 +1,9 @@
 import { env } from "@my-better-t-app/env/server";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient } from "../prisma/generated/client";
+import { PrismaClient } from "../prisma/generated";
+
+export * from "../prisma/generated";
 
 export function createPrismaClient() {
   const adapter = new PrismaPg({
@@ -12,3 +14,5 @@ export function createPrismaClient() {
 
 const prisma = createPrismaClient();
 export default prisma;
+
+
