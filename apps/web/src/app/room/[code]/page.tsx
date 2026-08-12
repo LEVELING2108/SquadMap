@@ -6,18 +6,17 @@ import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import {
   MapPin,
-  Navigation,
+  Compass,
   Users,
   Copy,
   Share2,
   CheckCircle2,
   MessageSquare,
-  Compass,
-  Clock,
-  Sparkles,
   ChevronUp,
   ChevronDown,
-  X
+  X,
+  Mountain,
+  Navigation
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,7 +38,6 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     )
   );
 
-  // Read current participant ID from local storage
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [myName, setMyName] = useState<string | null>(null);
 
@@ -113,10 +111,10 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+      <main className="min-h-screen bg-stone-50 text-slate-900 flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-400">Loading Live SquadMap Room...</p>
+          <div className="w-9 h-9 border-3 border-emerald-800 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-slate-600">Loading Live Trip Room...</p>
         </div>
       </main>
     );
@@ -124,13 +122,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
   if (error || !session) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4">
-          <h1 className="text-lg font-bold text-red-400">Room Not Found</h1>
-          <p className="text-sm text-slate-400">This trip room is either invalid or expired.</p>
+      <main className="min-h-screen bg-stone-50 text-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-6 text-center space-y-4 shadow-sm">
+          <h1 className="text-lg font-bold text-red-600">Room Not Found</h1>
+          <p className="text-sm text-slate-500">This trip room is either invalid or expired.</p>
           <button
             onClick={() => router.push("/")}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
+            className="w-full bg-emerald-800 hover:bg-emerald-900 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
           >
             Go Home
           </button>
@@ -140,32 +138,32 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   }
 
   return (
-    <main className="h-screen w-screen bg-slate-950 text-white relative overflow-hidden flex flex-col font-sans">
-      {/* Top Floating Overlay Bar */}
-      <header className="absolute top-4 left-4 right-4 z-30 max-w-4xl mx-auto flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 rounded-2xl backdrop-blur-xl shadow-xl">
+    <main className="h-screen w-screen bg-stone-50 text-slate-900 relative overflow-hidden flex flex-col font-sans">
+      {/* Top Floating Bar */}
+      <header className="absolute top-4 left-4 right-4 z-30 max-w-4xl mx-auto flex items-center justify-between bg-white border border-slate-200 p-3 rounded-2xl shadow-sm">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/")}
-            className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center text-white"
+            className="w-9 h-9 rounded-xl bg-emerald-800 flex items-center justify-center text-white cursor-pointer shadow-xs"
           >
-            <Navigation className="w-4 h-4 transform rotate-45" />
+            <Compass className="w-5 h-5" />
           </button>
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white line-clamp-1">
+              <span className="font-bold text-sm text-slate-900 line-clamp-1">
                 {session.destinationName}
               </span>
-              <span className="text-[10px] font-mono bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[11px] font-mono bg-emerald-100/70 border border-emerald-300 text-emerald-900 px-2.5 py-0.5 rounded-full font-bold">
                 {session.code}
               </span>
             </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-2">
-              <span>{session.participants.length} Squad Member{session.participants.length > 1 ? "s" : ""}</span>
+            <div className="text-[11px] text-slate-500 flex items-center gap-2">
+              <span>{session.participants.length} Traveler{session.participants.length > 1 ? "s" : ""}</span>
               <span>•</span>
-              <span className="text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Tracking
+              <span className="text-emerald-700 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                Live GPS Active
               </span>
             </div>
           </div>
@@ -174,106 +172,106 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopyLink}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Copy Invite Link"
           >
-            <Copy className="w-4 h-4 text-blue-400" />
-            <span className="hidden sm:inline">{copied ? "Copied!" : "Share Link"}</span>
+            <Copy className="w-4 h-4 text-emerald-800" />
+            <span className="hidden sm:inline">{copied ? "Copied!" : "Copy Link"}</span>
           </button>
           <button
             onClick={handleNativeShare}
-            className="p-2 rounded-xl bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 text-white text-xs font-medium flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+            className="p-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
           >
             <Share2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Invite</span>
+            <span className="hidden sm:inline">Invite Squad</span>
           </button>
         </div>
       </header>
 
-      {/* Main Interactive Map Canvas Viewport */}
-      <div className="flex-1 w-full h-full relative bg-slate-950 flex items-center justify-center">
-        {/* Simulated Map Canvas Layer with Dark Stylised Grid */}
-        <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
+      {/* Main Interactive Map Viewport (Light Canvas Theme) */}
+      <div className="flex-1 w-full h-full relative bg-stone-100 flex items-center justify-center">
+        {/* Subtle Map Grid Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-70 pointer-events-none" />
 
         {/* Destination Pin Marker */}
         <div className="absolute z-20 flex flex-col items-center animate-bounce">
-          <div className="bg-red-500/20 border border-red-500/50 p-2 rounded-full backdrop-blur-md">
-            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/40 text-white font-bold">
+          <div className="bg-red-500/10 border border-red-500/30 p-2 rounded-full backdrop-blur-xs">
+            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-md text-white font-bold">
               ★
             </div>
           </div>
-          <div className="mt-1 bg-slate-900/90 border border-slate-800 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 backdrop-blur-md">
-            <MapPin className="w-3.5 h-3.5 text-red-500" />
+          <div className="mt-1 bg-white border border-slate-200 text-slate-900 text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5 text-red-600" />
             <span>{session.destinationName}</span>
           </div>
         </div>
 
-        {/* Participant Map Marker Badges (Spread around) */}
+        {/* Squad Member Map Markers */}
         <div className="absolute z-20 top-1/3 left-1/4 flex flex-col items-center">
-          <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center font-bold text-xs shadow-lg">
+          <div className="w-8 h-8 rounded-full bg-emerald-700 border-2 border-white flex items-center justify-center font-bold text-xs text-white shadow-md">
             {session.participants[0]?.displayName.charAt(0) || "A"}
           </div>
-          <span className="mt-1 text-[10px] font-semibold bg-slate-900/90 border border-slate-800 text-slate-200 px-2 py-0.5 rounded-full shadow">
+          <span className="mt-1 text-[11px] font-semibold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-full shadow-xs">
             {session.participants[0]?.displayName} (Host)
           </span>
         </div>
 
         {session.participants.length > 1 && (
           <div className="absolute z-20 bottom-1/3 right-1/4 flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center font-bold text-xs shadow-lg">
+            <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center font-bold text-xs text-white shadow-md">
               {session.participants[1]?.displayName.charAt(0) || "B"}
             </div>
-            <span className="mt-1 text-[10px] font-semibold bg-slate-900/90 border border-slate-800 text-slate-200 px-2 py-0.5 rounded-full shadow">
+            <span className="mt-1 text-[11px] font-semibold bg-white border border-slate-200 text-slate-800 px-2 py-0.5 rounded-full shadow-xs">
               {session.participants[1]?.displayName}
             </span>
           </div>
         )}
 
-        {/* Floating Actions on Map */}
+        {/* Floating Action Controls */}
         <div className="absolute bottom-28 left-4 right-4 z-20 max-w-4xl mx-auto flex items-center justify-between pointer-events-none">
           <button
             onClick={() => setChatOpen(true)}
-            className="pointer-events-auto bg-slate-900/90 border border-slate-800 hover:bg-slate-800 text-white p-3 rounded-2xl shadow-xl backdrop-blur-xl flex items-center gap-2 text-xs font-medium transition-transform active:scale-95 cursor-pointer"
+            className="pointer-events-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 p-3 rounded-2xl shadow-md flex items-center gap-2 text-xs font-semibold transition-transform active:scale-95 cursor-pointer"
           >
-            <MessageSquare className="w-5 h-5 text-blue-400" />
+            <MessageSquare className="w-5 h-5 text-emerald-800" />
             <span>Squad Chat</span>
             {session.messages.length > 0 && (
-              <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              <span className="bg-emerald-800 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                 {session.messages.length}
               </span>
             )}
           </button>
 
           <button
-            onClick={() => toast.success("Map re-centered on all members")}
-            className="pointer-events-auto bg-slate-900/90 border border-slate-800 hover:bg-slate-800 text-white p-3 rounded-2xl shadow-xl backdrop-blur-xl transition-transform active:scale-95 cursor-pointer"
+            onClick={() => toast.success("Map view centered on squad")}
+            className="pointer-events-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 p-3 rounded-2xl shadow-md transition-transform active:scale-95 cursor-pointer"
             title="Recenter Map"
           >
-            <Compass className="w-5 h-5 text-emerald-400" />
+            <Navigation className="w-5 h-5 text-emerald-800" />
           </button>
         </div>
       </div>
 
-      {/* Draggable Bottom Sheet: Member List & ETAs */}
+      {/* Draggable Bottom Sheet: Travelers & ETAs */}
       <div
-        className={`absolute bottom-0 left-0 right-0 z-30 bg-slate-900/95 border-t border-slate-800 rounded-t-3xl backdrop-blur-2xl transition-all duration-300 shadow-2xl max-w-4xl mx-auto ${
+        className={`absolute bottom-0 left-0 right-0 z-30 bg-white/95 border-t border-slate-200 rounded-t-3xl shadow-xl transition-all duration-300 max-w-4xl mx-auto ${
           bottomSheetExpanded ? "h-[65vh]" : "h-24"
         }`}
       >
-        {/* Handle Bar */}
+        {/* Handle Bar Header */}
         <div
           onClick={() => setBottomSheetExpanded(!bottomSheetExpanded)}
-          className="p-3 flex items-center justify-between cursor-pointer border-b border-slate-800/60"
+          className="p-3.5 flex items-center justify-between cursor-pointer border-b border-slate-100"
         >
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-xs font-bold text-slate-200">
-              Live Squad List ({session.participants.length})
+            <Mountain className="w-4 h-4 text-emerald-800" />
+            <span className="text-xs font-bold text-slate-900">
+              Live Travelers ({session.participants.length})
             </span>
           </div>
 
-          <div className="flex items-center gap-1 text-xs text-slate-400">
-            <span>{bottomSheetExpanded ? "Collapse" : "Expand ETA List"}</span>
+          <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+            <span>{bottomSheetExpanded ? "Collapse List" : "Expand ETA List"}</span>
             {bottomSheetExpanded ? (
               <ChevronDown className="w-4 h-4" />
             ) : (
@@ -282,9 +280,9 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           </div>
         </div>
 
-        {/* Member Cards List */}
-        <div className="p-4 overflow-y-auto h-[calc(100%-48px)] space-y-3">
-          {session.participants.map((p, idx) => {
+        {/* Travelers ETA Cards */}
+        <div className="p-4 overflow-y-auto h-[calc(100%-52px)] space-y-3">
+          {session.participants.map((p) => {
             const dist = userCoords
               ? calculateDistance(userCoords.lat, userCoords.lng, session.destinationLat, session.destinationLng)
               : "2.4";
@@ -292,47 +290,47 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
             return (
               <div
                 key={p.id}
-                className="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-xl flex items-center justify-between hover:border-slate-700 transition-colors"
+                className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between hover:border-emerald-300 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-md"
-                    style={{ backgroundColor: p.color || "#3B82F6" }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-xs"
+                    style={{ backgroundColor: p.color || "#059669" }}
                   >
                     {p.displayName.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-100">{p.displayName}</span>
+                      <span className="font-semibold text-sm text-slate-900">{p.displayName}</span>
                       {p.isHost && (
-                        <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-medium">
+                        <span className="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.2 rounded font-semibold">
                           Host
                         </span>
                       )}
                       {p.id === myParticipantId && (
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-medium">
+                        <span className="text-[10px] bg-blue-100 text-blue-900 border border-blue-300 px-1.5 py-0.2 rounded font-semibold">
                           You
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
                       <span>{dist} km away</span>
                       <span>•</span>
-                      <span className="text-slate-500">Live GPS</span>
+                      <span className="text-emerald-700 font-medium">Live GPS</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
                   {p.isArrived ? (
-                    <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                    <div className="flex items-center gap-1 text-emerald-700 text-xs font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Arrived</span>
                     </div>
                   ) : (
                     <div>
-                      <div className="text-xs font-bold text-blue-400">~{Math.ceil(parseFloat(dist) * 3)} min</div>
-                      <div className="text-[10px] text-slate-500">ETA Countdown</div>
+                      <div className="text-xs font-bold text-slate-900">~{Math.ceil(parseFloat(dist) * 3)} min</div>
+                      <div className="text-[10px] text-slate-400 font-medium">ETA to destination</div>
                     </div>
                   )}
                 </div>
@@ -342,56 +340,56 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         </div>
       </div>
 
-      {/* Group Chat Drawer Modal */}
+      {/* Squad Chat Drawer Overlay */}
       {chatOpen && (
-        <div className="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center p-0 sm:p-4">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl shadow-2xl h-[70vh] flex flex-col overflow-hidden">
-            {/* Chat Drawer Header */}
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+        <div className="absolute inset-0 z-40 bg-black/30 backdrop-blur-xs flex justify-center items-end sm:items-center p-0 sm:p-4">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl shadow-xl h-[70vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-blue-400" />
-                <h3 className="font-bold text-sm text-white">Squad Chat</h3>
-                <span className="text-xs text-slate-400">({session.code})</span>
+                <MessageSquare className="w-5 h-5 text-emerald-800" />
+                <h3 className="font-bold text-sm text-slate-900">Squad Chat</h3>
+                <span className="text-xs text-slate-500">({session.code})</span>
               </div>
               <button
                 onClick={() => setChatOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Quick Reply Chips */}
-            <div className="px-4 py-2 bg-slate-950/30 border-b border-slate-800/60 flex items-center gap-2 overflow-x-auto text-xs">
+            <div className="px-4 py-2.5 bg-slate-50/60 border-b border-slate-100 flex items-center gap-2 overflow-x-auto text-xs">
               {["On my way! 🚗", "Almost there 🏁", "Where are you? 📍", "Stuck in traffic 🚦"].map((chip) => (
                 <button
                   key={chip}
                   onClick={() => toast.success(`Sent quick reply: "${chip}"`)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-full whitespace-nowrap transition-colors cursor-pointer"
+                  className="bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 px-3 py-1 rounded-full whitespace-nowrap transition-colors cursor-pointer font-medium"
                 >
                   {chip}
                 </button>
               ))}
             </div>
 
-            {/* Messages Feed */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-950/40">
+            {/* Chat Feed */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-stone-50/50">
               {session.messages.length === 0 ? (
-                <div className="text-center text-xs text-slate-500 my-auto py-12">
-                  No messages yet. Send a message to your trip squad!
+                <div className="text-center text-xs text-slate-400 my-auto py-12">
+                  No messages yet. Send a quick update to your squad!
                 </div>
               ) : (
                 session.messages.map((msg) => (
                   <div key={msg.id} className="flex flex-col gap-1 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-300">
-                        {msg.participant?.displayName || "Member"}
+                      <span className="font-semibold text-slate-700">
+                        {msg.participant?.displayName || "Traveler"}
                       </span>
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-slate-400">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
-                    <div className="bg-slate-800/80 text-slate-100 p-2.5 rounded-xl max-w-[85%] self-start">
+                    <div className="bg-white border border-slate-200 text-slate-900 p-2.5 rounded-xl max-w-[85%] self-start shadow-xs">
                       {msg.content}
                     </div>
                   </div>
@@ -399,16 +397,16 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               )}
             </div>
 
-            {/* Message Input */}
-            <div className="p-3 border-t border-slate-800 bg-slate-950 flex gap-2">
+            {/* Input */}
+            <div className="p-3 border-t border-slate-200 bg-white flex gap-2">
               <input
                 type="text"
                 placeholder="Type a message..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600"
               />
               <button
                 onClick={() => toast.success("Message sent!")}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                className="bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer"
               >
                 Send
               </button>

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
-import { MapPin, Navigation, Users, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
+import { MapPin, Compass, Users, ArrowRight, ShieldCheck, Mountain } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -24,7 +24,6 @@ export default function Home() {
 
   const createSessionMutation = useMutation(trpc.session.createSession.mutationOptions({
     onSuccess: (data) => {
-      // Store host participant ID locally
       if (typeof window !== "undefined") {
         localStorage.setItem(`squadmap_participant_${data.session.code}`, data.participant.id);
         localStorage.setItem(`squadmap_name_${data.session.code}`, data.participant.displayName);
@@ -108,95 +107,101 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-8 font-sans relative overflow-hidden">
-      {/* Background radial gradient decoration */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
+    <main className="min-h-screen bg-stone-50 text-slate-900 flex flex-col justify-between p-4 sm:p-8 font-sans relative overflow-hidden">
+      {/* Traveler Mountain Contour Background Art */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none flex items-end justify-center overflow-hidden">
+        <svg viewBox="0 0 1440 320" className="w-full h-80 fill-slate-900 preserve-3d">
+          <path d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
+      </div>
 
-      {/* Header Bar */}
+      {/* Top Header */}
       <header className="max-w-5xl mx-auto w-full flex items-center justify-between py-4 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Navigation className="w-5 h-5 text-white transform rotate-45" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-emerald-800 flex items-center justify-center text-white shadow-sm">
+            <Compass className="w-5 h-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          <span className="text-xl font-bold tracking-tight text-slate-900">
             SquadMap
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-full backdrop-blur-md">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Zero Sign-up Required</span>
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <span>No Sign-up Required</span>
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Main Content */}
       <div className="max-w-5xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 my-auto py-8 z-10 items-center">
-        {/* Left Column: Intro */}
+        {/* Left Intro Text */}
         <div className="lg:col-span-6 space-y-6 text-center lg:text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Real-time Group Trip Tracking</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/70 border border-emerald-200 text-emerald-900 text-xs font-semibold">
+            <Mountain className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Group Travel & Convoy Location Tracker</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight text-slate-50">
-            See every friend's position on <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">one live map</span>.
+
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
+            Track your squad on <span className="text-emerald-800 underline decoration-emerald-300 decoration-wavy">one shared map</span>.
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
-            Travelling together to a party, beach, or trip? Share a single link to see live locations, ETAs, and arrival badges for your squad.
+
+          <p className="text-slate-600 text-base sm:text-lg leading-relaxed max-w-lg mx-auto lg:mx-0">
+            Heading on a road trip, mountain trek, or group meet? Create a live map room in seconds and share your trip link with friends.
           </p>
 
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-900 max-w-md mx-auto lg:mx-0">
+          {/* Minimal Key Feature Badges */}
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200 max-w-md mx-auto lg:mx-0">
             <div>
-              <div className="text-xl font-bold text-white">Live GPS</div>
-              <div className="text-xs text-slate-500">Sub-second updates</div>
+              <div className="text-lg font-bold text-slate-900">Live GPS</div>
+              <div className="text-xs text-slate-500">Real-time positions</div>
             </div>
             <div>
-              <div className="text-xl font-bold text-white">Live ETA</div>
-              <div className="text-xs text-slate-500">Distance countdowns</div>
+              <div className="text-lg font-bold text-slate-900">Live ETA</div>
+              <div className="text-xs text-slate-500">Distance & arrival</div>
             </div>
             <div>
-              <div className="text-xl font-bold text-white">Auto 12h</div>
-              <div className="text-xs text-slate-500">Self-expiring rooms</div>
+              <div className="text-lg font-bold text-slate-900">12h Rooms</div>
+              <div className="text-xs text-slate-500">Auto-expiring links</div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Cards (Start a Trip / Join Room) */}
-        <div className="lg:col-span-6 space-y-6">
-          {/* Start a Trip Card */}
-          <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl backdrop-blur-xl space-y-5">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-              <div className="p-2.5 rounded-lg bg-blue-600/10 text-blue-400">
-                <Navigation className="w-5 h-5" />
+        {/* Right Form Cards (White theme, minimal & elegant) */}
+        <div className="lg:col-span-6 space-y-5">
+          {/* Create Trip Form */}
+          <div className="bg-white border border-slate-200 p-6 sm:p-7 rounded-3xl shadow-sm space-y-5">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800">
+                <Compass className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">Start a New Trip Room</h2>
-                <p className="text-xs text-slate-400">Create an instant room and share link with friends</p>
+                <h2 className="text-lg font-bold text-slate-900">Start a Trip Room</h2>
+                <p className="text-xs text-slate-500">Set a destination and invite your group</p>
               </div>
             </div>
 
             <form onSubmit={handleCreateSession} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Your Display Name</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Your Display Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Alex (Host)"
+                  placeholder="e.g. Alex (Trip Host)"
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Destination Name</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Destination Name</label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type="text"
-                    placeholder="e.g. Baga Beach / Resort Gate"
+                    placeholder="e.g. Manali Valley Point / Beach Gate"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
                     required
                   />
                 </div>
@@ -204,23 +209,23 @@ export default function Home() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Destination Lat</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Destination Lat</label>
                   <input
                     type="number"
                     step="any"
                     value={lat}
                     onChange={(e) => setLat(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-emerald-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Destination Lng</label>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Destination Lng</label>
                   <input
                     type="number"
                     step="any"
                     value={lng}
                     onChange={(e) => setLng(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-emerald-600"
                   />
                 </div>
               </div>
@@ -230,29 +235,29 @@ export default function Home() {
                   type="button"
                   onClick={handleGetCurrentLocation}
                   disabled={locLoading}
-                  className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 disabled:opacity-50"
+                  className="text-emerald-700 hover:text-emerald-800 font-medium flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>{locLoading ? "Locating..." : "Use Current GPS Coords"}</span>
+                  <span>{locLoading ? "Locating..." : "Use Current GPS Location"}</span>
                 </button>
               </div>
 
               <button
                 type="submit"
                 disabled={createSessionMutation.isPending}
-                className="w-full bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 text-white font-medium py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 cursor-pointer"
+                className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-semibold py-3 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <span>{createSessionMutation.isPending ? "Creating Room..." : "Create Trip Room"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>
 
-          {/* Join Room with Code Card */}
-          <div className="bg-slate-900/50 border border-slate-800/80 p-5 rounded-2xl backdrop-blur-md">
+          {/* Join Room Form */}
+          <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <Users className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-semibold text-slate-200">Have a 6-Character Room Code?</h3>
+              <Users className="w-4 h-4 text-emerald-800" />
+              <h3 className="text-sm font-semibold text-slate-900">Have a Trip Code?</h3>
             </div>
             <form onSubmit={handleJoinSession} className="flex gap-2">
               <input
@@ -261,7 +266,7 @@ export default function Home() {
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 maxLength={7}
-                className="w-1/3 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-center uppercase tracking-widest text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                className="w-1/3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-center uppercase tracking-widest text-emerald-800 font-bold placeholder-slate-400 focus:outline-none focus:border-emerald-600"
                 required
               />
               <input
@@ -269,13 +274,13 @@ export default function Home() {
                 placeholder="Your Name"
                 value={joinName}
                 onChange={(e) => setJoinName(e.target.value)}
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600"
                 required
               />
               <button
                 type="submit"
                 disabled={joinSessionMutation.isPending}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs px-4 py-2 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-4 py-2 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Join
               </button>
@@ -285,8 +290,8 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="max-w-5xl mx-auto w-full text-center text-slate-500 text-xs py-4 border-t border-slate-900 z-10">
-        SquadMap © 2026 — Real-time Group Location Sharing for Trips & Events
+      <footer className="max-w-5xl mx-auto w-full text-center text-slate-400 text-xs py-4 border-t border-slate-200 z-10">
+        SquadMap © 2026 — Real-Time Group Location Sharing for Travelers
       </footer>
     </main>
   );
