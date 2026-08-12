@@ -1,0 +1,27 @@
+{
+  "name": "@my-better-t-app/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@clerk/express": "^2.1.47",
+    "@my-better-t-app/db": "*",
+    "@my-better-t-app/env": "*",
+    "@trpc/client": "^11.18.0",
+    "@trpc/server": "^11.18.0",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@my-better-t-app/config": "*",
+    "@types/express": "^5.0.6",
+    "typescript": "^6.0.3"
+  }
+}
