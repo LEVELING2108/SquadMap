@@ -49,8 +49,17 @@ lerna-debug.log*
 coverage
 .nyc_output
 
+# Phase 1 Focus (Temporarily exclude Phase 2 Native App & Agent Tool Configs)
+apps/native/
+.agents/
+.claude/
+.cursor/
+bts.jsonc
+skills-lock.json
+
 # Misc
 *.tgz
 .cache
 tmp
 temp
+
