@@ -1,13 +1,19 @@
+import { env } from "@my-better-t-app/env/server";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../prisma/generated";
 
 export * from "../prisma/generated";
 
 export function createPrismaClient() {
-  return new PrismaClient();
+  const adapter = new PrismaPg({
+    connectionString: env.DATABASE_URL,
+  });
+  return new PrismaClient({ adapter });
 }
 
 const prisma = createPrismaClient();
 export default prisma;
+
 
 
 
