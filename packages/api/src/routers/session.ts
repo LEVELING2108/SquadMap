@@ -35,45 +35,53 @@ export const sessionRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const code = generateRoomCode();
-      const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 hours
+      try {
+        const code = generateRoomCode();
+        const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12 hours
 
-      const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]!;
+        const color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]!;
 
-      const session = await prisma.session.create({
-        data: {
-          code,
-          title: input.title || `Trip to ${input.destinationName}`,
-          destinationName: input.destinationName,
-          destinationLat: input.destinationLat,
-          destinationLng: input.destinationLng,
-          expiresAt,
-          participants: {
-            create: {
-              displayName: input.hostDisplayName,
-              color,
-              isHost: true,
+        const session = await prisma.session.create({
+          data: {
+            code,
+            title: input.title || `Trip to ${input.destinationName}`,
+            destinationName: input.destinationName,
+            destinationLat: input.destinationLat,
+            destinationLng: input.destinationLng,
+            expiresAt,
+            participants: {
+              create: {
+                displayName: input.hostDisplayName,
+                color,
+                isHost: true,
+              },
             },
           },
-        },
-        include: {
-          participants: true,
-        },
-      });
+          include: {
+            participants: true,
+          },
+        });
 
-      const hostParticipant = session.participants[0]!;
+        const hostParticipant = session.participants[0]!;
 
-      // Update hostId on session
-      await prisma.session.update({
-        where: { id: session.id },
-        data: { hostId: hostParticipant.id },
-      });
+        await prisma.session.update({
+          where: { id: session.id },
+          data: { hostId: hostParticipant.id },
+        });
 
-      return {
-        session,
-        participant: hostParticipant,
-      };
+        return {
+          session,
+          participant: hostParticipant,
+        };
+      } catch (err: any) {
+        console.error("DB Error in createSession:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err.message || "Failed to create trip session room",
+        });
+      }
     }),
+
 
   getSession: publicProcedure
     .input(
