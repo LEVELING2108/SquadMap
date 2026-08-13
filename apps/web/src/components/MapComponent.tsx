@@ -29,7 +29,6 @@ export default function MapComponent({ destination, participants, userCoords }: 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
-    // Dynamically load leaflet on client
     const loadMap = async () => {
       // @ts-ignore
       const LeafletModule = await import("leaflet");
@@ -42,7 +41,6 @@ export default function MapComponent({ destination, participants, userCoords }: 
         iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
         shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
       });
-
 
       // Initialize map instance if not existing
       if (!mapInstanceRef.current) {
@@ -94,8 +92,9 @@ export default function MapComponent({ destination, participants, userCoords }: 
 
       const bounds = L.latLngBounds([[destination.lat, destination.lng]]);
 
-      // Squad Participant Markers
-      participants.forEach((p, idx) => {
+      // Squad Participant Markers & Driving Routes
+      for (let idx = 0; idx < participants.length; idx++) {
+        const p = participants[idx]!;
         const pLat = p.lastLat || (destination.lat + (idx + 1) * 0.008);
         const pLng = p.lastLng || (destination.lng + (idx + 1) * 0.008);
         const pColor = p.color || "#059669";
@@ -121,7 +120,30 @@ export default function MapComponent({ destination, participants, userCoords }: 
         L.marker([pLat, pLng], { icon: pIcon }).addTo(map);
         bounds.extend([pLat, pLng]);
 
-        // Draw dotted route line from participant to destination
+        // Attempt to fetch real driving road route polyline from OSRM
+        try {
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+          const response = await fetch(osrmUrl);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.routes && data.routes[0]?.geometry?.coordinates) {
+              const routeCoords = data.routes[0].geometry.coordinates.map(
+                (coord: [number, number]) => [coord[1], coord[0]]
+              );
+              L.polyline(routeCoords, {
+                color: pColor,
+                weight: 4,
+                opacity: 0.8,
+                lineCap: "round",
+                lineJoin: "round",
+              }).addTo(map);
+              continue;
+            }
+          }
+        } catch {
+          // Fallback to dotted straight line if routing request fails
+        }
+
         L.polyline(
           [
             [pLat, pLng],
@@ -129,12 +151,12 @@ export default function MapComponent({ destination, participants, userCoords }: 
           ],
           {
             color: pColor,
-            weight: 2,
+            weight: 3,
             dashArray: "6, 8",
             opacity: 0.7,
           }
         ).addTo(map);
-      });
+      }
 
       if (userCoords) {
         bounds.extend([userCoords.lat, userCoords.lng]);
@@ -146,7 +168,6 @@ export default function MapComponent({ destination, participants, userCoords }: 
 
     loadMap();
   }, [destination, participants, userCoords]);
-
 
   return <div ref={mapContainerRef} className="w-full h-full min-h-[400px] z-10" />;
 }
