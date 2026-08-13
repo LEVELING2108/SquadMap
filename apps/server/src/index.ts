@@ -18,11 +18,20 @@ app.use(
 
 app.use((req, res, next) => {
   try {
-    return clerkMiddleware()(req, res, next);
+    if (
+      env.CLERK_PUBLISHABLE_KEY &&
+      env.CLERK_PUBLISHABLE_KEY !== "pk_test_placeholder" &&
+      env.CLERK_SECRET_KEY &&
+      env.CLERK_SECRET_KEY !== "sk_test_placeholder"
+    ) {
+      return clerkMiddleware()(req, res, next);
+    }
   } catch {
-    next();
+    // Skip clerk middleware in local keyless dev mode
   }
+  next();
 });
+
 
 
 
