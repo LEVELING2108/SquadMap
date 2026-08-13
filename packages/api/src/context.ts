@@ -17,11 +17,18 @@ import type { CreateExpressContextOptions } from "@trpc/server/adapters/express"
 export async function createContext(
   opts: CreateExpressContextOptions,
 ): Promise<ClerkRequestContext> {
-  const clerkAuth = toClerkContextAuth(getAuth(opts.req));
+  let clerkAuth: ClerkContextAuth | null = null;
+  try {
+    const rawAuth = getAuth(opts.req);
+    clerkAuth = toClerkContextAuth(rawAuth);
+  } catch {
+    clerkAuth = null;
+  }
   return {
     auth: clerkAuth,
     session: null,
   };
 }
+
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
