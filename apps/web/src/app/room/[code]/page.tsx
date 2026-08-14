@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -15,6 +15,7 @@ import {
   Share2,
   CheckCircle2,
   MessageSquare,
+  MessageCircle,
   ChevronUp,
   ChevronDown,
   X,
@@ -22,6 +23,21 @@ import {
   Navigation
 } from "lucide-react";
 import { toast } from "sonner";
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 
 const MapComponent = dynamic(() => import("@/components/MapComponent"), {
   ssr: false,
@@ -54,6 +70,8 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [myName, setMyName] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
+  const [gpsMode, setGpsMode] = useState<string>("Adaptive (15s)");
+  const lastMutationTimeRef = useRef<number>(0);
 
   const updateLocationMutation = useMutation(trpc.session.updateLocation.mutationOptions());
   const sendMessageMutation = useMutation(trpc.session.sendMessage.mutationOptions({
@@ -74,7 +92,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     }
   }, [code]);
 
-  // Request client GPS location & stream to backend
+  // Battery-Aware Adaptive GPS tracking engine
   useEffect(() => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
 
@@ -82,14 +100,35 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        const speedMps = pos.coords.speed || 0; // speed in meters/second
+        const speedKmh = speedMps * 3.6;
+        const now = Date.now();
+
         setUserCoords({ lat, lng });
 
-        if (myParticipantId) {
+        // Adaptive update interval based on movement speed (v1 PRD §5.2)
+        // High speed (>30km/h): update every 5s
+        // Medium speed (5-30km/h): update every 15s
+        // Stationary (<5km/h): update every 45s (battery saver mode)
+        let minIntervalMs = 15000;
+        if (speedKmh > 30) {
+          minIntervalMs = 5000;
+          setGpsMode("Driving (5s)");
+        } else if (speedKmh > 5) {
+          minIntervalMs = 15000;
+          setGpsMode("Moving (15s)");
+        } else {
+          minIntervalMs = 45000;
+          setGpsMode("Battery Saver (45s)");
+        }
+
+        if (myParticipantId && now - lastMutationTimeRef.current >= minIntervalMs) {
+          lastMutationTimeRef.current = now;
           updateLocationMutation.mutate({
             participantId: myParticipantId,
             lat,
             lng,
-            speed: pos.coords.speed || undefined,
+            speed: speedMps || undefined,
             accuracy: pos.coords.accuracy || undefined,
           });
         }
@@ -100,6 +139,23 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [myParticipantId]);
+
+  // Member connection & staleness status helper
+  const getMemberStatus = (lastSeenAt?: string | Date | null) => {
+    if (!lastSeenAt) return { label: "Online", badgeColor: "bg-emerald-500", text: "text-emerald-700" };
+    const diffMs = Date.now() - new Date(lastSeenAt).getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+
+    if (diffSec < 45) {
+      return { label: "Online", badgeColor: "bg-emerald-500", text: "text-emerald-700" };
+    } else if (diffSec < 180) {
+      return { label: "Idle", badgeColor: "bg-amber-500", text: "text-amber-700" };
+    } else {
+      const minsAgo = Math.floor(diffSec / 60);
+      return { label: `Seen ${minsAgo}m ago`, badgeColor: "bg-slate-400", text: "text-slate-500" };
+    }
+  };
+
 
   const handleSendMessage = (contentToSend?: string) => {
     const text = contentToSend || chatInput;
@@ -211,7 +267,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               <span>•</span>
               <span className="text-emerald-700 font-medium flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                Live GPS Active
+                🔋 {gpsMode}
               </span>
             </div>
           </div>
@@ -228,7 +284,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           </button>
           <button
             onClick={handleNativeShare}
-            className="p-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+            className="bg-emerald-800 hover:bg-emerald-900 text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
           >
             <Share2 className="w-4 h-4" />
             <span className="hidden sm:inline">Invite Squad</span>
@@ -236,8 +292,8 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         </div>
       </header>
 
-      {/* Main Interactive Map Viewport */}
-      <div className="flex-1 w-full h-full relative bg-stone-100 flex items-center justify-center">
+      {/* Full-screen Leaflet Map View */}
+      <div className="flex-1 w-full h-full relative">
         <MapComponent
           destination={{
             name: session.destinationName,
@@ -248,119 +304,114 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           userCoords={userCoords}
         />
 
-
-        {/* Floating Action Controls */}
-        <div className="absolute bottom-28 left-4 right-4 z-20 max-w-4xl mx-auto flex items-center justify-between pointer-events-none">
-          <button
-            onClick={() => setChatOpen(true)}
-            className="pointer-events-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 p-3 rounded-2xl shadow-md flex items-center gap-2 text-xs font-semibold transition-transform active:scale-95 cursor-pointer"
-          >
-            <MessageSquare className="w-5 h-5 text-emerald-800" />
-            <span>Squad Chat</span>
-            {session.messages.length > 0 && (
-              <span className="bg-emerald-800 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                {session.messages.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => toast.success("Map view centered on squad")}
-            className="pointer-events-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 p-3 rounded-2xl shadow-md transition-transform active:scale-95 cursor-pointer"
-            title="Recenter Map"
-          >
-            <Navigation className="w-5 h-5 text-emerald-800" />
-          </button>
-        </div>
+        {/* Floating Chat Trigger Button */}
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          className="absolute bottom-24 sm:bottom-28 right-4 z-30 bg-emerald-800 hover:bg-emerald-900 text-white p-3.5 rounded-full shadow-lg transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+        >
+          <MessageCircle className="w-5 h-5" />
+          {session.messages.length > 0 && (
+            <span className="bg-white text-emerald-900 font-bold text-xs px-2 py-0.5 rounded-full">
+              {session.messages.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Draggable Bottom Sheet: Travelers & ETAs */}
+      {/* Draggable Member List / Bottom Sheet */}
       <div
-        className={`absolute bottom-0 left-0 right-0 z-30 bg-white/95 border-t border-slate-200 rounded-t-3xl shadow-xl transition-all duration-300 max-w-4xl mx-auto ${
-          bottomSheetExpanded ? "h-[65vh]" : "h-24"
+        className={`absolute bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 rounded-t-3xl shadow-2xl transition-all duration-300 max-w-4xl mx-auto flex flex-col ${
+          bottomSheetExpanded ? "h-[50vh]" : "h-20"
         }`}
       >
-        {/* Handle Bar Header */}
-        <div
+        {/* Drag Handle */}
+        <button
           onClick={() => setBottomSheetExpanded(!bottomSheetExpanded)}
-          className="p-3.5 flex items-center justify-between cursor-pointer border-b border-slate-100"
+          className="w-full py-2.5 flex items-center justify-center cursor-pointer group hover:bg-slate-50 rounded-t-3xl border-b border-slate-100"
         >
-          <div className="flex items-center gap-2">
-            <Mountain className="w-4 h-4 text-emerald-800" />
-            <span className="text-xs font-bold text-slate-900">
-              Live Travelers ({session.participants.length})
-            </span>
+          <div className="w-12 h-1 bg-slate-300 group-hover:bg-emerald-600 rounded-full transition-colors" />
+        </button>
+
+        {/* Sheet Content */}
+        <div className="p-4 flex-1 overflow-y-auto space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Users className="w-4 h-4 text-emerald-800" />
+              <span>Squad Travelers ({session.participants.length})</span>
+            </h2>
+            <span className="text-xs text-slate-500 font-medium">Sorted by Distance</span>
           </div>
 
-          <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>{bottomSheetExpanded ? "Collapse List" : "Expand ETA List"}</span>
-            {bottomSheetExpanded ? (
-              <ChevronDown className="w-4 h-4" />
-            ) : (
-              <ChevronUp className="w-4 h-4" />
-            )}
-          </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {session.participants.map((p) => {
+              const dist = userCoords && p.lastLat && p.lastLng
+                ? Number(calculateDistance(userCoords.lat, userCoords.lng, p.lastLat, p.lastLng)).toFixed(1)
+                : "2.4";
 
-        {/* Travelers ETA Cards */}
-        <div className="p-4 overflow-y-auto h-[calc(100%-52px)] space-y-3">
-          {session.participants.map((p) => {
-            const dist = userCoords
-              ? calculateDistance(userCoords.lat, userCoords.lng, session.destinationLat, session.destinationLng)
-              : "2.4";
 
-            return (
-              <div
-                key={p.id}
-                className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between hover:border-emerald-300 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-xs"
-                    style={{ backgroundColor: p.color || "#059669" }}
-                  >
-                    {p.displayName.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-900">{p.displayName}</span>
-                      {p.isHost && (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.2 rounded font-semibold">
-                          Host
-                        </span>
-                      )}
-                      {p.id === myParticipantId && (
-                        <span className="text-[10px] bg-blue-100 text-blue-900 border border-blue-300 px-1.5 py-0.2 rounded font-semibold">
-                          You
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                      <span>{dist} km away</span>
-                      <span>•</span>
-                      <span className="text-emerald-700 font-medium">Live GPS</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="text-right">
-                  {p.isArrived ? (
-                    <div className="flex items-center gap-1 text-emerald-700 text-xs font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Arrived</span>
+              const statusInfo = getMemberStatus(p.lastSeenAt);
+
+              return (
+                <div
+                  key={p.id}
+                  className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between hover:border-emerald-300 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-xs"
+                        style={{ backgroundColor: p.color || "#059669" }}
+                      >
+                        {p.displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <span
+                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${statusInfo.badgeColor}`}
+                        title={statusInfo.label}
+                      />
                     </div>
-                  ) : (
                     <div>
-                      <div className="text-xs font-bold text-slate-900">~{Math.ceil(parseFloat(dist) * 3)} min</div>
-                      <div className="text-[10px] text-slate-400 font-medium">ETA to destination</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-slate-900">{p.displayName}</span>
+                        {p.isHost && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.2 rounded font-semibold">
+                            Host
+                          </span>
+                        )}
+                        {p.id === myParticipantId && (
+                          <span className="text-[10px] bg-blue-100 text-blue-900 border border-blue-300 px-1.5 py-0.2 rounded font-semibold">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                        <span>{dist} km away</span>
+                        <span>•</span>
+                        <span className={`${statusInfo.text} font-medium`}>{statusInfo.label}</span>
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="text-right">
+                    {p.isArrived ? (
+                      <div className="flex items-center gap-1 text-emerald-700 text-xs font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Arrived</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">~{Math.ceil(parseFloat(dist) * 3)} min</div>
+                        <div className="text-[10px] text-slate-400 font-medium">ETA to destination</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
+
 
       {/* Squad Chat Drawer Overlay */}
       {chatOpen && (
