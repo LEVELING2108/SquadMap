@@ -97,7 +97,17 @@ npx turbo run dev -F web -F server
 
 ---
 
+## 🤝 Open Source & Contributing
+
+SquadMap is **100% Open Source**! We welcome community contributions, feature ideas, and pull requests. Feel free to fork, customize, and build upon this codebase.
+
+* Please review our **[Contributing Guide (CONTRIBUTING.md)](./CONTRIBUTING.md)** for branch naming, Conventional Commit standards (`feat:`, `fix:`, `docs:`), and Pull Request (PR) workflows.
+* See our **[MIT License](./LICENSE)** for terms of use and distribution.
+
+---
+
 ## 📄 License & Repository
 
-Created for real-time squad trip coordination. Tracked on GitHub:
+Tracked and open-sourced on GitHub:
 👉 **[https://github.com/LEVELING2108/SquadMap.git](https://github.com/LEVELING2108/SquadMap.git)**
+
