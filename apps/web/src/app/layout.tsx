@@ -17,9 +17,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import PwaInstallBanner from "@/components/PwaInstallBanner";
+
 export const metadata: Metadata = {
   title: "SquadMap — Real-Time Group Location Sharing",
   description: "Track live squad positions, ETAs, and trip destinations without sign-up.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -29,6 +32,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#065F46" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
@@ -37,6 +44,7 @@ export default function RootLayout({
           <Providers>
             <div className="min-h-screen bg-stone-50">
               {children}
+              <PwaInstallBanner />
             </div>
           </Providers>
         </ClerkProvider>
@@ -44,4 +52,5 @@ export default function RootLayout({
     </html>
   );
 }
+
 
