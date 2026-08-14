@@ -49,14 +49,14 @@ lerna-debug.log*
 coverage
 .nyc_output
 
-# Phase 1 Focus (Temporarily exclude Phase 2 Native App & Agent Tool Configs)
-apps/native/
+# Phase 2 Agent Tool Configs Exclusions
 .agents/
 .claude/
 .cursor/
 .gemini/
 bts.jsonc
 skills-lock.json
+
 
 
 # Misc
