@@ -1,140 +1,103 @@
-# my-better-t-app
+# 🗺️ SquadMap — Real-Time Group Location & Driving ETA Tracker
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines Next.js, Express, TRPC, and more.
+> **Coordinate road trips, track live squad positions, and see driving ETAs on one shared map — without creating an account.**
 
-## Features
+[![GitHub Repository](https://img.shields.io/badge/GitHub-LEVELING2108%2FSquadMap-emerald?logo=github)](https://github.com/LEVELING2108/SquadMap.git)
+[![Stack](https://img.shields.io/badge/Tech_Stack-Next.js_15_%7C_Express_%7C_tRPC_%7C_Prisma_7-black)](https://github.com/LEVELING2108/SquadMap.git)
+[![UI Theme](https://img.shields.io/badge/Design-Light_Traveler_Stone-emerald)](#-design-aesthetics)
 
-- **TypeScript** - For type safety and improved developer experience
-- **Next.js** - Full-stack React framework
-- **React Native** - Build mobile apps using React
-- **Expo** - Tools for React Native development
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Express** - Fast, unopinionated web framework
-- **tRPC** - End-to-end type-safe APIs
-- **Node.js** - Runtime environment
-- **Prisma** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Clerk
-- **PWA** - Progressive Web App support
-- **Turborepo** - Optimized monorepo build system
+---
 
-## Getting Started
+## 🌟 Key Features
 
-First, install the dependencies:
+* 🚗 **Real-Time Driving Road Polylines**: Renders smooth, color-coded driving road paths from each squad member to the destination pin powered by **OSRM (Open Source Routing Machine)**.
+* 📍 **Zero-Friction Room Creation**: Host a trip in seconds and invite friends using a 6-character room code (e.g. `GOA-842`) or instant shareable link.
+* 🔋 **Battery-Aware Adaptive GPS Engine**: Dynamically scales GPS update frequencies based on movement speed to save phone battery during long drives:
+  * **Driving (>30 km/h)**: High precision updates every **5 seconds**.
+  * **Moving (5–30 km/h)**: Balanced updates every **15 seconds**.
+  * **Stationary (<5 km/h)**: Battery Saver mode every **45 seconds**.
+* 🟢 **Member Connection & Staleness Badges**: Live connection status indicators (`Online 🟢`, `Idle 🟡`, `Seen Xm ago 🔴`) on traveler cards.
+* 💬 **In-App Squad Chat Overlay**: Quick-reply chips (*"On my way! 🚗"*, *"Almost there 🏁"*) and real-time message stream.
+* 🏁 **Auto "Arrived" Detection**: Automatically triggers a green arrival checkmark when a traveler gets within 100 meters of the destination.
+* 🎨 **Minimal Traveler Theme**: Off-white mountain contour aesthetic (`bg-stone-50`) with spacious typography and zero dark-mode gradient clutter.
 
+---
+
+## 🏗️ Project Architecture
+
+SquadMap is built as a high-performance TypeScript monorepo powered by **Turborepo**:
+
+```
+SquadMap/
+├── apps/
+│   ├── web/         # Web PWA & App Router (Next.js 15, TailwindCSS, Leaflet Map)
+│   ├── server/      # Express API server & tRPC Endpoint Handler
+│   └── native/      # Native Mobile Application (React Native, Expo)
+└── packages/
+    ├── api/         # tRPC router & business logic procedures (sessionRouter)
+    ├── db/          # Prisma 7 ORM schema, PrismaPg adapter & DB proxy
+    ├── env/         # Environment variable schemas & type validation
+    └── ui/          # Shared UI primitives & design tokens
+```
+
+---
+
+## 🛠️ Technology Stack
+
+| Category | Technology |
+| :--- | :--- |
+| **Frontend Web** | Next.js 15 App Router, React 19, TailwindCSS |
+| **Interactive Map** | Leaflet JS, OpenStreetMap Outdoor Tiles |
+| **Driving Directions** | OSRM (Open Source Routing Machine) API |
+| **API Layer** | tRPC v11, TanStack Query v5 |
+| **Backend API** | Express.js, Node.js |
+| **ORM & Database** | Prisma 7 ORM (`@prisma/adapter-pg`), PostgreSQL / Hybrid Proxy |
+| **Native Mobile** | React Native 0.86, Expo 57, Expo Router |
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+Make sure you have **Node.js v18+** installed.
+
+### 2. Clone Repository
+```bash
+git clone https://github.com/LEVELING2108/SquadMap.git
+cd SquadMap
+```
+
+### 3. Install Dependencies
 ```bash
 npm install
 ```
 
-## Database Setup
-
-This project uses PostgreSQL with Prisma.
-
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
-
+### 4. Database Setup
+Generate the Prisma 7 client:
 ```bash
-npm run db:push
+npm run db:generate
 ```
 
-## Clerk Authentication Setup
-
-- Follow the guide: [Clerk Quickstart](https://clerk.com/docs/nextjs/getting-started/quickstart)
-- Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `apps/web/.env`
-- Set `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in `apps/native/.env`
-- Set `CLERK_SECRET_KEY` in `apps/web/.env` for Clerk server middleware
-- Set `CLERK_SECRET_KEY` in `apps/server/.env` for server-side Clerk auth
-- Set `CLERK_PUBLISHABLE_KEY` in `apps/server/.env` for Clerk backend middleware
-
-Then, run the development server:
-
+### 5. Run Local Development Server
+Start the Web App and Backend Server in parallel:
 ```bash
-npm run dev
+npx turbo run dev -F web -F server
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-Use the Expo Go app to run the mobile application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+* **Web Application**: Open [http://localhost:3001](http://localhost:3001) in your browser.
+* **Express Backend**: Running on [http://localhost:3000](http://localhost:3000).
 
-## UI Customization
+---
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
+## 📖 How to Use SquadMap
 
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
+1. **Host a Trip**: Go to [http://localhost:3001](http://localhost:3001), enter your name and destination (e.g. *"Baga Beach"*), and tap **Create Trip Room**.
+2. **Share Link**: Copy the trip room link or share the 6-character room code (e.g. `GOA-842`) with your squad.
+3. **Track & Chat**: Watch member markers move along driving road polylines in real-time, view ETAs, and send quick chat updates!
 
-### Add more shared components
+---
 
-Run this from the project root to add more primitives to the shared UI package:
+## 📄 License & Repository
 
-```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
-```
-
-Import shared components like this:
-
-```tsx
-import { Button } from "@my-better-t-app/ui/components/button";
-```
-
-### Add app-specific blocks
-
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
-
-## Deployment
-
-### Vercel Services
-
-- Target: web + server
-- Config: `vercel.json`
-- Link the project first: npm run deploy:setup
-- Local Vercel dev: npm run dev:vercel
-- Sync preview env: npm run env:preview
-- Sync production env: npm run env:production
-- Dry-run check (no upload): npm run deploy:check
-- Preview deploy: npm run deploy
-- Production deploy: npm run deploy:prod
-- Web requests under `/api/*` route to the server service and are rewritten before reaching the backend.
-  Vercel Services share project environment variables, but deploys do not upload local `.env` files automatically. Link the project with `vercel link`, then run the env sync command before your first deploy (otherwise the deployment starts with no env vars), or pass one-off envs with `vercel deploy -e KEY=value`.
-  Pass Vercel CLI flags to the env sync command directly, for example: `npm run env:production --scope your-team`.
-
-For more details, see the guide on [Deploying to Vercel](https://www.better-t-stack.dev/docs/guides/vercel).
-
-## Project Structure
-
-```
-my-better-t-app/
-├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   ├── native/      # Mobile application (React Native, Expo)
-│   └── server/      # Backend API (Express, TRPC)
-├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   └── db/          # Database schema & queries
-```
-
-## Available Scripts
-
-- `npm run dev`: Start all applications in development mode
-- `npm run build`: Build all applications
-- `npm run dev:web`: Start only the web application
-- `npm run dev:server`: Start only the server
-- `npm run check-types`: Check TypeScript types across all apps
-- `npm run dev:native`: Start the React Native/Expo development server
-- `npm run db:push`: Push schema changes to database
-- `npm run db:generate`: Generate database client/types
-- `npm run db:migrate`: Run database migrations
-- `npm run db:studio`: Open database studio UI
-- `cd apps/web && npm run generate-pwa-assets`: Generate PWA assets
-- `npm run deploy:setup`: Link this repo to a Vercel project (first-time setup)
-- `npm run dev:vercel`: Run the Vercel Services dev environment locally
-- `npm run env:preview`: Sync local env files to the Vercel preview environment
-- `npm run env:production`: Sync local env files to the Vercel production environment
-- `npm run deploy`: Create a Vercel preview deployment
-- `npm run deploy:prod`: Deploy to Vercel production
-- `npm run deploy:check`: Dry-run a deploy to preview framework detection and included files without uploading
+Created for real-time squad trip coordination. Tracked on GitHub:
+👉 **[https://github.com/LEVELING2108/SquadMap.git](https://github.com/LEVELING2108/SquadMap.git)**
