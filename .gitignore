@@ -54,8 +54,10 @@ apps/native/
 .agents/
 .claude/
 .cursor/
+.gemini/
 bts.jsonc
 skills-lock.json
+
 
 # Misc
 *.tgz
