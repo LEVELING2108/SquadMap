@@ -95,9 +95,10 @@ export default function MapComponent({ destination, participants, userCoords }: 
       // Squad Participant Markers & Driving Routes
       for (let idx = 0; idx < participants.length; idx++) {
         const p = participants[idx]!;
-        const pLat = p.lastLat || (destination.lat + (idx + 1) * 0.008);
-        const pLng = p.lastLng || (destination.lng + (idx + 1) * 0.008);
+        const pLat = p.lastLat || (userCoords ? userCoords.lat : destination.lat + (idx + 1) * 0.008);
+        const pLng = p.lastLng || (userCoords ? userCoords.lng : destination.lng + (idx + 1) * 0.008);
         const pColor = p.color || "#059669";
+
 
         const pHtml = `
           <div style="display:flex;flex-direction:column;align-items:center;">

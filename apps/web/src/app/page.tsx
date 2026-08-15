@@ -70,7 +70,7 @@ export default function Home() {
     );
   };
 
-  const handleCreateSession = (e: React.FormEvent) => {
+  const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hostName.trim()) {
       toast.error("Please enter your display name");
@@ -80,14 +80,38 @@ export default function Home() {
       toast.error("Please enter your trip destination");
       return;
     }
+
+    setLocLoading(true);
+    let targetLat = lat;
+    let targetLng = lng;
+
+    // Automatically lookup real-world coordinates for typed destination name
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination.trim())}&limit=1`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0]) {
+          targetLat = parseFloat(data[0].lat);
+          targetLng = parseFloat(data[0].lon);
+        }
+      }
+    } catch {
+      // Fall back to default/GPS coordinates if network lookup fails
+    }
+
+    setLocLoading(false);
+
     createSessionMutation.mutate({
       hostDisplayName: hostName.trim(),
       destinationName: destination.trim(),
-      destinationLat: lat,
-      destinationLng: lng,
+      destinationLat: targetLat,
+      destinationLng: targetLng,
       title: title.trim() || undefined,
     });
   };
+
 
   const handleJoinSession = (e: React.FormEvent) => {
     e.preventDefault();
