@@ -18,6 +18,40 @@ export default function Home() {
   const [lng, setLng] = useState<number>(73.7536);
   const [locLoading, setLocLoading] = useState(false);
 
+  // Live search suggestions state
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+
+  const handleDestinationChange = (val: string) => {
+    setDestination(val);
+    if (val.trim().length > 2) {
+      setIsSearching(true);
+      fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val.trim())}&limit=5`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setSuggestions(Array.isArray(data) ? data : []);
+          setIsSearching(false);
+        })
+        .catch(() => {
+          setIsSearching(false);
+        });
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  const handleSelectSuggestion = (s: any) => {
+    setDestination(s.display_name);
+    setLat(parseFloat(s.lat));
+    setLng(parseFloat(s.lon));
+    setSuggestions([]);
+    toast.success("Destination coordinates updated!");
+  };
+
+
   // Join Session state
   const [joinCode, setJoinCode] = useState("");
   const [joinName, setJoinName] = useState("");
@@ -216,20 +250,38 @@ export default function Home() {
                 />
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Destination Name</label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 z-10" />
                   <input
                     type="text"
-                    placeholder="e.g. Manali Valley Point / Beach Gate"
+                    placeholder="e.g. Manali / Baga Beach / Mumbai"
                     value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
+                    onChange={(e) => handleDestinationChange(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
                     required
                   />
                 </div>
+
+                {/* Suggestions Dropdown */}
+                {suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                    {suggestions.map((s, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="w-full text-left px-3.5 py-2.5 hover:bg-emerald-50 text-xs border-b border-slate-100 last:border-0 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span className="text-slate-800 line-clamp-1 font-medium">{s.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
