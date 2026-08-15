@@ -5,8 +5,8 @@
   "outputDirectory": "apps/web/.next",
   "rewrites": [
     {
-      "source": "/api/server/:path*",
-      "destination": "https://squadmap-production.up.railway.app/:path*"
+      "source": "/trpc/:path*",
+      "destination": "/api/trpc/:path*"
     }
   ]
 }
