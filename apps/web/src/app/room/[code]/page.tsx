@@ -2,9 +2,12 @@
 
 import { use, useState, useEffect, useRef } from "react";
 
+
+
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { useQuery, useMutation } from "@tanstack/react-query";
+
 
 import { trpc } from "@/utils/trpc";
 import {
@@ -42,9 +45,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 
-const MapComponent = dynamic(() => import("@/components/MapComponent"), {
+const MapComponent = nextDynamic(() => import("@/components/MapComponent"), {
   ssr: false,
   loading: () => (
+
     <div className="w-full h-full flex items-center justify-center bg-stone-100 text-xs font-medium text-slate-500">
       Loading Outdoor Interactive Map...
     </div>

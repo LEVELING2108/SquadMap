@@ -11,18 +11,29 @@ import { queryClient } from "@/utils/trpc";
 
 import { ThemeProvider } from "./theme-provider";
 
-function ClerkApiAuthBridge() {
-  const { getToken } = useAuth();
+const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
-  useEffect(() => {
-    setClerkAuthTokenGetter(getToken);
+function ClerkApiAuthBridgeInner() {
+  try {
+    const { getToken } = useAuth();
 
-    return () => {
-      setClerkAuthTokenGetter(null);
-    };
-  }, [getToken]);
+    useEffect(() => {
+      setClerkAuthTokenGetter(getToken);
+
+      return () => {
+        setClerkAuthTokenGetter(null);
+      };
+    }, [getToken]);
+  } catch {
+    // Suppress error if rendered outside ClerkProvider
+  }
 
   return null;
+}
+
+function ClerkApiAuthBridge() {
+  if (!hasClerkKey) return null;
+  return <ClerkApiAuthBridgeInner />;
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
