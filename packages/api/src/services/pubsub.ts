@@ -8,32 +8,41 @@ let publisher: Redis | null = null;
 let subscriber: Redis | null = null;
 let isRedisAvailable = false;
 
-// Attempt to connect to local/cloud Redis if REDIS_URL environment variable exists
-const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+// Only attempt connecting if REDIS_URL environment variable is explicitly set
+const redisUrl = process.env.REDIS_URL;
 
-try {
-  const pub = new Redis(redisUrl, {
-    lazyConnect: true,
-    maxRetriesPerRequest: 1,
-    retryStrategy: () => null, // Don't block if Redis server is offline
-  });
-
-  pub
-    .connect()
-    .then(() => {
-      publisher = pub;
-      const sub = pub.duplicate();
-      sub.connect().then(() => {
-        subscriber = sub;
-        isRedisAvailable = true;
-        console.log("🟢 Connected to Redis Pub/Sub Event Bus");
-      });
-    })
-    .catch(() => {
-      console.log("ℹ️ Local Redis offline. Using in-memory Pub/Sub event bus fallback.");
+if (redisUrl) {
+  try {
+    const pub = new Redis(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      retryStrategy: () => null,
     });
-} catch {
-  console.log("ℹ️ Using in-memory Pub/Sub event bus fallback.");
+
+    // Attach error listener to prevent unhandled ECONNREFUSED logs
+    pub.on("error", () => {
+      // Suppress unhandled error log when Redis is offline
+    });
+
+    pub
+      .connect()
+      .then(() => {
+        publisher = pub;
+        const sub = pub.duplicate();
+        sub.on("error", () => {});
+        sub.connect().then(() => {
+          subscriber = sub;
+          isRedisAvailable = true;
+          console.log("🟢 Connected to Redis Pub/Sub Event Bus");
+        });
+      })
+      .catch(() => {
+        console.log("ℹ️ Local Redis offline. Using in-memory Pub/Sub event bus fallback.");
+      });
+  } catch {
+    console.log("ℹ️ Using in-memory Pub/Sub event bus fallback.");
+  }
 }
 
 export async function publishSessionEvent(code: string, eventType: string, payload: any) {
