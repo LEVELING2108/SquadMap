@@ -20,9 +20,12 @@ import {
   ChevronDown,
   X,
   Mountain,
-  Navigation
+  Navigation,
+  QrCode
 } from "lucide-react";
 import { toast } from "sonner";
+import QrShareModal from "@/components/QrShareModal";
+
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
@@ -57,7 +60,9 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+
 
   // Poll room session data every 4 seconds for live updates
   const { data: session, isLoading, error } = useQuery(
@@ -275,6 +280,14 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsQrOpen(true)}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Scan QR Code to Join"
+          >
+            <QrCode className="w-4 h-4 text-slate-700" />
+            <span className="hidden sm:inline">QR Code</span>
+          </button>
+          <button
             onClick={handleCopyLink}
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Copy Invite Link"
@@ -302,6 +315,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           }}
           participants={session.participants}
           userCoords={userCoords}
+        />
+
+        {/* QR Code Share Modal */}
+        <QrShareModal
+          code={session.code}
+          isOpen={isQrOpen}
+          onClose={() => setIsQrOpen(false)}
         />
 
         {/* Floating Chat Trigger Button */}
