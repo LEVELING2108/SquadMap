@@ -17,11 +17,13 @@
     "@trpc/client": "^11.18.0",
     "@trpc/server": "^11.18.0",
     "dotenv": "^17.4.2",
+    "ioredis": "^6.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@my-better-t-app/config": "*",
     "@types/express": "^5.0.6",
+    "@types/ioredis": "^4.28.10",
     "typescript": "^6.0.3"
   }
 }

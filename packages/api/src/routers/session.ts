@@ -2,6 +2,7 @@ import { publicProcedure, router } from "../index";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import prisma from "@my-better-t-app/db";
+import { publishSessionEvent } from "../services/pubsub";
 
 const AVATAR_COLORS = [
   "#EF4444", // Red
@@ -20,7 +21,7 @@ function generateRoomCode(): string {
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `${code.slice(0, 3)}-${code.slice(3)}`;
+  return code;
 }
 
 export const sessionRouter = router({
@@ -69,6 +70,8 @@ export const sessionRouter = router({
           data: { hostId: hostParticipant.id },
         });
 
+        publishSessionEvent(code, "SESSION_CREATED", session);
+
         return {
           session,
           participant: hostParticipant,
@@ -97,8 +100,8 @@ export const sessionRouter = router({
             orderBy: { joinedAt: "asc" },
           },
           messages: {
-            orderBy: { createdAt: "asc" },
             take: 50,
+            orderBy: { createdAt: "asc" },
             include: {
               participant: true,
             },
@@ -109,14 +112,14 @@ export const sessionRouter = router({
       if (!session) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Session room not found",
+          message: "Trip room not found",
         });
       }
 
       if (!session.isActive || new Date() > session.expiresAt) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "This trip session has expired",
+          message: "This trip session room has expired",
         });
       }
 
@@ -162,6 +165,8 @@ export const sessionRouter = router({
         },
       });
 
+      publishSessionEvent(input.code, "PARTICIPANT_JOINED", participant);
+
       return {
         session,
         participant,
@@ -205,6 +210,8 @@ export const sessionRouter = router({
         },
       });
 
+      publishSessionEvent(participant.session.code, "LOCATION_UPDATED", updated);
+
       return updated;
     }),
 
@@ -236,7 +243,8 @@ export const sessionRouter = router({
         },
       });
 
+      publishSessionEvent(input.code, "MESSAGE_SENT", message);
+
       return message;
     }),
 });
-
