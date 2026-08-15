@@ -1,43 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "web": {
-      "root": "apps/web",
-      "framework": "nextjs",
-      "installCommand": "cd ../.. && npm install",
-      "buildCommand": "NEXT_PUBLIC_SERVER_URL=/api npm run build"
-    },
-    "server": {
-      "root": "apps/server",
-      "framework": "express",
-      "entrypoint": "src/index.ts",
-      "installCommand": "cd ../.. && npm install",
-      "routes": [
-        {
-          "src": "/api/((?!auth(?:/|$)).*)",
-          "transforms": [
-            {
-              "type": "request.path",
-              "op": "set",
-              "args": "/$1"
-            }
-          ]
-        }
-      ]
-    }
-  },
+  "framework": "nextjs",
+  "buildCommand": "npx turbo run build --filter=web",
+  "outputDirectory": "apps/web/.next",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "server"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "web"
-      }
+      "source": "/api/server/:path*",
+      "destination": "https://squadmap-production.up.railway.app/:path*"
     }
   ]
 }
