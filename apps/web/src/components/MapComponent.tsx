@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
 
 interface Participant {
   id: string;
@@ -30,11 +32,8 @@ export default function MapComponent({ destination, participants, userCoords }: 
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
     const loadMap = async () => {
-      // @ts-ignore
-      const LeafletModule = await import("leaflet");
-      const L = LeafletModule.default || LeafletModule;
-
       // Fix default marker icon issues in Webpack/Next.js
+
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -43,12 +42,13 @@ export default function MapComponent({ destination, participants, userCoords }: 
       });
 
       // Initialize map instance if not existing
-      if (!mapInstanceRef.current) {
+      if (!mapInstanceRef.current && mapContainerRef.current) {
         const map = L.map(mapContainerRef.current, {
           center: [destination.lat, destination.lng],
           zoom: 13,
           zoomControl: false,
         });
+
 
         // OpenStreetMap outdoor light tile layer
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
