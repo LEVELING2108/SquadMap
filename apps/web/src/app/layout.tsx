@@ -25,11 +25,22 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
+const hasClerkKey = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const content = (
+    <Providers>
+      <div className="min-h-screen bg-stone-50">
+        {children}
+        <PwaInstallBanner />
+      </div>
+    </Providers>
+  );
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -40,17 +51,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ClerkProvider>
-          <Providers>
-            <div className="min-h-screen bg-stone-50">
-              {children}
-              <PwaInstallBanner />
-            </div>
-          </Providers>
-        </ClerkProvider>
+        {hasClerkKey ? <ClerkProvider>{content}</ClerkProvider> : content}
       </body>
     </html>
   );
 }
+
 
 

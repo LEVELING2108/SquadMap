@@ -12,15 +12,16 @@ function toClerkContextAuth(auth: { userId: string | null } | null): ClerkContex
 }
 
 import { getAuth } from "@clerk/express";
-import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 
 export async function createContext(
-  opts: CreateExpressContextOptions,
+  opts: any,
 ): Promise<ClerkRequestContext> {
   let clerkAuth: ClerkContextAuth | null = null;
   try {
-    const rawAuth = getAuth(opts.req);
-    clerkAuth = toClerkContextAuth(rawAuth);
+    if (opts?.req && typeof opts.req.header === "function") {
+      const rawAuth = getAuth(opts.req);
+      clerkAuth = toClerkContextAuth(rawAuth);
+    }
   } catch {
     clerkAuth = null;
   }
@@ -29,6 +30,5 @@ export async function createContext(
     session: null,
   };
 }
-
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
