@@ -5,15 +5,22 @@ import { PrismaClient } from "../prisma/generated";
 
 export * from "../prisma/generated";
 
+const dbUrl = process.env.DATABASE_URL || env.DATABASE_URL || "postgresql://postgres:password@localhost:5432/squadmap";
+
 const pool = new pg.Pool({
-  connectionString: env.DATABASE_URL,
-  connectionTimeoutMillis: 2000,
+  connectionString: dbUrl,
+  connectionTimeoutMillis: 1500,
+});
+
+// Suppress unhandled pool error events when PostgreSQL is offline or unreachable
+pool.on("error", (err) => {
+  console.warn("PostgreSQL Pool connection error (falling back to memory store):", err.message);
 });
 
 const adapter = new PrismaPg(pool);
 const realPrisma = new PrismaClient({ adapter });
 
-// In-Memory Fallback Store (for when local PostgreSQL is offline or denied)
+// In-Memory Fallback Store (for when PostgreSQL is offline or unreachable)
 const memoryStore = {
   sessions: new Map<string, any>(),
   participants: new Map<string, any>(),
@@ -126,7 +133,6 @@ export const prisma = new Proxy(realPrisma, {
             };
             memoryStore.participants.set(id, partObj);
 
-            // Also attach to session object in memory
             const s = memoryStore.sessions.get(args.data.sessionId);
             if (s && !s.participants.some((p: any) => p.id === id)) {
               s.participants.push(partObj);
