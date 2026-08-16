@@ -65,3 +65,7 @@ skills-lock.json
 tmp
 temp
 
+# Local Chat Backups
+SQUADMAP_CHAT_SUMMARY.txt
+
+
