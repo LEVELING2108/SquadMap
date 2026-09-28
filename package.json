@@ -1,0 +1,26 @@
+{
+  "name": "squadmap",
+  "version": "2.0.0",
+  "description": "SquadMap V2 — Real-time Group Location, Driving ETAs & WebRTC Voice Walkie-Talkie",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && .\\mvnw.cmd spring-boot:run",
+    "dev:frontend": "cd frontend && bun run dev",
+    "build:backend": "cd backend && .\\mvnw.cmd clean package -DskipTests",
+    "build:frontend": "cd frontend && bun run build",
+    "test:backend": "cd backend && .\\mvnw.cmd test"
+  },
+  "keywords": [
+    "real-time",
+    "location-sharing",
+    "spring-boot-3",
+    "java-22",
+    "nextjs-15",
+    "maplibre-gl",
+    "webrtc",
+    "walkie-talkie",
+    "osrm"
+  ],
+  "author": "SquadMap Team",
+  "license": "MIT"
+}
