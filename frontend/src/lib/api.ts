@@ -1,7 +1,24 @@
 import { Session, EtaParticipant, ChatMessage } from '../types/squad';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-export const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:8080/ws';
+export function getApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'http://localhost:8080';
+}
+
+export function getWsBase(): string {
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL;
+  }
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/ws`;
+  }
+  return 'http://localhost:8080/ws';
+}
 
 export async function createSession(data: {
   name: string;
@@ -11,7 +28,7 @@ export async function createSession(data: {
   destinationLat: number;
   destinationLng: number;
 }): Promise<{ session: Session; hostParticipantId: string }> {
-  const res = await fetch(`${API_BASE}/api/sessions`, {
+  const res = await fetch(`${getApiBase()}/api/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -26,7 +43,7 @@ export async function createSession(data: {
 }
 
 export async function getSession(code: string): Promise<Session> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}`);
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}`);
   if (!res.ok) {
     throw new Error('Trip session not found or expired');
   }
@@ -37,7 +54,7 @@ export async function joinSession(
   code: string,
   data: { displayName: string; colorHex?: string }
 ): Promise<{ participantId: string; displayName: string; colorHex: string; session: Session }> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}/join`, {
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -55,7 +72,7 @@ export async function updateDestination(
   code: string,
   data: { destinationName?: string; destinationLat: number; destinationLng: number }
 ): Promise<Session> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}/destination`, {
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}/destination`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -69,7 +86,7 @@ export async function updateDestination(
 }
 
 export async function endSession(code: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}`, {
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}`, {
     method: 'DELETE',
   });
 
@@ -79,13 +96,13 @@ export async function endSession(code: string): Promise<void> {
 }
 
 export async function getEtas(code: string): Promise<EtaParticipant[]> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}/eta`);
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}/eta`);
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function getRecentChat(code: string): Promise<ChatMessage[]> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}/chat`);
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}/chat`);
   if (!res.ok) return [];
   return res.json();
 }
@@ -94,7 +111,7 @@ export async function sendChat(
   code: string,
   data: { senderId: string; senderName: string; text: string; isQuickReply?: boolean }
 ): Promise<ChatMessage> {
-  const res = await fetch(`${API_BASE}/api/sessions/${code.toUpperCase()}/chat`, {
+  const res = await fetch(`${getApiBase()}/api/sessions/${code.toUpperCase()}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

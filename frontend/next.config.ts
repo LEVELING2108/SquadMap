@@ -1,12 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: false, // Prevents double mounting WebSocket connections in dev mode
+  reactStrictMode: false,
   async rewrites() {
     return [
       {
-        source: "/api/proxy/:path*",
+        source: "/api/:path*",
         destination: "http://localhost:8080/api/:path*",
+      },
+      {
+        source: "/ws/:path*",
+        destination: "http://localhost:8080/ws/:path*",
       },
     ];
   },

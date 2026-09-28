@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { WS_BASE } from '../lib/api';
+import { getWsBase } from '../lib/api';
 import {
   LocationBroadcast,
   EtaParticipant,
@@ -76,7 +76,7 @@ export function useSquadSocket({
     const normalizedCode = sessionCode.toUpperCase();
 
     const client = new Client({
-      webSocketFactory: () => new SockJS(WS_BASE),
+      webSocketFactory: () => new SockJS(getWsBase()),
       reconnectDelay: 3000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
