@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Participant, EtaParticipant } from '../types/squad';
-import { Crosshair, Navigation, Maximize2 } from 'lucide-react';
 
 interface MapComponentProps {
   currentUserId: string;
@@ -13,6 +12,11 @@ interface MapComponentProps {
   destinationName?: string;
   participants: Participant[];
   etas: EtaParticipant[];
+  cameraAction?: {
+    type: 'FOLLOW_ME' | 'FIT_ALL' | 'NORTH_UP' | 'FOCUS_USER';
+    userId?: string;
+    timestamp: number;
+  } | null;
 }
 
 export function MapComponent({
@@ -22,13 +26,14 @@ export function MapComponent({
   destinationName,
   participants,
   etas,
+  cameraAction,
 }: MapComponentProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const destMarkerRef = useRef<maplibregl.Marker | null>(null);
 
-  // Initialize MapLibre
+  // Initialize MapLibre GL
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -67,8 +72,6 @@ export function MapComponent({
       attributionControl: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
-
     map.on('load', () => {
       // Add Route GeoJSON source
       map.addSource('driving-routes', {
@@ -90,7 +93,7 @@ export function MapComponent({
         },
         paint: {
           'line-color': '#06B6D4',
-          'line-width': 8,
+          'line-width': 7,
           'line-opacity': 0.35,
           'line-blur': 3,
         },
@@ -138,13 +141,13 @@ export function MapComponent({
       el.className = 'destination-pin group cursor-pointer';
       el.innerHTML = `
         <div class="relative flex flex-col items-center">
-          <div class="absolute -top-7 px-2 py-0.5 rounded-full bg-rose-500/90 text-white text-[11px] font-bold tracking-wide shadow-lg border border-rose-400 whitespace-nowrap backdrop-blur-sm">
+          <div class="absolute -top-7 px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[11px] font-extrabold tracking-wide shadow-lg border border-rose-400 whitespace-nowrap backdrop-blur-md">
             🏁 ${destinationName || 'Destination'}
           </div>
-          <div class="w-8 h-8 rounded-full bg-rose-600 flex items-center justify-center text-white shadow-xl shadow-rose-600/50 border-2 border-white animate-bounce">
+          <div class="w-9 h-9 rounded-full bg-rose-600 flex items-center justify-center text-white shadow-xl shadow-rose-600/50 border-2 border-white animate-bounce">
             📍
           </div>
-          <div class="w-3 h-1 bg-black/60 rounded-full blur-[1px] mt-0.5"></div>
+          <div class="w-3.5 h-1 bg-black/60 rounded-full blur-[1px] mt-0.5"></div>
         </div>
       `;
 
@@ -231,71 +234,82 @@ export function MapComponent({
     });
   }, [etas]);
 
-  // Camera Action: Follow Me
-  const handleFollowMe = () => {
+  // Handle Imperative Camera Actions from Mobile Controls
+  useEffect(() => {
     const map = mapRef.current;
-    const me = participants.find((p) => p.id === currentUserId);
-    if (map && me?.lat && me?.lng) {
-      map.flyTo({
-        center: [me.lng, me.lat],
-        zoom: 15,
-        pitch: 45,
-        bearing: me.heading || 0,
-        essential: true,
-      });
-    }
-  };
+    if (!map || !cameraAction) return;
 
-  // Camera Action: Fit All Squad
-  const handleFitAll = () => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const bounds = new maplibregl.LngLatBounds();
-    let count = 0;
-
-    if (destinationLat && destinationLng) {
-      bounds.extend([destinationLng, destinationLat]);
-      count++;
-    }
-
-    participants.forEach((p) => {
-      if (p.lat && p.lng) {
-        bounds.extend([p.lng, p.lat]);
-        count++;
+    switch (cameraAction.type) {
+      case 'FOLLOW_ME': {
+        const me = participants.find((p) => p.id === currentUserId);
+        if (me?.lat && me?.lng) {
+          map.flyTo({
+            center: [me.lng, me.lat],
+            zoom: 15.5,
+            pitch: 45,
+            bearing: me.heading || 0,
+            essential: true,
+            duration: 1200,
+          });
+        }
+        break;
       }
-    });
 
-    if (count > 0) {
-      map.fitBounds(bounds, {
-        padding: 80,
-        maxZoom: 16,
-        essential: true,
-      });
+      case 'FIT_ALL': {
+        const bounds = new maplibregl.LngLatBounds();
+        let count = 0;
+
+        if (destinationLat && destinationLng) {
+          bounds.extend([destinationLng, destinationLat]);
+          count++;
+        }
+
+        participants.forEach((p) => {
+          if (p.lat && p.lng) {
+            bounds.extend([p.lng, p.lat]);
+            count++;
+          }
+        });
+
+        if (count > 0) {
+          map.fitBounds(bounds, {
+            padding: { top: 120, bottom: 180, left: 40, right: 40 },
+            maxZoom: 16,
+            essential: true,
+            duration: 1200,
+          });
+        }
+        break;
+      }
+
+      case 'NORTH_UP': {
+        map.easeTo({
+          bearing: 0,
+          pitch: 35,
+          duration: 600,
+        });
+        break;
+      }
+
+      case 'FOCUS_USER': {
+        const target = participants.find((p) => p.id === cameraAction.userId);
+        if (target?.lat && target?.lng) {
+          map.flyTo({
+            center: [target.lng, target.lat],
+            zoom: 15,
+            pitch: 40,
+            essential: true,
+            duration: 1000,
+          });
+        }
+        break;
+      }
     }
-  };
+  }, [cameraAction, currentUserId, destinationLat, destinationLng, participants]);
 
   return (
-    <div className="relative w-full h-full min-h-[400px]">
+    <div className="relative w-full h-full overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full" />
-
-      {/* Floating Map Action Buttons */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-        <button
-          onClick={handleFollowMe}
-          title="Center on me"
-          className="p-2.5 rounded-xl bg-gray-900/80 backdrop-blur-md text-white hover:bg-gray-800 border border-white/10 shadow-lg transition-transform active:scale-95"
-        >
-          <Crosshair className="w-5 h-5 text-indigo-400" />
-        </button>
-        <button
-          onClick={handleFitAll}
-          title="Fit whole squad"
-          className="p-2.5 rounded-xl bg-gray-900/80 backdrop-blur-md text-white hover:bg-gray-800 border border-white/10 shadow-lg transition-transform active:scale-95"
-        >
-          <Maximize2 className="w-5 h-5 text-cyan-400" />
-        </button>
-      </div>
     </div>
   );
 }
@@ -307,10 +321,10 @@ function updateMarkerElement(el: HTMLElement, p: Participant, isSelf: boolean) {
   const isMoving = speed > 5;
 
   el.innerHTML = `
-    <div class="relative flex flex-col items-center select-none group cursor-pointer">
-      <!-- Name & Speed Badge -->
-      <div class="mb-1 px-2 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 shadow-md border border-white/10 whitespace-nowrap backdrop-blur-md"
-           style="background-color: rgba(17, 24, 39, 0.9); color: ${color};">
+    <div class="relative flex flex-col items-center select-none group cursor-pointer active:scale-90 transition-transform">
+      <!-- Name & Speed Pill -->
+      <div class="mb-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 shadow-lg border border-white/10 whitespace-nowrap backdrop-blur-md"
+           style="background-color: rgba(15, 23, 42, 0.92); color: ${color};">
         <span>${p.displayName}${isSelf ? ' (You)' : ''}</span>
         ${
           p.hasArrived
@@ -318,19 +332,19 @@ function updateMarkerElement(el: HTMLElement, p: Participant, isSelf: boolean) {
             : isMoving
             ? `<span class="text-gray-300 font-medium">${speed} km/h</span>`
             : p.isPaused
-            ? '<span class="text-amber-400 font-medium">⏸ Paused</span>'
+            ? '<span class="text-amber-400 font-medium">⏸</span>'
             : ''
         }
       </div>
 
-      <!-- Avatar Ring & Car / Arrow -->
+      <!-- Avatar Ring & Car Arrow -->
       <div class="relative flex items-center justify-center">
         ${
           isMoving
-            ? `<div class="absolute w-10 h-10 rounded-full animate-ping opacity-30" style="background-color: ${color};"></div>`
+            ? `<div class="absolute w-11 h-11 rounded-full animate-ping opacity-35" style="background-color: ${color};"></div>`
             : ''
         }
-        <div class="w-8 h-8 rounded-full border-2 border-white shadow-xl flex items-center justify-center font-bold text-xs text-white"
+        <div class="w-9 h-9 rounded-full border-2 border-white shadow-2xl flex items-center justify-center font-bold text-xs text-white"
              style="background-color: ${color};">
           ${
             p.hasArrived

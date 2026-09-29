@@ -18,7 +18,7 @@ const QUICK_REPLIES = [
   'Stuck in traffic 🚦',
   'Quick pit stop ⛽',
   'I am here! 🎉',
-  'Where are you? 👀',
+  'Where is everyone? 👀',
 ];
 
 export function SquadChat({
@@ -40,39 +40,55 @@ export function SquadChat({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(20);
+    }
     onSendMessage(inputText.trim(), false);
     setInputText('');
   };
 
   const handleQuickReply = (text: string) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(25);
+    }
     onSendMessage(text, true);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full sm:w-96 glass-panel-elevated z-40 flex flex-col shadow-2xl border-l border-white/10 animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-x-0 bottom-0 sm:inset-y-0 sm:left-auto sm:right-0 w-full sm:w-96 h-[85dvh] sm:h-full glass-sheet sm:glass-panel-elevated z-40 flex flex-col shadow-2xl rounded-t-[32px] sm:rounded-none border-t sm:border-t-0 sm:border-l border-white/10 animate-in slide-in-from-bottom sm:slide-in-from-right duration-250">
+      {/* Mobile drag handle */}
+      <div className="sm:hidden pt-2 pb-1" onClick={onClose}>
+        <div className="sheet-handle" />
+      </div>
+
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-indigo-400" />
-          <h2 className="font-bold text-white text-base">Squad Road Chat</h2>
+      <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <MessageSquare className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-white text-sm">Squad Road Chat</h2>
+            <p className="text-[10px] text-gray-400">{messages.length} messages in convoy</p>
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-white/10 active-press transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Message Stream */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-3">
+      <div className="flex-1 p-4 overflow-y-auto space-y-3 no-scrollbar">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-500 text-sm">
             <Sparkles className="w-8 h-8 text-indigo-400/40 mb-2" />
-            <p>No messages yet.</p>
-            <p className="text-xs text-gray-600 mt-1">Tap a quick reply to kick off!</p>
+            <p className="font-medium text-gray-400">No messages yet.</p>
+            <p className="text-xs text-gray-500 mt-1">Tap a quick reply to kick off!</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -88,15 +104,15 @@ export function SquadChat({
                   </span>
                 )}
                 <div
-                  className={`px-3.5 py-2 rounded-2xl max-w-[85%] text-sm break-words shadow-md ${
+                  className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm break-words shadow-md ${
                     isSelf
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-gray-800/90 text-gray-100 rounded-tl-none border border-white/10'
+                      ? 'bg-indigo-600 text-white rounded-br-sm'
+                      : 'bg-gray-800/90 text-gray-100 rounded-bl-sm border border-white/10'
                   } ${msg.isQuickReply ? 'border-amber-400/40 font-medium' : ''}`}
                 >
                   {msg.text}
                 </div>
-                <span className="text-[9px] text-gray-500 mt-0.5 px-1">
+                <span className="text-[9px] text-gray-500 mt-0.5 px-1 font-mono">
                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -107,31 +123,31 @@ export function SquadChat({
       </div>
 
       {/* Quick Reply Chips */}
-      <div className="px-4 py-2 border-t border-white/5 overflow-x-auto flex gap-1.5 scrollbar-none">
+      <div className="px-4 py-2 border-t border-white/5 overflow-x-auto flex gap-1.5 no-scrollbar">
         {QUICK_REPLIES.map((reply) => (
           <button
             key={reply}
             onClick={() => handleQuickReply(reply)}
-            className="px-2.5 py-1 text-xs whitespace-nowrap rounded-full bg-white/5 hover:bg-indigo-500/20 text-gray-300 hover:text-indigo-300 border border-white/10 hover:border-indigo-500/40 transition-all shrink-0"
+            className="px-3 py-1.5 text-xs whitespace-nowrap rounded-full bg-white/5 active:bg-indigo-600 active:text-white hover:bg-indigo-500/20 text-gray-300 hover:text-indigo-300 border border-white/10 transition-all shrink-0 active-press"
           >
             {reply}
           </button>
         ))}
       </div>
 
-      {/* Input bar */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-white/10 flex gap-2">
+      {/* Input Bar */}
+      <form onSubmit={handleSubmit} className="p-3 border-t border-white/10 flex gap-2 pb-safe">
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="Message squad..."
-          className="flex-1 bg-gray-900/90 text-white text-sm rounded-xl px-3.5 py-2.5 border border-white/10 focus:outline-none focus:border-indigo-500 transition-colors"
+          className="flex-1 bg-gray-900/90 text-white text-sm rounded-xl px-4 py-3 border border-white/10 focus:outline-none focus:border-indigo-500 transition-colors"
         />
         <button
           type="submit"
           disabled={!inputText.trim()}
-          className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all"
+          className="px-4 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-all active-press"
         >
           <Send className="w-4 h-4" />
         </button>

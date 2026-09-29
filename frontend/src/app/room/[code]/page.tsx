@@ -2,29 +2,20 @@
 
 import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession, getEtas, getRecentChat, sendChat as apiSendChat } from '../../../lib/api';
+import { getSession, getEtas, getRecentChat } from '../../../lib/api';
 import { Session, Participant, EtaParticipant, ChatMessage, ArrivedEvent } from '../../../types/squad';
 import { useSquadSocket } from '../../../hooks/useSquadSocket';
 import { useAdaptiveGeolocation } from '../../../hooks/useAdaptiveGeolocation';
 import { useWebRtcWalkieTalkie } from '../../../hooks/useWebRtcWalkieTalkie';
 import { MapComponent } from '../../../components/MapComponent';
-import { EtaLeaderboard } from '../../../components/EtaLeaderboard';
+import { MobileTopBar } from '../../../components/MobileTopBar';
+import { MobileMapControls } from '../../../components/MobileMapControls';
+import { MobileBottomSheet } from '../../../components/MobileBottomSheet';
+import { MobilePttBar } from '../../../components/MobilePttBar';
 import { SquadChat } from '../../../components/SquadChat';
-import { WalkieTalkieControls } from '../../../components/WalkieTalkieControls';
 import { ShareModal } from '../../../components/ShareModal';
 import { ArrivalCelebration } from '../../../components/ArrivalCelebration';
-import {
-  Share2,
-  MessageSquare,
-  Pause,
-  Play,
-  Car,
-  Compass,
-  Loader2,
-  Wifi,
-  WifiOff,
-  Battery,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function RoomPage({ params }: { params: Promise<{ code: string }> }) {
   const { code: rawCode } = use(params);
@@ -43,6 +34,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [latestArrival, setLatestArrival] = useState<ArrivedEvent | null>(null);
 
+  // Camera action state for MapLibre GL
+  const [cameraAction, setCameraAction] = useState<{
+    type: 'FOLLOW_ME' | 'FIT_ALL' | 'NORTH_UP' | 'FOCUS_USER';
+    userId?: string;
+    timestamp: number;
+  } | null>(null);
+
   // UI Modals state
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -58,7 +56,6 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     const storedColor = localStorage.getItem(`squad_color_${sessionCode}`);
 
     if (!storedUser || !storedName) {
-      // Not registered for this room yet, redirect to join page
       router.push(`/join/${sessionCode}`);
       return;
     }
@@ -160,6 +157,9 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     },
     onArrived: (arrived) => {
       setLatestArrival(arrived);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200]);
+      }
       setParticipants((prev) =>
         prev.map((p) => (p.id === arrived.userId ? { ...p, hasArrived: true } : p))
       );
@@ -197,7 +197,6 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     destinationLng: session?.destinationLng,
     onLocationChange: (lat, lng, spd, hdg, paused) => {
       sendLocation(lat, lng, spd, hdg, paused);
-      // Update self in local state immediately for instant feedback
       setParticipants((prev) => {
         const index = prev.findIndex((p) => p.id === userId);
         if (index >= 0) {
@@ -225,146 +224,56 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     onSendSignal: sendWebRtcSignal,
   });
 
-  // Handle Pause Toggle
-  const handleTogglePause = () => {
+  // Camera Action Triggers
+  const handleFollowMe = useCallback(() => {
+    setCameraAction({ type: 'FOLLOW_ME', timestamp: Date.now() });
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
+  }, []);
+
+  const handleNorthUp = useCallback(() => {
+    setCameraAction({ type: 'NORTH_UP', timestamp: Date.now() });
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
+  }, []);
+
+  const handleFocusMember = useCallback((memberId: string) => {
+    setCameraAction({ type: 'FOCUS_USER', userId: memberId, timestamp: Date.now() });
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
+  }, []);
+
+  // Toggle Pause
+  const handleTogglePause = useCallback(() => {
     localTogglePause();
     socketTogglePause(!isPaused);
-  };
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(30);
+  }, [localTogglePause, socketTogglePause, isPaused]);
 
-  // Handle Send Chat
+  // Toggle Simulate
+  const handleToggleSimulate = useCallback(() => {
+    if (isSimulating) stopSimulation();
+    else startSimulation();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(30);
+  }, [isSimulating, startSimulation, stopSimulation]);
+
+  // Chat message sender
   const handleSendMessage = (text: string, isQuickReply: boolean) => {
     socketSendChat(text, isQuickReply);
   };
 
   if (initialLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#090d16] text-white">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-[#090d16] text-white">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-3" />
-        <p className="text-sm font-semibold text-gray-400">Connecting to SquadMap Session...</p>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          Joining Convoy...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#090d16] flex flex-col">
-      {/* Top Floating Glass Navigation Header */}
-      <header className="absolute top-4 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
-        {/* Left: Trip Info & Status */}
-        <div className="flex items-center gap-2.5 pointer-events-auto">
-          <div className="glass-panel-elevated px-3.5 py-2 rounded-2xl flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Compass className="w-5 h-5 text-indigo-400" />
-              <div>
-                <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight truncate max-w-[140px] sm:max-w-xs">
-                  {session?.name || 'Road Trip'}
-                </h1>
-                <div className="flex items-center gap-1.5 text-[11px] font-mono text-gray-400">
-                  <span>ROOM:</span>
-                  <span className="font-bold text-indigo-400">{sessionCode}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Live WebSocket Indicator */}
-            <div
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                isConnected
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-              }`}
-            >
-              {isConnected ? (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span className="hidden sm:inline">LIVE</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3 h-3 text-rose-400" />
-                  <span className="hidden sm:inline">CONNECTING</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Actions (Walkie-Talkie, GPS Status, Chat & Share) */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {/* WebRTC Walkie-Talkie Controls */}
-          <WalkieTalkieControls
-            isMicReady={walkieTalkie.isMicReady}
-            isTalking={walkieTalkie.isTalking}
-            activeSpeaker={walkieTalkie.activeSpeaker}
-            onEnableMic={walkieTalkie.enableMicrophone}
-            onStartTalking={walkieTalkie.startTalking}
-            onStopTalking={walkieTalkie.stopTalking}
-          />
-
-          {/* Adaptive GPS Ping Interval Badge */}
-          <div className="hidden md:flex glass-panel px-2.5 py-1.5 rounded-xl items-center gap-1.5 text-xs text-gray-300">
-            <Battery className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px] font-medium font-mono">{mode} ({intervalSeconds}s)</span>
-          </div>
-
-          {/* Simulator Toggle (Desktop testing / demo) */}
-          <button
-            onClick={() => {
-              if (isSimulating) stopSimulation();
-              else startSimulation();
-            }}
-            title={isSimulating ? 'Stop drive simulation' : 'Simulate drive along route'}
-            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg border transition-all ${
-              isSimulating
-                ? 'bg-cyan-600 text-white border-cyan-400 shadow-cyan-600/40 animate-pulse'
-                : 'glass-panel text-gray-300 hover:text-white border-white/10 hover:border-white/20'
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            <span className="hidden sm:inline">{isSimulating ? 'SIMULATING...' : 'SIMULATE'}</span>
-          </button>
-
-          {/* Privacy Pause GPS Toggle */}
-          <button
-            onClick={handleTogglePause}
-            title={isPaused ? 'Resume GPS sharing' : 'Pause GPS sharing'}
-            className={`p-2.5 rounded-xl border transition-all ${
-              isPaused
-                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                : 'glass-panel text-gray-400 hover:text-white border-white/10'
-            }`}
-          >
-            {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-          </button>
-
-          {/* Squad Chat Button */}
-          <button
-            onClick={() => {
-              setIsChatOpen(!isChatOpen);
-              setUnreadChatCount(0);
-            }}
-            className="relative glass-panel p-2.5 rounded-xl text-gray-300 hover:text-white border border-white/10 transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" />
-            {unreadChatCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-bounce">
-                {unreadChatCount}
-              </span>
-            )}
-          </button>
-
-          {/* Invite Squad Button */}
-          <button
-            onClick={() => setIsShareOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-transform active:scale-95 border border-indigo-400/30"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">INVITE</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Map Engine */}
-      <div className="flex-1 w-full h-full">
+    <main className="relative h-full w-full overflow-hidden bg-[#090d16] flex flex-col">
+      {/* 1. Full-Bleed Map Engine */}
+      <div className="absolute inset-0 z-0">
         <MapComponent
           currentUserId={userId}
           destinationLat={session?.destinationLat}
@@ -372,20 +281,59 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           destinationName={session?.destinationName}
           participants={participants}
           etas={etas}
+          cameraAction={cameraAction}
         />
       </div>
 
-      {/* Bottom Left Floating ETA Leaderboard */}
-      <div className="absolute bottom-6 left-4 z-20 w-[92%] sm:w-auto">
-        <EtaLeaderboard
-          destinationName={session?.destinationName}
-          participants={participants}
-          etas={etas}
-          currentUserId={userId}
-        />
-      </div>
+      {/* 2. Top Dynamic Island Header */}
+      <MobileTopBar
+        tripName={session?.name || 'Road Trip'}
+        sessionCode={sessionCode}
+        isConnected={isConnected}
+        currentSpeed={speed}
+        gpsMode={mode}
+        intervalSeconds={intervalSeconds}
+      />
 
-      {/* Road Chat Overlay */}
+      {/* 3. Right-Side Thumb Action Cluster FABs */}
+      <MobileMapControls
+        isSimulating={isSimulating}
+        isPaused={isPaused}
+        onFollowMe={handleFollowMe}
+        onNorthUp={handleNorthUp}
+        onToggleSimulate={handleToggleSimulate}
+        onTogglePause={handleTogglePause}
+        onOpenShare={() => setIsShareOpen(true)}
+      />
+
+      {/* 4. Bottom Thumb Zone: Push-To-Talk Mic Button & Chat Bubble */}
+      <MobilePttBar
+        isMicReady={walkieTalkie.isMicReady}
+        isTalking={walkieTalkie.isTalking}
+        activeSpeaker={walkieTalkie.activeSpeaker}
+        unreadChatCount={unreadChatCount}
+        onEnableMic={walkieTalkie.enableMicrophone}
+        onStartTalking={walkieTalkie.startTalking}
+        onStopTalking={walkieTalkie.stopTalking}
+        onOpenChat={() => {
+          setIsChatOpen(true);
+          setUnreadChatCount(0);
+        }}
+      />
+
+      {/* 5. Mobile Draggable Bottom Sheet (Apple Maps style) */}
+      <MobileBottomSheet
+        destinationName={session?.destinationName}
+        destinationLat={session?.destinationLat}
+        destinationLng={session?.destinationLng}
+        participants={participants}
+        etas={etas}
+        currentUserId={userId}
+        onFocusMember={handleFocusMember}
+        onOpenShare={() => setIsShareOpen(true)}
+      />
+
+      {/* 6. iOS / Android Bottom Sheet Squad Chat */}
       <SquadChat
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
@@ -394,7 +342,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         onSendMessage={handleSendMessage}
       />
 
-      {/* QR Code & Share Modal */}
+      {/* 7. Share & QR Code Modal */}
       <ShareModal
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
@@ -402,11 +350,11 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         tripName={session?.name || 'Road Trip'}
       />
 
-      {/* Geofence Arrival Celebration */}
+      {/* 8. Geofence Arrival Celebration */}
       <ArrivalCelebration
         arrival={latestArrival}
         onDismiss={() => setLatestArrival(null)}
       />
-    </div>
+    </main>
   );
 }
