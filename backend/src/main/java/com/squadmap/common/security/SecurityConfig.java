@@ -65,7 +65,12 @@ public class SecurityConfig {
                             "/api/v1/auth/forgot", "/api/v1/auth/reset").permitAll();
                     // Account routes are for signed-in accounts only; a guest token is refused.
                     auth.requestMatchers("/api/v1/me", "/api/v1/me/**").hasAuthority(TokenKind.USER.authority());
-                    // Trips are for signed-in accounts; guests are let in to their own trip separately.
+                    // Joining works from an invite link, with or without an account.
+                    auth.requestMatchers("/api/v1/join/**").permitAll();
+                    // A guest may read the one trip their pass is for; the service checks which trip.
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    // Everything else about trips is for signed-in accounts.
                     auth.requestMatchers("/api/v1/trips", "/api/v1/trips/**").hasAuthority(TokenKind.USER.authority());
                     auth.anyRequest().authenticated();
                 })

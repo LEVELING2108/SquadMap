@@ -4,6 +4,7 @@ import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.ratelimit.RateLimit;
 import com.squadmap.common.ratelimit.RateLimiter;
+import com.squadmap.common.security.Caller;
 import com.squadmap.common.security.CurrentUser;
 import com.squadmap.trip.dto.CreateTripRequest;
 import com.squadmap.trip.dto.InviteResponse;
@@ -59,9 +60,9 @@ public class TripController {
     }
 
     @GetMapping("/{tripId}")
-    @Operation(summary = "One trip I'm on")
+    @Operation(summary = "One trip I'm on", description = "Also open to a guest, for the trip their pass is for.")
     public TripResponse get(@AuthenticationPrincipal Jwt token, @PathVariable UUID tripId) {
-        return trips.get(tripId, CurrentUser.id(token));
+        return trips.get(tripId, Caller.from(token));
     }
 
     @GetMapping("/{tripId}/invite")

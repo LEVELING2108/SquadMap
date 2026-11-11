@@ -15,7 +15,10 @@ public enum RateLimit {
     FORGOT_PER_EMAIL("forgot-email", 3, Duration.ofHours(1)),
     FORGOT_PER_IP("forgot-ip", 10, Duration.ofHours(1)),
     RESET_PER_IP("reset-ip", 10, Duration.ofHours(1)),
-    TRIP_CREATE_PER_USER("trip-create-user", 20, Duration.ofHours(1));
+    TRIP_CREATE_PER_USER("trip-create-user", 20, Duration.ofHours(1)),
+    JOIN_PER_IP("join-ip", 10, Duration.ofMinutes(1)),
+    /** Wrong trip codes: after 20 in an hour, the address may not try any code until it refills. */
+    JOIN_BAD_CODES_PER_IP("join-bad-codes-ip", 20, Duration.ofHours(1));
 
     private final String id;
     private final long capacity;

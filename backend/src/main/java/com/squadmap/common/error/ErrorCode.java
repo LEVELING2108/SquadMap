@@ -24,5 +24,8 @@ public enum ErrorCode {
 
     // Trips
     TRIP_NOT_FOUND,
-    TOO_MANY_TRIPS
+    TOO_MANY_TRIPS,
+    INVALID_CODE,
+    TRIP_EXPIRED,
+    TRIP_FULL
 }
