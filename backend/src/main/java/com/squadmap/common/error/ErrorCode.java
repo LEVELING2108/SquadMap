@@ -18,5 +18,6 @@ public enum ErrorCode {
 
     // Accounts
     EMAIL_TAKEN,
-    INVALID_CREDENTIALS
+    INVALID_CREDENTIALS,
+    SESSION_EXPIRED
 }
