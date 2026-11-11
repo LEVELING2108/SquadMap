@@ -6,6 +6,12 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Upgraded BouncyCastle, the password-hashing library, from 1.80 to 1.87, fixing five published
+  advisories (two critical). None affected the Argon2 hashing SquadMap uses, and existing password
+  hashes keep working.
+
 ## [0.2.0] - 2026-11-12
 
 Accounts: people can sign up, log in, stay signed in, and reset a forgotten password.
