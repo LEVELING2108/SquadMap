@@ -65,6 +65,80 @@ test.describe('welcome screen', () => {
   });
 });
 
+const accountScreens = [
+  ['log in', '/login', 'Welcome back'],
+  ['sign up', '/signup', 'Create account'],
+  ['forgot password', '/forgot', 'Lost your way?'],
+  ['set a new password', '/reset-password#token=preview-token', 'Choose a new password'],
+  ['expired reset link', '/reset-password', 'This link has expired'],
+  ['home', '/home', 'You are exploring'],
+] as const;
+
+test.describe('account screens', () => {
+  for (const [name, path, heading] of accountScreens) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+        const results = await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+          .analyze();
+
+        expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+          [],
+        );
+      });
+    }
+
+    test(`${name}: every control is at least 44 px tall`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+      for (const control of await page.locator('a, button, input:not([type=checkbox])').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  test('error messages are announced with their field after an empty submit', async ({ page }) => {
+    await page.goto('/signup');
+    await page.getByRole('button', { name: 'Create account' }).click();
+
+    await expect(page.getByLabel('Name')).toHaveAccessibleDescription('Enter your name.');
+    await expect(page.getByLabel('Name')).toBeFocused();
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  test('the whole flow can be done with the keyboard', async ({ page }) => {
+    await page.route('**/api/v1/auth/login', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 't',
+          expiresIn: 900,
+          user: { id: 'u1', name: 'Priya', email: 'priya@example.com', color: '#0F6E56', createdAt: '' },
+        }),
+      }),
+    );
+    await page.goto('/login');
+
+    await page.getByLabel('Email').focus();
+    await page.keyboard.type('priya@example.com');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('correct horse');
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('heading', { name: 'Hi, Priya' })).toBeVisible();
+  });
+});
+
 test.describe('theme', () => {
   test('follows a dark system setting before the app loads', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });

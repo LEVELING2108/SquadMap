@@ -27,6 +27,10 @@
   --color-sea-bg: var(--sea-bg);
   --color-dot-idle: var(--dot-idle);
   --color-handle: var(--handle);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-input-placeholder: var(--input-placeholder);
+  --color-track: var(--track);
   --color-hero-cloud: var(--hero-cloud);
   --color-hero-plane: var(--hero-plane);
   --color-hero-plane-outline: var(--hero-plane-outline);
