@@ -22,6 +22,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>2.6.0</springdoc.version>
         <bouncycastle.version>1.80</bouncycastle.version>
+        <bucket4j.version>8.14.0</bucket4j.version>
         <!-- Newer than the Spring Boot default: required to talk to current Docker engines. -->
         <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
@@ -49,6 +50,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <!-- Rate limits shared by every app instance through Redis. -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-lettuce</artifactId>
+            <version>${bucket4j.version}</version>
         </dependency>
         <!-- Sends email over SMTP, which every transactional email provider supports. -->
         <dependency>

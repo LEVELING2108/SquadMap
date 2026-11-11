@@ -16,6 +16,9 @@ All notable changes to SquadMap are recorded here. The format follows
 - Forgot password: an email with a link that works once, for 30 minutes. Asking again cancels the
   older link, and setting a new password signs the account out on every device. The request answers
   the same way whether or not the email has an account.
+- Rate limits on the account routes, shared across app instances through Redis: log in 5 a minute
+  per address and per account, forgot password 3 an hour per email and 10 per address, sign up and
+  reset 10 an hour per address, refresh 60 a minute. Limited requests get `429` with `Retry-After`.
 
 ### Changed
 
