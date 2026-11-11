@@ -6,6 +6,12 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Trips: a signed-in person can start a trip with a name, an optional destination, a sharing time
+  of 1, 2, 4 or 8 hours and chat on or off, and gets an 8-character code and invite link. Up to
+  three trips can run at once. Only people on a trip can see it or its invite.
+
 ## [0.2.1] - 2026-11-12
 
 Security update.

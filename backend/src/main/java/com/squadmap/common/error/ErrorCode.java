@@ -20,5 +20,9 @@ public enum ErrorCode {
     EMAIL_TAKEN,
     INVALID_CREDENTIALS,
     SESSION_EXPIRED,
-    RESET_LINK_INVALID
+    RESET_LINK_INVALID,
+
+    // Trips
+    TRIP_NOT_FOUND,
+    TOO_MANY_TRIPS
 }
