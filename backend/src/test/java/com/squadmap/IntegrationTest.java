@@ -21,7 +21,11 @@ import java.util.Map;
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "squadmap.cors.allowed-origins=" + IntegrationTest.ALLOWED_ORIGIN)
+        properties = {
+                "squadmap.cors.allowed-origins=" + IntegrationTest.ALLOWED_ORIGIN,
+                // Tests call scheduled jobs directly instead of racing the timer.
+                "squadmap.scheduling.enabled=false"
+        })
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {
 

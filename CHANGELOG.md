@@ -9,6 +9,15 @@ All notable changes to SquadMap are recorded here. The format follows
 ### Added
 
 - This changelog.
+- Accounts: sign up with name, email and password, log in, and fetch your own profile. Passwords are
+  hashed with Argon2id; access tokens last 15 minutes.
+- Staying signed in: a 30-day refresh cookie, replaced on every use. Presenting a cookie that was
+  already replaced ends that whole session, and logging out ends the session on that device.
+
+### Changed
+
+- Browser tests in CI run inside the official Playwright image, so they no longer depend on the
+  Ubuntu package mirrors.
 
 ### Fixed
 

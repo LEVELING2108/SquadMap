@@ -60,7 +60,8 @@ public class SecurityConfig {
                     if (apiDocsEnabled) {
                         auth.requestMatchers(API_DOCS).permitAll();
                     }
-                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login",
+                            "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll();
                     // Account routes are for signed-in accounts only; a guest token is refused.
                     auth.requestMatchers("/api/v1/me", "/api/v1/me/**").hasAuthority(TokenKind.USER.authority());
                     auth.anyRequest().authenticated();

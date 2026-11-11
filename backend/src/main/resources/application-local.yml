@@ -14,6 +14,9 @@ spring:
 
 # No signing key is set here on purpose: a temporary one is generated at startup.
 squadmap:
+  auth:
+    # Local development runs over plain HTTP, where some browsers drop Secure cookies.
+    refresh-cookie-secure: false
   cors:
     allowed-origins:
       - http://localhost:5480
