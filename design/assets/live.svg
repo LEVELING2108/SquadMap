@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844" font-family="Arial,Helvetica,sans-serif">
+<style>
+.rt{animation:march 1.4s linear infinite}
+@keyframes march{to{stroke-dashoffset:-24}}
+.rp{transform-box:fill-box;transform-origin:center;animation:rp 2.2s ease-out infinite}
+@keyframes rp{0%{transform:scale(.5);opacity:.6}100%{transform:scale(2.4);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rt,.rp{animation:none}}
+</style>
+<defs><g id="r" fill="none" stroke-linecap="round"><path d="M-10 300 L400 282"/><path d="M-10 520 C100 500 250 545 400 510"/><path d="M112 -10 L128 860"/><path d="M292 -10 C282 200 312 500 300 860"/><path d="M-10 640 L400 592"/><path d="M128 410 L300 396"/><path d="M200 -10 L206 300"/><path d="M-10 90 L400 70"/><path d="M20 760 L380 730"/></g></defs>
+<rect width="390" height="844" fill="#F3EFE6"/>
+<rect x="262" y="318" width="108" height="86" rx="18" fill="#CBE7C5"/>
+<rect x="18" y="548" width="92" height="64" rx="16" fill="#CBE7C5"/>
+<rect x="306" y="650" width="70" height="70" rx="16" fill="#CBE7C5"/>
+<path d="M-10 150 C80 190 120 320 200 380 S330 470 400 452" fill="none" stroke="#A9D8F5" stroke-width="30" stroke-linecap="round"/>
+<use href="#r" stroke="#DDD6C8" stroke-width="10"/>
+<use href="#r" stroke="#FFFFFF" stroke-width="7"/>
+<path d="M-10 205 C110 230 270 175 400 208" fill="none" stroke="#E8B64A" stroke-width="13" stroke-linecap="round"/>
+<path d="M-10 205 C110 230 270 175 400 208" fill="none" stroke="#FFE3A0" stroke-width="9" stroke-linecap="round"/>
+<g fill="#5F6B78" font-size="11" font-weight="700" letter-spacing="1"><text x="22" y="492">KALYANI NAGAR</text></g>
+<text x="270" y="364" font-size="10" font-weight="700" fill="#2E6B3E">Riverside Park</text>
+<circle cx="338" cy="566" r="12" fill="#7B5CD6" stroke="#fff" stroke-width="3"/>
+<rect x="332" y="563" width="12" height="7" rx="1.5" fill="#fff"/>
+<g fill="none" stroke-linecap="round">
+<path d="M122 430 C126 360 160 300 242 268" stroke="#fff" stroke-opacity=".85" stroke-width="8"/>
+<path d="M310 520 C318 440 300 340 258 268" stroke="#fff" stroke-opacity=".85" stroke-width="8"/>
+<path d="M190 610 C186 520 236 400 252 270" stroke="#fff" stroke-opacity=".85" stroke-width="8"/>
+<path class="rt" d="M122 430 C126 360 160 300 242 268" stroke="#0F6E56" stroke-width="4" stroke-dasharray="2 10"/>
+<path class="rt" d="M310 520 C318 440 300 340 258 268" stroke="#993C1D" stroke-width="4" stroke-dasharray="2 10"/>
+<path class="rt" d="M190 610 C186 520 236 400 252 270" stroke="#1A73E8" stroke-width="4" stroke-dasharray="2 10"/>
+</g>
+<ellipse class="rp" cx="250" cy="262" rx="16" ry="7" fill="#E8503A"/>
+<path d="M250 262 C237 244 228 236 228 224 A22 22 0 0 1 272 224 C272 236 263 244 250 262Z" fill="#E8503A" stroke="#fff" stroke-width="2"/>
+<circle cx="250" cy="224" r="8" fill="#fff"/>
+</svg>

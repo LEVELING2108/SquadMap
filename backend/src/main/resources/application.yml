@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: squadmap
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      # The schema is owned by Flyway; Hibernate only checks that entities match it.
+      ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

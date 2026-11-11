@@ -12,9 +12,26 @@ SquadMap is a real-time group location-sharing web app. A host starts a trip and
 | --- | --- |
 | Backend | Java 21, Spring Boot 3.3, Spring Security (JWT), STOMP over WebSocket |
 | Data | PostgreSQL 16, Redis 7, Flyway migrations |
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
 | Platform | Installable PWA, light and dark themes |
 | Tooling | Docker, GitHub Actions, JUnit 5, Testcontainers, Vitest, Playwright |
+
+## Run it locally
+
+You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
+
+| Step | Command | Verify |
+| --- | --- | --- |
+| 1. Start Postgres, Redis and the mail catcher | `make up` | `make ps` shows three services as `healthy` |
+| 2. Run the API | `make backend` | <http://localhost:8480/actuator/health> returns `{"status":"UP"}` |
+| 3. Install and run the web app (second terminal) | `make install` then `make frontend` | <http://localhost:5480> shows the SquadMap page |
+| 4. Run the tests | `make test` and `make e2e` | Both finish without failures |
+
+Other useful addresses: API docs at <http://localhost:8480/swagger-ui.html>, and every email the app sends locally at <http://localhost:8425>.
+
+`make down` stops the services and keeps the data. `make reset` also deletes the local database.
+
+Without `make`, the commands are in the [Makefile](Makefile).
 
 ## Privacy by design
 

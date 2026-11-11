@@ -1,0 +1,13 @@
+# Developer machine only. These values match infra/docker-compose.dev.yml and are not secrets.
+server:
+  port: 8480
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:54320/squadmap
+    username: squadmap
+    password: squadmap
+  data:
+    redis:
+      host: localhost
+      port: 63790
