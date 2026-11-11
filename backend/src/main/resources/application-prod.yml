@@ -1,0 +1,16 @@
+# Every value comes from the environment. See backend/.env.example for the full list.
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+  data:
+    redis:
+      url: ${REDIS_URL}
+
+# The interactive API docs are a development aid and stay off in production.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
