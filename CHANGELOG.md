@@ -35,6 +35,8 @@ Accounts: people can sign up, log in, stay signed in, and reset a forgotten pass
 
 - Browser tests in CI run inside the official Playwright image, so they no longer depend on the
   Ubuntu package mirrors.
+- A new required CI check, `journey`, runs the whole account flow in a real browser against the
+  real backend, database and mail catcher on every pull request. `make journey` runs it locally.
 
 ### Fixed
 
