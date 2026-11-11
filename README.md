@@ -26,6 +26,7 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | 2. Run the API | `make backend` | <http://localhost:8480/actuator/health> returns `{"status":"UP"}` |
 | 3. Install and run the web app (second terminal) | `make install` then `make frontend` | <http://localhost:5480> shows the SquadMap page |
 | 4. Run the tests | `make test` and `make e2e` | Both finish without failures |
+| 5. Run the full account journey (steps 1 and 2 running) | `make journey` | `1 passed`: sign up, log in, and a password reset through a real email |
 
 Other useful addresses: API docs at <http://localhost:8480/swagger-ui.html>, and every email the app sends locally at <http://localhost:8425>.
 

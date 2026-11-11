@@ -9,7 +9,7 @@ MVNW := ./mvnw
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help up down reset ps backend frontend install test test-backend test-frontend e2e lint
+.PHONY: help up down reset ps backend frontend install test test-backend test-frontend e2e journey lint
 
 help:
 	@echo make up        - start Postgres, Redis and Mailpit and wait until healthy
@@ -21,6 +21,7 @@ help:
 	@echo make install   - install frontend dependencies
 	@echo make test      - run backend and frontend tests
 	@echo make e2e       - run the browser tests
+	@echo make journey   - run the full account journey against the running backend
 	@echo make lint      - lint and type-check the frontend
 
 up:
@@ -54,6 +55,9 @@ test-frontend:
 
 e2e:
 	cd frontend && npm run e2e
+
+journey:
+	cd frontend && npm run e2e:journey
 
 lint:
 	cd frontend && npm run lint && npm run typecheck
