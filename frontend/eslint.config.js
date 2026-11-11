@@ -22,4 +22,9 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Fast-refresh rules are for app components; test helpers may mix components and functions.
+    files: ['src/test/**', '**/*.test.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ]);

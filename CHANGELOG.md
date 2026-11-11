@@ -22,6 +22,10 @@ All notable changes to SquadMap are recorded here. The format follows
 - Welcome screen, in light and dark, with its sunrise and night scenes. The web app restores a
   session on load and refreshes it in one tab at a time, so several open tabs never sign each
   other out.
+- Log in, Sign up, Forgot password and a new "Set a new password" screen, in light and dark. Errors
+  appear on the field they belong to and are read out with it; the password field has a show/hide
+  button and a strength meter that says its rating in words. A temporary home page greets you by
+  name and lets you log out until the real home arrives.
 
 ### Changed
 

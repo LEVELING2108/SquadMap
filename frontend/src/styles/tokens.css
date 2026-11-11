@@ -59,6 +59,12 @@
   --dot-idle: rgba(18, 38, 58, 0.2);
   --handle: rgba(18, 38, 58, 0.2);
 
+  /* Form fields and the password strength track */
+  --input-bg: rgba(255, 255, 255, 0.88);
+  --input-border: rgba(18, 38, 58, 0.14);
+  --input-placeholder: #5f7184;
+  --track: rgba(18, 38, 58, 0.1);
+
   /* Welcome illustration: clouds and the paper plane stay the same in both themes. */
   --hero-cloud: #ffffff;
   --hero-plane: #ffffff;
@@ -124,4 +130,9 @@
   --btn-shine: rgba(255, 255, 255, 0.4);
   --dot-idle: rgba(255, 255, 255, 0.25);
   --handle: rgba(255, 255, 255, 0.25);
+
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --input-border: rgba(255, 255, 255, 0.2);
+  --input-placeholder: #8fa1b3;
+  --track: rgba(255, 255, 255, 0.14);
 }
