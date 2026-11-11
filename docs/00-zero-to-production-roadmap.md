@@ -51,7 +51,7 @@ Chosen for one reason each: it is mainstream in industry and well documented.
 | Migrations | Flyway | Versioned, reviewable SQL | Liquibase |
 | Rate limiting | Bucket4j on Redis | Distributed limits | Nginx only |
 | API docs | springdoc OpenAPI | Generated types for the frontend | Hand-written |
-| Frontend | React 18, TypeScript strict, Vite | Fast builds, huge ecosystem | Next.js |
+| Frontend | React 19, TypeScript strict, Vite | Fast builds, huge ecosystem | Next.js |
 | Styling | Tailwind CSS with design tokens | Consistent light and dark themes | CSS modules |
 | Maps | Mapbox GL JS, Directions and Geocoding APIs | Custom styles, vector tiles | MapLibre with another router |
 | State | TanStack Query (server), Zustand (live) | Clear split, little boilerplate | Redux Toolkit |

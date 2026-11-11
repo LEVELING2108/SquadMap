@@ -12,7 +12,7 @@ SquadMap is a real-time group location-sharing web app. A host starts a trip and
 | --- | --- |
 | Backend | Java 21, Spring Boot 3.3, Spring Security (JWT), STOMP over WebSocket |
 | Data | PostgreSQL 16, Redis 7, Flyway migrations |
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
 | Platform | Installable PWA, light and dark themes |
 | Tooling | Docker, GitHub Actions, JUnit 5, Testcontainers, Vitest, Playwright |
 
