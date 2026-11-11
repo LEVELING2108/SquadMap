@@ -12,6 +12,10 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  jackson:
+    deserialization:
+      # A request with a field the API does not know is rejected, not silently accepted.
+      fail-on-unknown-properties: true
 
 server:
   forward-headers-strategy: framework

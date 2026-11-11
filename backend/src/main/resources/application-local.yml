@@ -11,3 +11,9 @@ spring:
     redis:
       host: localhost
       port: 63790
+
+# No signing key is set here on purpose: a temporary one is generated at startup.
+squadmap:
+  cors:
+    allowed-origins:
+      - http://localhost:5480

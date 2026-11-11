@@ -14,5 +14,9 @@ public enum ErrorCode {
     PAYLOAD_TOO_LARGE,
     RATE_LIMITED,
     BAD_REQUEST,
-    INTERNAL_ERROR
+    INTERNAL_ERROR,
+
+    // Accounts
+    EMAIL_TAKEN,
+    INVALID_CREDENTIALS
 }
