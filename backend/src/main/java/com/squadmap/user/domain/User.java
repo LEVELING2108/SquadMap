@@ -86,4 +86,9 @@ public class User {
     public boolean isDeleted() {
         return deletedAt != null;
     }
+
+    public void changePasswordHash(String newHash, Instant now) {
+        this.passwordHash = newHash;
+        this.updatedAt = now;
+    }
 }

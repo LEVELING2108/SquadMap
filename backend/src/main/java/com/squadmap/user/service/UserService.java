@@ -62,6 +62,18 @@ public class UserService {
         return users.findById(id).filter(user -> !user.isDeleted());
     }
 
+    /** Replaces the password hash of an active account. */
+    @Transactional
+    public boolean changePasswordHash(UUID userId, String newHash) {
+        return users.findById(userId)
+                .filter(user -> !user.isDeleted())
+                .map(user -> {
+                    user.changePasswordHash(newHash, clock.instant());
+                    return true;
+                })
+                .orElse(false);
+    }
+
     private static ApiException emailTaken() {
         return new ApiException(HttpStatus.CONFLICT, ErrorCode.EMAIL_TAKEN,
                 "This email already has an account. Log in instead.");
