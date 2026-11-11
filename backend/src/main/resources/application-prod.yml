@@ -8,6 +8,12 @@ spring:
     redis:
       url: ${REDIS_URL}
 
+squadmap:
+  auth:
+    jwt-secret: ${JWT_SECRET}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS}
+
 # The interactive API docs are a development aid and stay off in production.
 springdoc:
   api-docs:
