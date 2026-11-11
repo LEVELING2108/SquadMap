@@ -65,6 +65,12 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The official Playwright image ships the browser and every system package it needs, so the
+    # job never downloads from the Ubuntu mirrors (which made this job fail when they were
+    # unreachable). Its version must match @playwright/test in frontend/package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+      options: --ipc=host
     defaults:
       run:
         working-directory: frontend
@@ -72,14 +78,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - name: Install browser
-        run: npx playwright install --with-deps chromium
       - name: Browser tests
         run: npm run e2e
       - name: Keep the report when tests fail
