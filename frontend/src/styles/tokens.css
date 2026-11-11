@@ -16,6 +16,7 @@
   --coral-d: #b83a1b;
   --sea: #0e9f9a;
   --sea-d: #0b6f6b;
+  --sea-bg: #ddf3f1;
   --sun: #ffc857;
   --green: #137333;
   --green-bg: #e3f5e8;
@@ -49,6 +50,20 @@
   /* Elevation */
   --shadow: 0 10px 30px rgba(14, 42, 71, 0.18);
 
+  /* Buttons */
+  --btn-primary-shadow: 0 10px 22px rgba(26, 115, 232, 0.38);
+  --btn-glass-bg: rgba(255, 255, 255, 0.7);
+  --btn-glass-border: rgba(255, 255, 255, 0.85);
+  --btn-glass-shadow: 0 6px 18px rgba(14, 42, 71, 0.12);
+  --btn-shine: rgba(255, 255, 255, 0.35);
+  --dot-idle: rgba(18, 38, 58, 0.2);
+  --handle: rgba(18, 38, 58, 0.2);
+
+  /* Welcome illustration: clouds and the paper plane stay the same in both themes. */
+  --hero-cloud: #ffffff;
+  --hero-plane: #ffffff;
+  --hero-plane-outline: #12263a;
+
   /* Radius */
   --r-control: 14px;
   --r-button: 16px;
@@ -81,6 +96,7 @@
   --coral-d: #ff9e85;
   --sea: #2dd4bf;
   --sea-d: #5eead4;
+  --sea-bg: rgba(45, 212, 191, 0.18);
   --sun: #ffc857;
   --green: #7dd99a;
   --green-bg: rgba(125, 217, 154, 0.16);
@@ -100,4 +116,12 @@
   --glass-fallback: #122032;
 
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  --btn-primary-shadow: 0 10px 24px rgba(138, 180, 248, 0.28);
+  --btn-glass-bg: rgba(255, 255, 255, 0.1);
+  --btn-glass-border: rgba(255, 255, 255, 0.18);
+  --btn-glass-shadow: none;
+  --btn-shine: rgba(255, 255, 255, 0.4);
+  --dot-idle: rgba(255, 255, 255, 0.25);
+  --handle: rgba(255, 255, 255, 0.25);
 }

@@ -19,6 +19,9 @@ All notable changes to SquadMap are recorded here. The format follows
 - Rate limits on the account routes, shared across app instances through Redis: log in 5 a minute
   per address and per account, forgot password 3 an hour per email and 10 per address, sign up and
   reset 10 an hour per address, refresh 60 a minute. Limited requests get `429` with `Retry-After`.
+- Welcome screen, in light and dark, with its sunrise and night scenes. The web app restores a
+  session on load and refreshes it in one tab at a time, so several open tabs never sign each
+  other out.
 
 ### Changed
 
@@ -28,6 +31,8 @@ All notable changes to SquadMap are recorded here. The format follows
 ### Fixed
 
 - `make help` no longer prints its lines wrapped in quotes on Windows.
+- Sizes in the web app were 1/16 smaller than designed (buttons 48.75 px instead of 52, tap
+  targets 41.25 px instead of 44), because the root font size was set to 15 px.
 
 ## [0.1.0] - 2026-11-11
 

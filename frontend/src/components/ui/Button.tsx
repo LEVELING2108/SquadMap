@@ -1,20 +1,18 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { Link, type LinkProps } from 'react-router';
+import { buttonClasses, type ButtonVariant } from './buttonStyles';
 
-type ButtonVariant = 'primary' | 'glass';
-
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: ButtonVariant;
-};
-
-const base =
-  'flex h-13 w-full items-center justify-center gap-2 rounded-button px-5 text-[15px] font-bold leading-none ' +
-  'transition-transform duration-(--dur-fast) ease-soft active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100';
-
-const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-blue text-on-primary shadow-float',
-  glass: 'glass text-blue-d',
-};
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant };
 
 export function Button({ variant = 'primary', type = 'button', className = '', ...rest }: ButtonProps) {
-  return <button type={type} className={`${base} ${variants[variant]} ${className}`} {...rest} />;
+  return <button type={type} className={buttonClasses(variant, className)} {...rest} />;
+}
+
+type ButtonLinkProps = LinkProps & { variant?: ButtonVariant };
+
+/** Navigation that looks like a button. It stays a link, so it opens in a new tab and reads as a link. */
+export function ButtonLink({ variant = 'primary', className = '', ...rest }: ButtonLinkProps) {
+  return (
+    <Link className={buttonClasses(variant, typeof className === 'string' ? className : '')} {...rest} />
+  );
 }
