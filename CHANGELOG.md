@@ -6,6 +6,10 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-12
+
+Accounts: people can sign up, log in, stay signed in, and reset a forgotten password.
+
 ### Added
 
 - This changelog.
@@ -55,5 +59,6 @@ Project foundations. No user-facing features yet.
 - Continuous integration: backend tests, frontend lint, type-check, unit tests and build, browser
   tests, a secret scan, and a guard that only lets `research` merge into `main`.
 
-[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/main...research
-[0.1.0]: https://github.com/LEVELING2108/SquadMap/commits/main
+[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.0...research
+[0.2.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/LEVELING2108/SquadMap/releases/tag/v0.1.0
