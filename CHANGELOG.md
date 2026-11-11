@@ -6,6 +6,16 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-12
+
+Security update.
+
+### Security
+
+- Upgraded BouncyCastle, the password-hashing library, from 1.80 to 1.87, fixing five published
+  advisories (two critical). None affected the Argon2 hashing SquadMap uses, and existing password
+  hashes keep working.
+
 ## [0.2.0] - 2026-11-12
 
 Accounts: people can sign up, log in, stay signed in, and reset a forgotten password.
@@ -61,6 +71,7 @@ Project foundations. No user-facing features yet.
 - Continuous integration: backend tests, frontend lint, type-check, unit tests and build, browser
   tests, a secret scan, and a guard that only lets `research` merge into `main`.
 
-[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.0...research
+[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.1...research
+[0.2.1]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/LEVELING2108/SquadMap/releases/tag/v0.1.0
