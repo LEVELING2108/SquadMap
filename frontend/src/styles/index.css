@@ -1,0 +1,118 @@
+@import '@fontsource-variable/plus-jakarta-sans';
+@import '@fontsource/dm-mono/500.css';
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Dark styles follow the data-theme attribute on <html>, never the OS setting directly. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Tailwind's built-in palette is removed on purpose: the only colors available
+ * as utilities are the design tokens, so nothing off-palette can slip in.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-blue: var(--blue);
+  --color-blue-d: var(--blue-d);
+  --color-tint: var(--tint);
+  --color-coral: var(--coral);
+  --color-coral-d: var(--coral-d);
+  --color-sea: var(--sea);
+  --color-sea-d: var(--sea-d);
+  --color-sun: var(--sun);
+  --color-green: var(--green);
+  --color-green-bg: var(--green-bg);
+  --color-amber: var(--amber);
+  --color-amber-bg: var(--amber-bg);
+  --color-red: var(--red);
+  --color-red-bg: var(--red-bg);
+  --color-sand: var(--sand);
+  --color-screen: var(--screen);
+  --color-line: var(--line);
+  --color-on-primary: var(--on-primary);
+  --color-on-person: var(--on-person);
+  --color-you: var(--you);
+  --color-friend-1: var(--friend-1);
+  --color-friend-2: var(--friend-2);
+  --color-friend-3: var(--friend-3);
+  --color-friend-4: var(--friend-4);
+  --color-friend-5: var(--friend-5);
+
+  --radius-*: initial;
+  --radius-control: var(--r-control);
+  --radius-button: var(--r-button);
+  --radius-card: var(--r-card);
+  --radius-sheet: var(--r-sheet);
+  --radius-pill: var(--r-pill);
+
+  --shadow-*: initial;
+  --shadow-float: var(--shadow);
+
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-code);
+
+  --ease-*: initial;
+  --ease-soft: var(--ease);
+}
+
+@layer base {
+  html {
+    background: var(--screen);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 15px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--blue);
+    outline-offset: 2px;
+  }
+
+  /* Reduced motion: state changes are immediate everywhere. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Frosted panel floating over the map. Use glass-strong under body text to keep 4.5:1 contrast. */
+@utility glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--glass-fallback);
+  }
+}
+
+@utility glass-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--glass-fallback);
+  }
+}

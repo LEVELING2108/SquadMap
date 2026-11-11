@@ -1,0 +1,103 @@
+/*
+ * Design tokens for the app. The values come from design/tokens/tokens.json;
+ * src/styles/tokens.test.ts fails if the two ever disagree.
+ * Components never hard-code a color, radius, shadow or duration: they use these.
+ */
+:root {
+  color-scheme: light;
+
+  /* Color */
+  --ink: #12263a;
+  --muted: #566b7f;
+  --blue: #1a73e8;
+  --blue-d: #174ea6;
+  --tint: #e6f0ff;
+  --coral: #ff6b4a;
+  --coral-d: #b83a1b;
+  --sea: #0e9f9a;
+  --sea-d: #0b6f6b;
+  --sun: #ffc857;
+  --green: #137333;
+  --green-bg: #e3f5e8;
+  --amber: #8a4b00;
+  --amber-bg: #fff1d6;
+  --red: #c5221f;
+  --red-bg: #fde7e4;
+  --sand: #fff6e5;
+  --screen: #f3efe6;
+  --line: rgba(18, 38, 58, 0.12);
+  --on-primary: #ffffff;
+
+  /* People on the map. "You" is always this blue; friends take the others in order. */
+  --on-person: #ffffff;
+  --you: #1a73e8;
+  --friend-1: #0f6e56;
+  --friend-2: #534ab7;
+  --friend-3: #993c1d;
+  --friend-4: #854f0b;
+  --friend-5: #993556;
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-blur: 18px;
+  --glass-saturate: 1.6;
+  --glass-shadow: 0 10px 30px rgba(14, 42, 71, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-fallback: #ffffff;
+
+  /* Elevation */
+  --shadow: 0 10px 30px rgba(14, 42, 71, 0.18);
+
+  /* Radius */
+  --r-control: 14px;
+  --r-button: 16px;
+  --r-card: 20px;
+  --r-sheet: 28px;
+  --r-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --dur-instant: 120ms;
+  --dur-fast: 200ms;
+  --dur-base: 320ms;
+  --dur-slow: 600ms;
+  --dur-ambient: 2600ms;
+
+  /* Type */
+  --font-display: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-code: 'DM Mono', ui-monospace, monospace;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ink: #eaf1f8;
+  --muted: #a9b8c8;
+  --blue: #8ab4f8;
+  --blue-d: #8ab4f8;
+  --tint: rgba(138, 180, 248, 0.18);
+  --coral: #ff8f66;
+  --coral-d: #ff9e85;
+  --sea: #2dd4bf;
+  --sea-d: #5eead4;
+  --sun: #ffc857;
+  --green: #7dd99a;
+  --green-bg: rgba(125, 217, 154, 0.16);
+  --amber: #ffc857;
+  --amber-bg: rgba(255, 200, 87, 0.16);
+  --red: #ff8a80;
+  --red-bg: rgba(255, 138, 128, 0.16);
+  --sand: #0f1b2d;
+  --screen: #0b1524;
+  --line: rgba(255, 255, 255, 0.12);
+  --on-primary: #0b1b2e;
+
+  --glass-bg: rgba(18, 32, 50, 0.62);
+  --glass-bg-strong: rgba(14, 26, 42, 0.84);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --glass-fallback: #122032;
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
