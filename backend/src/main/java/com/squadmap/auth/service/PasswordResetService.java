@@ -7,6 +7,7 @@ import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.id.UuidV7;
 import com.squadmap.common.security.SecureTokens;
 import com.squadmap.common.text.Text;
+import com.squadmap.common.web.WebProperties;
 import com.squadmap.notify.mail.EmailSender;
 import com.squadmap.user.domain.User;
 import com.squadmap.user.service.UserService;
@@ -42,17 +43,19 @@ public class PasswordResetService {
     private final RefreshTokenService refreshTokens;
     private final PasswordEncoder passwordEncoder;
     private final EmailSender email;
+    private final WebProperties web;
     private final TransactionTemplate transaction;
     private final Clock clock;
 
     public PasswordResetService(PasswordResetTokenRepository tokens, UserService users,
                                 RefreshTokenService refreshTokens, PasswordEncoder passwordEncoder,
-                                EmailSender email, TransactionTemplate transaction, Clock clock) {
+                                EmailSender email, WebProperties web, TransactionTemplate transaction, Clock clock) {
         this.tokens = tokens;
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
         this.email = email;
+        this.web = web;
         this.transaction = transaction;
         this.clock = clock;
     }
@@ -118,7 +121,7 @@ public class PasswordResetService {
     private void sendLink(User user, String token) {
         // The token goes after "#": browsers never send that part to a server, so it stays out of
         // access logs and Referer headers. The web app reads it from the address bar.
-        String link = email.webBaseUrl() + "/reset-password#token=" + token;
+        String link = web.link("/reset-password#token=" + token);
         String name = user.getName();
         String minutes = String.valueOf(LINK_TTL.toMinutes());
 
