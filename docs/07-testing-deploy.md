@@ -54,6 +54,8 @@ Frontend (build time): `VITE_API_URL`, `VITE_WS_URL`, `VITE_MAPBOX_PUBLIC_TOKEN`
 ## Nginx essentials
 TLS via Let's Encrypt (certbot), HTTP to HTTPS redirect, HSTS (6 months, then 1 year), gzip/brotli, `proxy_set_header Upgrade/Connection` for `/ws`, `proxy_read_timeout 75s` for WebSocket, request size limit 1 MB, security headers (CSP, X-Content-Type-Options, Referrer-Policy, Permissions-Policy: `geolocation=(self)`), per-IP rate limit zone on `/api/v1/auth` and `/api/v1/join`.
 
+**Client address:** the app's rate limits use the first value of `X-Forwarded-For`, so Nginx must *replace* that header, never append to it: `proxy_set_header X-Forwarded-For $remote_addr;` (behind Cloudflare, first restore the real visitor address with `real_ip_header CF-Connecting-IP` and `set_real_ip_from` for Cloudflare's ranges). Appending with `$proxy_add_x_forwarded_for` would let a client send a fake address and dodge the per-IP limits. **Verify:** send a request with `X-Forwarded-For: 1.2.3.4` through the proxy six times to `/api/v1/auth/login`; the sixth must still return `429`.
+
 ## CI/CD (GitHub Actions)
 1. **PR**: backend verify, frontend lint + typecheck + unit, Playwright E2E, axe, dependency scan, build images (no push). Required to merge.
 2. **Research** (integration branch): all of the above, build and push images tagged with the commit SHA, deploy to staging, run smoke tests (`/actuator/health`, create-and-join script).
