@@ -1,0 +1,45 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Database dumps and backups
+*.dump
+*.sql.gz
+*.bak
+
+# Backend (Maven)
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+hs_err_pid*
+
+# Frontend (Node)
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Logs
+*.log
+logs/
+
+# Editors and operating systems
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+desktop.ini
