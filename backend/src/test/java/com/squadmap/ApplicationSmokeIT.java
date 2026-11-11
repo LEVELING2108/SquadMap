@@ -2,26 +2,13 @@ package com.squadmap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfig.class)
-class ApplicationSmokeIT {
-
-    @Autowired
-    private TestRestTemplate rest;
-
-    @Autowired
-    private JdbcTemplate jdbc;
+class ApplicationSmokeIT extends IntegrationTest {
 
     @Test
     void healthIsPublicAndUpWithDatabaseAndRedisConnected() {
@@ -39,16 +26,19 @@ class ApplicationSmokeIT {
     }
 
     @Test
-    void baselineMigrationIsApplied() {
-        Integer applied = jdbc.queryForObject(
+    void migrationsAreApplied() {
+        Integer failed = jdbc.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE NOT success", Integer.class);
+        Integer baseline = jdbc.queryForObject(
                 "SELECT count(*) FROM flyway_schema_history WHERE version = '1' AND success", Integer.class);
 
-        assertThat(applied).isEqualTo(1);
+        assertThat(failed).isZero();
+        assertThat(baseline).isEqualTo(1);
     }
 
     @Test
     void unknownApiRouteIsRejectedWithProblemJsonWhenNotSignedIn() {
-        ResponseEntity<JsonNode> response = rest.getForEntity("/api/v1/trips", JsonNode.class);
+        ResponseEntity<JsonNode> response = rest.getForEntity("/api/v1/no-such-route", JsonNode.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))

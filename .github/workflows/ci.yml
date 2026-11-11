@@ -65,6 +65,12 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The official Playwright image ships the browser and every system package it needs, so the
+    # job never downloads from the Ubuntu mirrors (which made this job fail when they were
+    # unreachable). Its version must match @playwright/test in frontend/package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+      options: --ipc=host
     defaults:
       run:
         working-directory: frontend
@@ -72,14 +78,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - name: Install browser
-        run: npx playwright install --with-deps chromium
       - name: Browser tests
         run: npm run e2e
       - name: Keep the report when tests fail
@@ -88,6 +87,88 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report
+          retention-days: 7
+
+  # The account flow in a real browser against the real backend, database, Redis and mail
+  # catcher, built from this commit. Catches breakage that no single layer's tests can see.
+  journey:
+    name: journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+      options: --ipc=host
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: squadmap
+          POSTGRES_USER: squadmap
+          POSTGRES_PASSWORD: squadmap
+        options: >-
+          --health-cmd "pg_isready -U squadmap -d squadmap"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+      mailpit:
+        image: axllent/mailpit:v1.33.1
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      # Inside a container job, services are reached by name instead of the local dev ports.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/squadmap
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: '6379'
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: '1025'
+      MAILPIT_URL: http://mailpit:8025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Build the backend
+        working-directory: backend
+        # Its tests already run in the backend job.
+        run: ./mvnw -B -ntp -q package -DskipTests
+      - name: Start the backend
+        working-directory: backend
+        run: |
+          nohup java -jar target/squadmap-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=local \
+            > "$RUNNER_TEMP/backend.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:8480/actuator/health/readiness > /dev/null; then
+              echo "Backend is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::The backend did not become ready."
+          tail -n 80 "$RUNNER_TEMP/backend.log"
+          exit 1
+      - name: Install the web app
+        working-directory: frontend
+        run: npm ci
+      - name: Account journey
+        working-directory: frontend
+        run: npm run e2e:journey
+      - name: Keep the report and backend log when it fails
+        if: failure()
+        run: cp "$RUNNER_TEMP/backend.log" frontend/playwright-report-journey/ 2>/dev/null || true
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: journey-report
+          path: frontend/playwright-report-journey
           retention-days: 7
 
   secrets-scan:

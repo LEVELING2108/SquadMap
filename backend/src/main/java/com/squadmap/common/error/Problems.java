@@ -1,8 +1,11 @@
 package com.squadmap.common.error;
 
+import com.squadmap.common.ratelimit.RateLimitedException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 
 /** Builds RFC 7807 problem responses that always carry a stable {@code code}. */
 public final class Problems {
@@ -15,6 +18,23 @@ public final class Problems {
     public static ProblemDetail of(HttpStatusCode status, ErrorCode code, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setProperty(CODE_PROPERTY, code.name());
+        return problem;
+    }
+
+    /** The response for a service error, including {@code Retry-After} when it is a rate limit. */
+    public static ResponseEntity.BodyBuilder responseFor(ApiException ex) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(ex.getStatus());
+        if (ex instanceof RateLimitedException limited) {
+            response.header(HttpHeaders.RETRY_AFTER, String.valueOf(limited.getRetryAfterSeconds()));
+        }
+        return response;
+    }
+
+    public static ProblemDetail bodyFor(ApiException ex) {
+        ProblemDetail problem = of(ex.getStatus(), ex.getCode(), ex.getMessage());
+        if (ex instanceof RateLimitedException limited) {
+            problem.setProperty("retryAfter", limited.getRetryAfterSeconds());
+        }
         return problem;
     }
 

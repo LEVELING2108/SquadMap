@@ -11,3 +11,16 @@ spring:
     redis:
       host: localhost
       port: 63790
+  # Mailpit catches every email. Read them at http://localhost:8425
+  mail:
+    host: localhost
+    port: 10425
+
+# No signing key is set here on purpose: a temporary one is generated at startup.
+squadmap:
+  auth:
+    # Local development runs over plain HTTP, where some browsers drop Secure cookies.
+    refresh-cookie-secure: false
+  cors:
+    allowed-origins:
+      - http://localhost:5480

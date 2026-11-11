@@ -2,6 +2,7 @@
 @import '@fontsource/dm-mono/500.css';
 @import 'tailwindcss';
 @import './tokens.css';
+@import '../motion/keyframes.css';
 
 /* Dark styles follow the data-theme attribute on <html>, never the OS setting directly. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
@@ -23,6 +24,16 @@
   --color-coral-d: var(--coral-d);
   --color-sea: var(--sea);
   --color-sea-d: var(--sea-d);
+  --color-sea-bg: var(--sea-bg);
+  --color-dot-idle: var(--dot-idle);
+  --color-handle: var(--handle);
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-input-placeholder: var(--input-placeholder);
+  --color-track: var(--track);
+  --color-hero-cloud: var(--hero-cloud);
+  --color-hero-plane: var(--hero-plane);
+  --color-hero-plane-outline: var(--hero-plane-outline);
   --color-sun: var(--sun);
   --color-green: var(--green);
   --color-green-bg: var(--green-bg);
@@ -51,6 +62,7 @@
 
   --shadow-*: initial;
   --shadow-float: var(--shadow);
+  --shadow-primary: var(--btn-primary-shadow);
 
   --font-sans: var(--font-display);
   --font-mono: var(--font-code);
@@ -60,18 +72,23 @@
 }
 
 @layer base {
+  /*
+   * The root keeps the browser's font size (16 px by default). Every rem-based size — spacing,
+   * tap targets, button heights — depends on it, and it follows the reader's own text-size setting.
+   */
   html {
     background: var(--screen);
     color: var(--ink);
     font-family: var(--font-display);
-    font-size: 15px;
-    line-height: 1.4;
     -webkit-font-smoothing: antialiased;
     -webkit-text-size-adjust: 100%;
   }
 
+  /* Body text is 15 px (15/16 rem), per the type scale. */
   body {
     min-height: 100dvh;
+    font-size: 0.9375rem;
+    line-height: 1.4;
   }
 
   :focus-visible {
@@ -103,6 +120,15 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background: var(--glass-fallback);
   }
+}
+
+/* Secondary button on glass: lighter frosting than panels, so it reads as a control. */
+@utility glass-button {
+  background: var(--btn-glass-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--btn-glass-border);
+  box-shadow: var(--btn-glass-shadow);
 }
 
 @utility glass-strong {

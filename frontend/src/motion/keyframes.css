@@ -1,0 +1,130 @@
+/*
+ * Shared motion. Only transform and opacity are animated, so nothing triggers layout.
+ * Reduced motion is handled globally in styles/index.css: every animation ends at once.
+ *
+ * Classes marked "ambient" loop forever; they pause while the tab is hidden
+ * (see motion/pageVisibility.ts), so a background tab costs nothing.
+ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(60px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(-30px);
+  }
+  to {
+    transform: translateX(40px);
+  }
+}
+
+@keyframes fly {
+  from {
+    transform: translate(-110px, 50px) rotate(-10deg);
+  }
+  to {
+    transform: translate(calc(100vw + 110px), -50px) rotate(-10deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shine {
+  0%,
+  60% {
+    transform: translateX(-160%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(460%) skewX(-20deg);
+  }
+}
+
+/* Entering: rise 18 px and fade. Stagger children with --motion-delay (multiples of 80 ms). */
+.motion-rise {
+  animation: rise var(--dur-slow) var(--ease) both;
+  animation-delay: var(--motion-delay, 0ms);
+}
+
+.motion-sheet {
+  animation: sheet-up var(--dur-slow) var(--ease) both;
+}
+
+/* Ambient loops */
+.motion-bob {
+  animation: bob 2.6s ease-in-out infinite alternate;
+  animation-delay: var(--motion-delay, 0ms);
+}
+
+.motion-drift {
+  animation: drift var(--motion-duration, 9s) ease-in-out infinite alternate;
+}
+
+.motion-fly {
+  animation: fly 14s linear infinite;
+}
+
+.motion-spin {
+  animation: spin 18s linear infinite;
+}
+
+/* A light sweep across the primary button every 3.8 s. */
+.motion-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.motion-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 36%;
+  background: var(--btn-shine);
+  animation: shine 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+html[data-page-hidden] .motion-bob,
+html[data-page-hidden] .motion-drift,
+html[data-page-hidden] .motion-fly,
+html[data-page-hidden] .motion-spin,
+html[data-page-hidden] .motion-shine::after {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-shine::after {
+    display: none;
+  }
+}
