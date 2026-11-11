@@ -3,6 +3,7 @@ package com.squadmap;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
@@ -24,7 +25,9 @@ import java.util.Map;
         properties = {
                 "squadmap.cors.allowed-origins=" + IntegrationTest.ALLOWED_ORIGIN,
                 // Tests call scheduled jobs directly instead of racing the timer.
-                "squadmap.scheduling.enabled=false"
+                "squadmap.scheduling.enabled=false",
+                // Makes Spring create the mail sender; the Mailpit container replaces this host.
+                "spring.mail.host=placeholder"
         })
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {
@@ -37,9 +40,13 @@ public abstract class IntegrationTest {
     @Autowired
     protected JdbcTemplate jdbc;
 
+    protected Mailpit mailpit;
+
     @BeforeEach
-    void cleanDatabase() {
+    void cleanState(@Value("${" + Mailpit.API_URL_PROPERTY + "}") String mailpitUrl) {
         jdbc.execute("TRUNCATE TABLE users CASCADE");
+        mailpit = new Mailpit(mailpitUrl);
+        mailpit.deleteAll();
     }
 
     protected ResponseEntity<JsonNode> post(String path, Map<String, ?> body) {

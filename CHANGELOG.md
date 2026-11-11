@@ -13,6 +13,9 @@ All notable changes to SquadMap are recorded here. The format follows
   hashed with Argon2id; access tokens last 15 minutes.
 - Staying signed in: a 30-day refresh cookie, replaced on every use. Presenting a cookie that was
   already replaced ends that whole session, and logging out ends the session on that device.
+- Forgot password: an email with a link that works once, for 30 minutes. Asking again cancels the
+  older link, and setting a new password signs the account out on every device. The request answers
+  the same way whether or not the email has an account.
 
 ### Changed
 

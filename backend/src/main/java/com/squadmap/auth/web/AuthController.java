@@ -1,9 +1,12 @@
 package com.squadmap.auth.web;
 
 import com.squadmap.auth.dto.AuthResponse;
+import com.squadmap.auth.dto.ForgotPasswordRequest;
 import com.squadmap.auth.dto.LoginRequest;
+import com.squadmap.auth.dto.ResetPasswordRequest;
 import com.squadmap.auth.dto.SignupRequest;
 import com.squadmap.auth.service.AuthService;
+import com.squadmap.auth.service.PasswordResetService;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.error.Problems;
@@ -29,10 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService auth;
+    private final PasswordResetService passwordReset;
     private final RefreshCookie refreshCookie;
 
-    public AuthController(AuthService auth, RefreshCookie refreshCookie) {
+    public AuthController(AuthService auth, PasswordResetService passwordReset, RefreshCookie refreshCookie) {
         this.auth = auth;
+        this.passwordReset = passwordReset;
         this.refreshCookie = refreshCookie;
     }
 
@@ -63,6 +68,22 @@ public class AuthController {
     public ResponseEntity<Void> logout(@CookieValue(name = RefreshCookie.NAME, required = false) String token) {
         auth.logout(token);
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, refreshCookie.clear()).build();
+    }
+
+    @PostMapping("/forgot")
+    @Operation(summary = "Email a link for choosing a new password",
+            description = "Answers 202 straight away whether or not the email has an account.")
+    public ResponseEntity<Void> forgot(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordReset.requestLink(request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/reset")
+    @Operation(summary = "Set a new password with the emailed link",
+            description = "Signs the account out on every device.")
+    public ResponseEntity<Void> reset(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordReset.resetPassword(request.token(), request.password());
+        return ResponseEntity.noContent().build();
     }
 
     /** A rejected refresh also clears the cookie, so the browser stops sending a dead token. */

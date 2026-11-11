@@ -4,20 +4,15 @@ import com.squadmap.auth.config.AuthProperties;
 import com.squadmap.auth.domain.RefreshToken;
 import com.squadmap.auth.repo.RefreshTokenRepository;
 import com.squadmap.common.id.UuidV7;
+import com.squadmap.common.security.SecureTokens;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,8 +25,6 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final int TOKEN_BYTES = 32;
 
     private final RefreshTokenRepository tokens;
     private final AuthProperties properties;
@@ -58,7 +51,7 @@ public class RefreshTokenService {
         if (rawToken == null || rawToken.isBlank()) {
             return Rotation.REJECTED;
         }
-        Optional<RefreshToken> found = tokens.findByTokenHash(hash(rawToken));
+        Optional<RefreshToken> found = tokens.findByTokenHash(SecureTokens.hash(rawToken));
         if (found.isEmpty()) {
             return Rotation.REJECTED;
         }
@@ -87,13 +80,19 @@ public class RefreshTokenService {
         if (rawToken == null || rawToken.isBlank()) {
             return;
         }
-        tokens.findByTokenHash(hash(rawToken))
+        tokens.findByTokenHash(SecureTokens.hash(rawToken))
                 .ifPresent(token -> tokens.revokeFamily(token.getFamilyId(), clock.instant()));
     }
 
     @Transactional
     public void endSession(UUID familyId) {
         tokens.revokeFamily(familyId, clock.instant());
+    }
+
+    /** Signs an account out on every device, for example after its password changes. */
+    @Transactional
+    public int endAllSessions(UUID userId) {
+        return tokens.revokeAllForUser(userId, clock.instant());
     }
 
     /** Deletes tokens that can no longer be used. Safe to run on several instances at once. */
@@ -108,23 +107,11 @@ public class RefreshTokenService {
     }
 
     private String issue(UUID userId, UUID familyId) {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        RANDOM.nextBytes(bytes);
-        String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-
+        String raw = SecureTokens.generate();
         Instant now = clock.instant();
-        tokens.save(new RefreshToken(UuidV7.generate(clock), userId, familyId, hash(raw), now,
+        tokens.save(new RefreshToken(UuidV7.generate(clock), userId, familyId, SecureTokens.hash(raw), now,
                 now.plus(properties.refreshTokenTtl())));
         return raw;
-    }
-
-    private static String hash(String rawToken) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
-        }
     }
 
     /**
