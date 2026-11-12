@@ -4,6 +4,7 @@ import com.squadmap.auth.service.AccessTokenService;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.id.UuidV7;
+import com.squadmap.common.security.Caller;
 import com.squadmap.common.text.Text;
 import com.squadmap.invite.config.InviteProperties;
 import com.squadmap.invite.domain.LocationConsent;
@@ -20,6 +21,8 @@ import com.squadmap.trip.service.TripCodes;
 import com.squadmap.user.domain.User;
 import com.squadmap.user.service.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,16 +49,19 @@ public class JoinService {
     private final UserService users;
     private final AccessTokenService accessTokens;
     private final InviteProperties properties;
+    private final JwtDecoder jwtDecoder;
     private final Clock clock;
 
     public JoinService(TripRepository trips, TripMemberRepository members, LocationConsentRepository consents,
-                       UserService users, AccessTokenService accessTokens, InviteProperties properties, Clock clock) {
+                       UserService users, AccessTokenService accessTokens, InviteProperties properties,
+                       JwtDecoder jwtDecoder, Clock clock) {
         this.trips = trips;
         this.members = members;
         this.consents = consents;
         this.users = users;
         this.accessTokens = accessTokens;
         this.properties = properties;
+        this.jwtDecoder = jwtDecoder;
         this.clock = clock;
     }
 
@@ -123,6 +129,38 @@ public class JoinService {
         requireLive(trip);
         boolean sharing = consents.existsByTripMemberIdAndWithdrawnAtIsNull(member.getId());
         return response(member, sharing, accessTokens.issueForGuest(member.getId(), tripId, trip.getExpiresAt()));
+    }
+
+    /**
+     * Picks a guest back up from the pass in their cookie: the pass must be genuine, unexpired and a guest's,
+     * and the guest must still be on a trip that is still running. Returns a fresh pass.
+     *
+     * @throws ApiException 401 {@code GUEST_SESSION_ENDED} otherwise, with the same answer for every reason
+     */
+    @Transactional(readOnly = true)
+    public JoinResponse restoreGuestSession(String pass) {
+        if (pass == null || pass.isBlank()) {
+            throw guestSessionEnded();
+        }
+        Caller caller;
+        try {
+            caller = Caller.from(jwtDecoder.decode(pass));
+        } catch (JwtException | IllegalArgumentException e) {
+            throw guestSessionEnded();
+        }
+        if (!caller.isGuest() || caller.tripId() == null) {
+            throw guestSessionEnded();
+        }
+        try {
+            return renewGuestPass(caller.tripId(), caller.subject());
+        } catch (ApiException e) {
+            throw guestSessionEnded();
+        }
+    }
+
+    private static ApiException guestSessionEnded() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.GUEST_SESSION_ENDED,
+                "You're no longer on this trip. Open the invite link to join again.");
     }
 
     private static ApiException notOnTrip() {
