@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getAccessToken, refreshSession, restoreSession, signOut, useSession } from './session';
+import {
+  getAccessToken,
+  refreshSession,
+  restoreSession,
+  setGuest,
+  setSignedIn,
+  signOut,
+  useSession,
+} from './session';
 
 const signedInBody = {
   accessToken: 'access-1',
@@ -22,8 +30,20 @@ function json(status: number, body: unknown): Response {
 
 const fetchMock = vi.fn<typeof fetch>();
 
+const guestBody = {
+  tripId: 'trip-1',
+  memberId: 'm1',
+  displayName: 'Sourav',
+  color: '#185FA5',
+  role: 'member' as const,
+  sharingLocation: true,
+  accessToken: 'guest-1',
+  expiresIn: 3600,
+};
+
 beforeEach(() => {
-  useSession.setState({ status: 'unknown', user: null, accessToken: null });
+  useSession.setState({ status: 'unknown', user: null, guest: null, accessToken: null });
+  window.localStorage.clear();
   vi.stubGlobal('fetch', fetchMock);
 });
 
@@ -108,5 +128,78 @@ describe('session', () => {
     await signOut();
 
     expect(useSession.getState()).toMatchObject({ status: 'signedOut', user: null, accessToken: null });
+  });
+});
+
+describe('guest session', () => {
+  it('does not look for a guest pass on a device that never joined as a guest', async () => {
+    fetchMock.mockResolvedValueOnce(json(401, { code: 'SESSION_EXPIRED' }));
+
+    expect(await restoreSession()).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('picks a guest back up after a reload', async () => {
+    setGuest(guestBody);
+    useSession.setState({ status: 'unknown', guest: null, accessToken: null });
+    fetchMock.mockResolvedValueOnce(json(401, { code: 'SESSION_EXPIRED' }));
+    fetchMock.mockResolvedValueOnce(json(200, { ...guestBody, accessToken: 'guest-2' }));
+
+    expect(await restoreSession()).toBe(true);
+    expect(useSession.getState()).toMatchObject({
+      status: 'guest',
+      guest: { tripId: 'trip-1', displayName: 'Sourav' },
+      accessToken: 'guest-2',
+    });
+    const [url, init] = fetchMock.mock.calls[1]!;
+    expect(url).toBe('/api/v1/guest/session');
+    expect(init).toMatchObject({ method: 'POST', credentials: 'include' });
+  });
+
+  it('keeps no token or name in browser storage, only a hint', () => {
+    setGuest(guestBody);
+
+    expect(Object.keys(window.localStorage)).toEqual(['squadmap.guest']);
+    expect(window.localStorage.getItem('squadmap.guest')).toBe('1');
+  });
+
+  it('forgets the guest when the trip is over', async () => {
+    setGuest(guestBody);
+    useSession.setState({ status: 'unknown', guest: null, accessToken: null });
+    fetchMock.mockResolvedValueOnce(json(401, { code: 'SESSION_EXPIRED' }));
+    fetchMock.mockResolvedValueOnce(json(401, { code: 'GUEST_SESSION_ENDED' }));
+
+    expect(await restoreSession()).toBe(false);
+    expect(useSession.getState()).toMatchObject({ status: 'signedOut', guestEnded: true });
+    expect(window.localStorage.getItem('squadmap.guest')).toBeNull();
+  });
+
+  it('renews a guest from the guest cookie, never the account refresh', async () => {
+    setGuest(guestBody);
+    fetchMock.mockResolvedValueOnce(json(200, { ...guestBody, accessToken: 'guest-2' }));
+
+    expect(await refreshSession()).toBe(true);
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/guest/session');
+    expect(getAccessToken()).toBe('guest-2');
+  });
+
+  it('a guest signing out clears the guest cookie and the hint', async () => {
+    setGuest(guestBody);
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await signOut();
+
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/guest/logout');
+    expect(useSession.getState()).toMatchObject({ status: 'signedOut', guest: null, accessToken: null });
+    expect(window.localStorage.getItem('squadmap.guest')).toBeNull();
+  });
+
+  it('logging in to an account replaces the guest', () => {
+    setGuest(guestBody);
+
+    setSignedIn(signedInBody);
+
+    expect(useSession.getState()).toMatchObject({ status: 'signedIn', guest: null });
+    expect(window.localStorage.getItem('squadmap.guest')).toBeNull();
   });
 });

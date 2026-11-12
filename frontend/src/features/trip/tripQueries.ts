@@ -8,10 +8,11 @@ export const tripKeys = {
   one: (id: string) => [...tripKeys.all, id] as const,
 };
 
-export function useTrip(tripId: string) {
+export function useTrip(tripId: string, enabled = true) {
   return useQuery({
     queryKey: tripKeys.one(tripId),
     queryFn: () => api<Trip>(`/trips/${encodeURIComponent(tripId)}`),
+    enabled: enabled && tripId !== '',
   });
 }
 
