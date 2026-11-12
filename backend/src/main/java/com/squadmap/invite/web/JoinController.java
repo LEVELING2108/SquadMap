@@ -14,7 +14,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +24,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
@@ -41,10 +42,12 @@ public class JoinController {
 
     private final JoinService joins;
     private final RateLimiter rateLimiter;
+    private final GuestCookie guestCookie;
 
-    public JoinController(JoinService joins, RateLimiter rateLimiter) {
+    public JoinController(JoinService joins, RateLimiter rateLimiter, GuestCookie guestCookie) {
         this.joins = joins;
         this.rateLimiter = rateLimiter;
+        this.guestCookie = guestCookie;
     }
 
     @GetMapping("/preview")
@@ -55,11 +58,11 @@ public class JoinController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Join a trip",
-            description = "Without a token, joins as a guest and returns a pass for this trip only. "
+            description = "Without a token, joins as a guest, returns a pass for this trip only and keeps it in "
+                    + "the guest cookie so a reload doesn't drop them. "
                     + "With an account token, joins as that account.")
-    public JoinResponse join(@PathVariable String code, @Valid @RequestBody JoinRequest request,
+    public ResponseEntity<JoinResponse> join(@PathVariable String code, @Valid @RequestBody JoinRequest request,
                              @AuthenticationPrincipal Jwt token, HttpServletRequest http) {
         Optional<UUID> userId = Optional.ofNullable(token).map(Caller::from).map(caller -> {
             if (caller.isGuest()) {
@@ -69,7 +72,12 @@ public class JoinController {
             }
             return caller.subject();
         });
-        return guarded(http, () -> joins.join(code, request, userId));
+        JoinResponse joined = guarded(http, () -> joins.join(code, request, userId));
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.CREATED);
+        if (joined.accessToken() != null) {
+            response.header(HttpHeaders.SET_COOKIE, guestCookie.set(joined.accessToken(), joined.expiresIn()));
+        }
+        return response.body(joined);
     }
 
     private <T> T guarded(HttpServletRequest http, Supplier<T> action) {

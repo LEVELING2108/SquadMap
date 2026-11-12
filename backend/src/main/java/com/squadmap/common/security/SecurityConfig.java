@@ -67,6 +67,8 @@ public class SecurityConfig {
                     auth.requestMatchers("/api/v1/me", "/api/v1/me/**").hasAuthority(TokenKind.USER.authority());
                     // Joining works from an invite link, with or without an account.
                     auth.requestMatchers("/api/v1/join/**").permitAll();
+                    // A guest's session comes from their cookie, checked by the guest session routes.
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/guest/session", "/api/v1/guest/logout").permitAll();
                     // A guest may read the one trip their pass is for; the service checks which trip.
                     auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());

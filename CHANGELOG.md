@@ -21,6 +21,8 @@ All notable changes to SquadMap are recorded here. The format follows
   leave. Trips whose time runs out are marked expired within 30 seconds, and location consent is
   marked withdrawn whenever someone stops sharing. Starting a trip accepts an `Idempotency-Key`, so
   a retried tap doesn't start a second trip.
+- Guests stay on their trip across reloads: joining sets an HttpOnly cookie holding their pass,
+  and the web app picks the session back up from it, with a pass that also covers any extension.
 
 ### Security
 
