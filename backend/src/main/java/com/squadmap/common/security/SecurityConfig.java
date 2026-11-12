@@ -70,6 +70,10 @@ public class SecurityConfig {
                     // A guest may read the one trip their pass is for; the service checks which trip.
                     auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/v1/trips/*/members/me")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/guest-pass")
+                            .hasAuthority(TokenKind.GUEST.authority());
                     // Everything else about trips is for signed-in accounts.
                     auth.requestMatchers("/api/v1/trips", "/api/v1/trips/**").hasAuthority(TokenKind.USER.authority());
                     auth.anyRequest().authenticated();

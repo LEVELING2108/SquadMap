@@ -111,6 +111,24 @@ public class JoinService {
         return response(member, request.shareLocation(), pass);
     }
 
+    /**
+     * A fresh pass for a guest, valid until the trip's current end time. A guest calls this after the host
+     * extends the trip, while their old pass still works, so they stay on the trip for the extra time.
+     */
+    @Transactional(readOnly = true)
+    public JoinResponse renewGuestPass(UUID tripId, UUID memberId) {
+        Trip trip = trips.findById(tripId).orElseThrow(JoinService::notOnTrip);
+        TripMember member = members.findByIdAndTripIdAndLeftAtIsNull(memberId, tripId)
+                .orElseThrow(JoinService::notOnTrip);
+        requireLive(trip);
+        boolean sharing = consents.existsByTripMemberIdAndWithdrawnAtIsNull(member.getId());
+        return response(member, sharing, accessTokens.issueForGuest(member.getId(), tripId, trip.getExpiresAt()));
+    }
+
+    private static ApiException notOnTrip() {
+        return new ApiException(HttpStatus.NOT_FOUND, ErrorCode.TRIP_NOT_FOUND, "This trip doesn't exist.");
+    }
+
     private String displayName(JoinRequest request, Optional<UUID> userId) {
         String typed = Text.clean(request.displayName());
         if (typed != null && !typed.isEmpty()) {

@@ -146,7 +146,7 @@ public class TripService {
         throw new IllegalStateException("Could not find a free trip code");
     }
 
-    private static ApiException notFound() {
+    static ApiException notFound() {
         return new ApiException(HttpStatus.NOT_FOUND, ErrorCode.TRIP_NOT_FOUND, "This trip doesn't exist.");
     }
 

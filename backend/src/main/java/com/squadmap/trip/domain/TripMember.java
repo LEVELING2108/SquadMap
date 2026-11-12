@@ -86,4 +86,8 @@ public class TripMember {
     public boolean isActive() {
         return leftAt == null;
     }
+
+    public void leave(Instant now) {
+        this.leftAt = now;
+    }
 }

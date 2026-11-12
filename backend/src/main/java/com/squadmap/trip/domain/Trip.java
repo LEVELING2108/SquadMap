@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -125,5 +126,20 @@ public class Trip {
 
     public boolean isLiveAt(Instant now) {
         return statusAt(now) == TripStatus.active;
+    }
+
+    /** How long sharing lasts in total, from start to the current end time. */
+    public Duration totalLength() {
+        return Duration.between(startsAt, expiresAt);
+    }
+
+    public void extendBy(Duration extra) {
+        this.expiresAt = expiresAt.plus(extra);
+    }
+
+    /** Stops the trip for everyone at once. */
+    public void end(Instant now) {
+        this.status = TripStatus.ended;
+        this.endedAt = now;
     }
 }
