@@ -52,6 +52,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const status = useSession((state) => state.status);
   const user = useSession((state) => state.user);
+  const guest = useSession((state) => state.guest);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col justify-center gap-4 bg-sand px-5 py-8">
@@ -88,6 +89,16 @@ export function HomePage() {
             Log out
           </Button>
         </section>
+      ) : status === 'guest' && guest ? (
+        <section aria-labelledby="home-title" className="glass-strong flex flex-col gap-4 rounded-card p-5">
+          <h1 id="home-title" className="text-[22px] leading-7 font-extrabold">
+            You're on a trip
+          </h1>
+          <p className="text-sm leading-5 text-muted">
+            You joined as {guest.displayName}, without an account. Your place lasts until the trip ends.
+          </p>
+          <ButtonLink to={`/trip/${guest.tripId}`}>Back to the trip</ButtonLink>
+        </section>
       ) : (
         <section aria-labelledby="home-title" className="glass-strong flex flex-col gap-4 rounded-card p-5">
           <h1 id="home-title" className="text-[22px] leading-7 font-extrabold">
@@ -99,6 +110,9 @@ export function HomePage() {
           <ButtonLink to="/signup">Create account</ButtonLink>
           <ButtonLink to="/login" variant="glass">
             Log in
+          </ButtonLink>
+          <ButtonLink to="/join" variant="text">
+            Join a trip with a code
           </ButtonLink>
         </section>
       )}

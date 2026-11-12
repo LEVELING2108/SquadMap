@@ -25,6 +25,13 @@ All notable changes to SquadMap are recorded here. The format follows
   and the web app picks the session back up from it, with a pass that also covers any extension.
 - Invite screen: the trip's boarding pass with its code, and ways to send the link: the phone's share
   sheet, copy link, or a QR code to scan. The temporary home lists your running trips.
+- Join screens: an invite link shows who invited you and to which trip; a guest gives a name, or
+  someone signed in joins with their account. The code can be typed or scanned with the camera
+  (the browser's own QR reader where there is one, otherwise a small decoder loaded only when
+  scanning). A consent screen explains what sharing means and offers "Share my location" or
+  "Not now"; if the browser blocks location, the person can still join and only see friends. An
+  ended trip's link shows when it ended. A guest can leave the trip, and after a reload a guest
+  whose trip is over is told it has ended.
 
 ### Security
 

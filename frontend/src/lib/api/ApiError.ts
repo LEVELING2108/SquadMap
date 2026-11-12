@@ -10,6 +10,8 @@ export class ApiError extends Error {
   readonly fieldErrors: Record<string, string>;
   /** Seconds to wait before trying again, when rate limited. */
   readonly retryAfter: number | undefined;
+  /** The whole problem body, for extra fields some answers carry (such as a trip's endedAt). */
+  readonly details: Record<string, unknown>;
 
   constructor(
     status: number,
@@ -17,6 +19,7 @@ export class ApiError extends Error {
     detail: string,
     fieldErrors: Record<string, string> = {},
     retryAfter?: number,
+    details: Record<string, unknown> = {},
   ) {
     super(detail);
     this.name = 'ApiError';
@@ -25,6 +28,7 @@ export class ApiError extends Error {
     this.detail = detail;
     this.fieldErrors = fieldErrors;
     this.retryAfter = retryAfter;
+    this.details = details;
   }
 
   static network(): ApiError {
@@ -73,6 +77,7 @@ export class ApiError extends Error {
       typeof problem.detail === 'string' ? problem.detail : generic.detail,
       fieldErrors,
       retryAfter,
+      body as Record<string, unknown>,
     );
   }
 }

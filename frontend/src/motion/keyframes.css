@@ -61,6 +61,17 @@
   }
 }
 
+@keyframes pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
 @keyframes shine {
   0%,
   60% {
@@ -99,6 +110,11 @@
   animation: spin 18s linear infinite;
 }
 
+/* A ring that swells and fades every 1.8 s, around the location icon. */
+.motion-pulse {
+  animation: pulse 1.8s var(--ease) infinite;
+}
+
 /* A light sweep across the primary button every 3.8 s. */
 .motion-shine {
   position: relative;
@@ -119,12 +135,14 @@ html[data-page-hidden] .motion-bob,
 html[data-page-hidden] .motion-drift,
 html[data-page-hidden] .motion-fly,
 html[data-page-hidden] .motion-spin,
+html[data-page-hidden] .motion-pulse,
 html[data-page-hidden] .motion-shine::after {
   animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .motion-shine::after {
+  .motion-shine::after,
+  .motion-pulse {
     display: none;
   }
 }

@@ -219,6 +219,100 @@ test.describe('invite screen', () => {
   });
 });
 
+const joinPreview = {
+  code: 'K7QX2P9T',
+  tripName: 'Saturday at Phoenix',
+  hostName: 'Priya',
+  destination: signedInTrip.destination,
+  memberCount: 3,
+  expiresAt: '2026-11-12T14:00:00Z',
+};
+
+/** Someone without an account opening an invite link; no backend runs. */
+async function withAnInvite(page: Page) {
+  await page.route('**/api/v1/join/K7QX2P9T/preview', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(joinPreview) }),
+  );
+}
+
+const joinScreens = [
+  ['join', '/join/K7QX2P9T', 'Join the trip'],
+  ['expired link', '/join/expired?code=K7QX2P9T&ended=2026-11-12T10:00:00Z', 'This trip has ended'],
+] as const;
+
+test.describe('join screens', () => {
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+  const violations = async (page: Page) =>
+    (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`,
+    );
+
+  for (const [name, path, heading] of joinScreens) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await withAnInvite(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+        if (name === 'join') await expect(page.getByText('Saturday at Phoenix')).toBeVisible();
+
+        expect(await violations(page)).toEqual([]);
+      });
+    }
+
+    test(`${name}: every control is at least 44 px tall`, async ({ page }) => {
+      await withAnInvite(page);
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+      for (const control of await page.locator('a:visible, button:visible, input:visible').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`consent has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await withAnInvite(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/join/K7QX2P9T');
+      await page.getByLabel('Your name').fill('Sourav');
+      await page.getByRole('button', { name: 'Continue' }).click();
+      await expect(page.getByRole('heading', { name: 'Share your live location?' })).toBeVisible();
+
+      expect(await violations(page)).toEqual([]);
+      for (const control of await page.locator('button:visible').all()) {
+        expect(
+          (await control.boundingBox())?.height,
+          (await control.textContent()) ?? '',
+        ).toBeGreaterThanOrEqual(44);
+      }
+    });
+
+    test(`the QR scanner has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      // Someone who refuses the camera: the dialog explains what to do instead.
+      await page.addInitScript(() => {
+        navigator.mediaDevices.getUserMedia = () =>
+          Promise.reject(new DOMException('denied', 'NotAllowedError'));
+      });
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/join');
+      await page.getByRole('button', { name: 'Scan QR code' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Scan the trip QR code' });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('alert')).toContainText('Camera access is blocked');
+
+      expect(await violations(page)).toEqual([]);
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Scan QR code' })).toBeFocused();
+    });
+  }
+});
+
 test.describe('theme', () => {
   test('follows a dark system setting before the app loads', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
