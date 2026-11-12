@@ -16,6 +16,11 @@ All notable changes to SquadMap are recorded here. The format follows
   choice to share location is recorded with the policy version. A trip holds up to 10 people.
   Joining is limited to 10 tries a minute per address, and 20 wrong codes in an hour lock an address
   out, so codes can't be guessed.
+- Trip lifecycle: the host can extend sharing by 30 minutes, 1 hour or 2 hours (12 hours at most in
+  total) and end the trip for everyone; guests renew their pass after an extension; anyone else can
+  leave. Trips whose time runs out are marked expired within 30 seconds, and location consent is
+  marked withdrawn whenever someone stops sharing. Starting a trip accepts an `Idempotency-Key`, so
+  a retried tap doesn't start a second trip.
 
 ### Security
 

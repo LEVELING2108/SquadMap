@@ -27,5 +27,9 @@ public enum ErrorCode {
     TOO_MANY_TRIPS,
     INVALID_CODE,
     TRIP_EXPIRED,
-    TRIP_FULL
+    TRIP_FULL,
+    NOT_HOST,
+    EXTEND_LIMIT,
+    HOST_CANNOT_LEAVE,
+    REQUEST_IN_PROGRESS
 }

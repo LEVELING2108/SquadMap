@@ -22,6 +22,10 @@ public record Caller(TokenKind kind, UUID subject, UUID tripId) {
         return new Caller(kind, UUID.fromString(token.getSubject()), trip == null ? null : UUID.fromString(trip));
     }
 
+    public static Caller user(UUID userId) {
+        return new Caller(TokenKind.USER, userId, null);
+    }
+
     public boolean isGuest() {
         return kind == TokenKind.GUEST;
     }
