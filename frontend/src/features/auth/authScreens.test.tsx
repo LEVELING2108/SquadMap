@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, renderApp, testUser } from '../../test/renderApp';
+import { jsonResponse, renderApp, sampleTrip, testUser } from '../../test/renderApp';
 import { useSession } from './session';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -272,15 +272,33 @@ describe('Home', () => {
   it('greets a signed-in person and logs them out', async () => {
     const user = userEvent.setup();
     useSession.setState({ status: 'signedIn', user: testUser, accessToken: 't' });
-    fetchMock.mockResolvedValueOnce(jsonResponse(204));
+    fetchMock.mockImplementation(async (url) =>
+      String(url).startsWith('/api/v1/trips') ? jsonResponse(200, []) : jsonResponse(204),
+    );
     renderApp('/home');
 
     expect(screen.getByRole('heading', { name: 'Hi, Priya' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Log out' }));
 
     await waitFor(() => expect(location()).toBe('/'));
-    expect(requestUrl(0)).toBe('/api/v1/auth/logout');
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toContain('/api/v1/auth/logout');
     expect(useSession.getState().status).toBe('signedOut');
+  });
+
+  it("lists a signed-in person's running trips, each leading to its invite or trip", async () => {
+    useSession.setState({ status: 'signedIn', user: testUser, accessToken: 't' });
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, [
+        { ...sampleTrip, id: 't1', name: 'Saturday at Phoenix', role: 'host', memberCount: 3 },
+        { ...sampleTrip, id: 't2', name: 'Sunday brunch', role: 'member', memberCount: 1 },
+      ]),
+    );
+    renderApp('/home');
+
+    const hosted = await screen.findByRole('link', { name: /Saturday at Phoenix/ });
+    expect(hosted).toHaveAttribute('href', '/trip/t1/invite');
+    expect(hosted).toHaveTextContent('You host · 3 people');
+    expect(screen.getByRole('link', { name: /Sunday brunch/ })).toHaveAttribute('href', '/trip/t2');
   });
 
   it('invites someone exploring to sign up or log in', () => {

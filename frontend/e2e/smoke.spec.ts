@@ -139,6 +139,86 @@ test.describe('account screens', () => {
   });
 });
 
+const signedInTrip = {
+  id: 'trip-1',
+  name: 'Saturday at Phoenix',
+  code: 'K7QX2P9T',
+  inviteUrl: 'http://localhost:5480/join/K7QX2P9T',
+  destination: { name: 'Phoenix Marketcity, Viman Nagar', lat: 18.5622, lng: 73.9167 },
+  chatEnabled: true,
+  startsAt: '2026-11-12T10:00:00Z',
+  expiresAt: '2026-11-12T14:00:00Z',
+  status: 'active',
+  role: 'host',
+  memberCount: 1,
+};
+
+/** A signed-in host with one trip, answered without a backend. */
+async function asHostWithATrip(page: Page) {
+  await page.route('**/api/v1/auth/refresh', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        accessToken: 't',
+        expiresIn: 900,
+        user: { id: 'u1', name: 'Priya', email: 'priya@example.com', color: '#0F6E56', createdAt: '' },
+      }),
+    }),
+  );
+  await page.route('**/api/v1/trips/trip-1', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(signedInTrip) }),
+  );
+}
+
+test.describe('invite screen', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode, with and without the QR dialog`, async ({
+      page,
+    }) => {
+      await asHostWithATrip(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/invite');
+      await expect(page.getByRole('heading', { name: 'Trip is live' })).toBeVisible();
+      await expect(page.getByLabel('Trip code K 7 Q X 2 P 9 T')).toBeVisible();
+
+      const tags = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+      const screen = await new AxeBuilder({ page }).withTags(tags).analyze();
+      expect(screen.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual([]);
+
+      await page.getByRole('button', { name: 'QR code' }).click();
+      await expect(page.getByRole('dialog', { name: 'Scan to join' })).toBeVisible();
+      const dialog = await new AxeBuilder({ page }).withTags(tags).analyze();
+      expect(dialog.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual([]);
+    });
+  }
+
+  test('the QR dialog closes with Escape and returns focus', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/trip/trip-1/invite');
+    const qr = page.getByRole('button', { name: 'QR code' });
+
+    await qr.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(qr).toBeFocused();
+  });
+
+  test('every control is at least 44 px tall', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/trip/trip-1/invite');
+    await expect(page.getByLabel('Trip code K 7 Q X 2 P 9 T')).toBeVisible();
+
+    for (const control of await page.locator('a:visible, button:visible').all()) {
+      const box = await control.boundingBox();
+      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+      expect(box?.height, label).toBeGreaterThanOrEqual(44);
+    }
+  });
+});
+
 test.describe('theme', () => {
   test('follows a dark system setting before the app loads', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
