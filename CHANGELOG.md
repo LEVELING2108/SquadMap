@@ -11,6 +11,11 @@ All notable changes to SquadMap are recorded here. The format follows
 - Trips: a signed-in person can start a trip with a name, an optional destination, a sharing time
   of 1, 2, 4 or 8 hours and chat on or off, and gets an 8-character code and invite link. Up to
   three trips can run at once. Only people on a trip can see it or its invite.
+- Joining a trip from its invite link: a preview of the trip, then joining as a guest with just a
+  name (with a pass that works for that trip only, until it ends) or as yourself when signed in. A
+  choice to share location is recorded with the policy version. A trip holds up to 10 people.
+  Joining is limited to 10 tries a minute per address, and 20 wrong codes in an hour lock an address
+  out, so codes can't be guessed.
 
 ### Security
 

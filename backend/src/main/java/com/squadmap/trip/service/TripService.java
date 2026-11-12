@@ -3,6 +3,7 @@ package com.squadmap.trip.service;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.id.UuidV7;
+import com.squadmap.common.security.Caller;
 import com.squadmap.common.text.Text;
 import com.squadmap.common.web.WebProperties;
 import com.squadmap.trip.domain.Destination;
@@ -97,9 +98,15 @@ public class TripService {
      *                      on it. Both answer the same way, so the API never confirms someone else's trip.
      */
     @Transactional(readOnly = true)
-    public TripResponse get(UUID tripId, UUID userId) {
+    public TripResponse get(UUID tripId, Caller caller) {
+        if (!caller.mayUseTrip(tripId)) {
+            throw notFound();
+        }
         Trip trip = trips.findById(tripId).orElseThrow(TripService::notFound);
-        MemberRole role = roleOf(trip, userId);
+        MemberRole role = caller.isGuest()
+                ? members.findByIdAndTripIdAndLeftAtIsNull(caller.subject(), tripId)
+                        .map(TripMember::getRole).orElseThrow(TripService::notFound)
+                : roleOf(trip, caller.subject());
         return toResponse(trip, role, members.countByTripIdAndLeftAtIsNull(tripId));
     }
 

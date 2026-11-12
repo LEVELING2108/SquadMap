@@ -32,6 +32,7 @@ public final class Problems {
 
     public static ProblemDetail bodyFor(ApiException ex) {
         ProblemDetail problem = of(ex.getStatus(), ex.getCode(), ex.getMessage());
+        ex.getProperties().forEach(problem::setProperty);
         if (ex instanceof RateLimitedException limited) {
             problem.setProperty("retryAfter", limited.getRetryAfterSeconds());
         }
