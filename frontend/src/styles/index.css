@@ -31,6 +31,10 @@
   --color-input-border: var(--input-border);
   --color-input-placeholder: var(--input-placeholder);
   --color-track: var(--track);
+  --color-ticket: var(--ticket-bg);
+  --color-perforation: var(--perforation);
+  --color-scrim: var(--scrim);
+  --color-on-scrim: var(--on-scrim);
   --color-hero-cloud: var(--hero-cloud);
   --color-hero-plane: var(--hero-plane);
   --color-hero-plane-outline: var(--hero-plane-outline);
@@ -120,6 +124,25 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background: var(--glass-fallback);
   }
+}
+
+/*
+ * Boarding-pass ticket: two half-circle notches cut out of the sides at --cut from the top, where the
+ * dashed perforation runs. The notches are a mask, so the backdrop shows through them.
+ */
+@utility ticket {
+  background: var(--ticket-bg);
+  border-radius: 22px;
+  -webkit-mask:
+    radial-gradient(circle at 0 var(--cut, 150px), #0000 11px, #000 11.5px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% var(--cut, 150px), #0000 11px, #000 11.5px) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle at 0 var(--cut, 150px), #0000 11px, #000 11.5px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% var(--cut, 150px), #0000 11px, #000 11.5px) right / 51% 100% no-repeat;
+}
+
+@utility ticket-shadow {
+  filter: drop-shadow(0 12px 20px var(--ticket-shadow));
 }
 
 /* Secondary button on glass: lighter frosting than panels, so it reads as a control. */

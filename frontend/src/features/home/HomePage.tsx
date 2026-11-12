@@ -1,7 +1,48 @@
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Compass } from 'lucide-react';
 import { Button, ButtonLink } from '../../components/ui/Button';
+import { describeFailure } from '../auth/formErrors';
 import { signOut, useSession } from '../auth/session';
+import { useActiveTrips } from '../trip/tripQueries';
+
+/** Running trips, each leading to its invite (host) or its trip page (member). */
+function YourTrips() {
+  const trips = useActiveTrips(true);
+
+  if (trips.isPending) return <p className="text-sm leading-5 text-muted">Loading your trips…</p>;
+  if (trips.isError) return <p className="text-sm leading-5 text-red">{describeFailure(trips.error)}</p>;
+  if (trips.data.length === 0) {
+    return (
+      <p className="text-sm leading-5 text-muted">
+        No trips running. Starting a trip from here arrives with the map; the live map follows.
+      </p>
+    );
+  }
+  return (
+    <div>
+      <h2 className="text-xs leading-4 font-bold tracking-[1.5px] text-muted">YOUR TRIPS</h2>
+      <ul className="m-0 mt-2 flex list-none flex-col gap-2 p-0">
+        {trips.data.map((trip) => (
+          <li key={trip.id}>
+            <Link
+              to={trip.role === 'host' ? `/trip/${trip.id}/invite` : `/trip/${trip.id}`}
+              className="flex min-h-11 items-center justify-between gap-3 rounded-control bg-tint px-4 py-2"
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-bold">{trip.name}</span>
+                <span className="block text-xs leading-4 text-muted">
+                  {trip.role === 'host' ? 'You host' : 'You joined'} · {trip.memberCount}{' '}
+                  {trip.memberCount === 1 ? 'person' : 'people'}
+                </span>
+              </span>
+              <span className="font-mono text-sm tracking-[1px] text-blue-d">{trip.code}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /**
  * Temporary home. The real one (map, trips, bottom navigation) replaces it; until then it
@@ -36,9 +77,7 @@ export function HomePage() {
               <p className="truncate text-sm leading-5 text-muted">{user.email}</p>
             </div>
           </div>
-          <p className="text-sm leading-5 text-muted">
-            You are signed in. Trips, the live map and your friends will appear here soon.
-          </p>
+          <YourTrips />
           <Button
             variant="glass"
             onClick={async () => {

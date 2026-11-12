@@ -23,6 +23,8 @@ All notable changes to SquadMap are recorded here. The format follows
   a retried tap doesn't start a second trip.
 - Guests stay on their trip across reloads: joining sets an HttpOnly cookie holding their pass,
   and the web app picks the session back up from it, with a pass that also covers any extension.
+- Invite screen: the trip's boarding pass with its code, and ways to send the link: the phone's share
+  sheet, copy link, or a QR code to scan. The temporary home lists your running trips.
 
 ### Security
 
