@@ -18,7 +18,9 @@ public enum RateLimit {
     TRIP_CREATE_PER_USER("trip-create-user", 20, Duration.ofHours(1)),
     JOIN_PER_IP("join-ip", 10, Duration.ofMinutes(1)),
     /** Wrong trip codes: after 20 in an hour, the address may not try any code until it refills. */
-    JOIN_BAD_CODES_PER_IP("join-bad-codes-ip", 20, Duration.ofHours(1));
+    JOIN_BAD_CODES_PER_IP("join-bad-codes-ip", 20, Duration.ofHours(1)),
+    /** Each search is a paid Mapbox call; the screen also waits for typing to pause before searching. */
+    PLACE_SEARCH_PER_USER("place-search-user", 30, Duration.ofMinutes(1));
 
     private final String id;
     private final long capacity;

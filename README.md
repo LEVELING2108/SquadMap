@@ -28,6 +28,16 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | 4. Run the tests | `make test` and `make e2e` | Both finish without failures |
 | 5. Run the full account journey (steps 1 and 2 running) | `make journey` | `1 passed`: sign up, log in, and a password reset through a real email |
 
+Place search (choosing a trip's destination) needs your own Mapbox tokens; everything else works
+without them. Create two public tokens in your [Mapbox account](https://account.mapbox.com/access-tokens/):
+
+| Token | Where it goes | URL restriction | Verify |
+| --- | --- | --- | --- |
+| Web app | `frontend/.env.local` as `VITE_MAPBOX_PUBLIC_TOKEN=pk...` | `http://localhost:5480` | the map loads in the app |
+| Server | `backend/.env.local` as `MAPBOX_SERVER_TOKEN=pk...` | none (the server sends no web address) | `GET /api/v1/places/search?q=pune` in the API docs returns places |
+
+Both files are ignored by git. Restart the API after adding the server token.
+
 Other useful addresses: API docs at <http://localhost:8480/swagger-ui.html>, and every email the app sends locally at <http://localhost:8425>.
 
 `make down` stops the services and keeps the data. `make reset` also deletes the local database.

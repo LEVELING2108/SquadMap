@@ -24,6 +24,11 @@ public record CreateTripRequest(
 
         boolean chatEnabled) {
 
+    /**
+     * @param fromSearch true when this is a place search result. It is then looked up again in a mode whose
+     *                   results may be stored, and that version is saved. False for a pin the person dropped
+     *                   themselves, which is saved as given.
+     */
     public record DestinationInput(
             @NotBlank(message = "Destination needs a name.")
             @Size(max = 120, message = "Use 120 characters or fewer.")
@@ -33,6 +38,8 @@ public record CreateTripRequest(
             Double lat,
 
             @NotNull @DecimalMin("-180") @DecimalMax("180")
-            Double lng) {
+            Double lng,
+
+            boolean fromSearch) {
     }
 }

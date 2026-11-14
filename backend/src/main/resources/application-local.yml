@@ -1,8 +1,12 @@
 # Developer machine only. These values match infra/docker-compose.dev.yml and are not secrets.
+# Personal keys (such as the Mapbox token) go in backend/.env.local, which git ignores. It is optional:
+# without it, everything works except place search.
 server:
   port: 8480
 
 spring:
+  config:
+    import: optional:file:.env.local[.properties]
   datasource:
     url: jdbc:postgresql://localhost:54320/squadmap
     username: squadmap
@@ -24,3 +28,5 @@ squadmap:
   cors:
     allowed-origins:
       - http://localhost:5480
+  mapbox:
+    token: ${MAPBOX_SERVER_TOKEN:}
