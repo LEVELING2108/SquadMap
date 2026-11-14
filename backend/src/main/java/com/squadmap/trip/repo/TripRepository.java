@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -32,6 +33,15 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             ORDER BY t.createdAt DESC
             """)
     List<Trip> findLiveForUser(@Param("userId") UUID userId, @Param("now") Instant now);
+
+    /** Trips with a destination that an account has been on, newest first, whether or not it left. */
+    @Query("""
+            SELECT t FROM Trip t
+            WHERE t.destinationName IS NOT NULL
+              AND EXISTS (SELECT m.id FROM TripMember m WHERE m.tripId = t.id AND m.userId = :userId)
+            ORDER BY t.createdAt DESC
+            """)
+    List<Trip> findWithDestinationForUser(@Param("userId") UUID userId, Limit limit);
 
     /** Locks a trip while its host changes it, so an extend and an end can't interleave. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

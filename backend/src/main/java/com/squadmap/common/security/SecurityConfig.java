@@ -78,6 +78,8 @@ public class SecurityConfig {
                             .hasAuthority(TokenKind.GUEST.authority());
                     // Everything else about trips is for signed-in accounts.
                     auth.requestMatchers("/api/v1/trips", "/api/v1/trips/**").hasAuthority(TokenKind.USER.authority());
+                    // Choosing a destination is part of starting a trip, which needs an account.
+                    auth.requestMatchers("/api/v1/places/**").hasAuthority(TokenKind.USER.authority());
                     auth.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(oauth -> oauth

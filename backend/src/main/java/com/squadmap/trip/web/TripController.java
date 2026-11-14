@@ -11,6 +11,8 @@ import com.squadmap.trip.dto.CreateTripRequest;
 import com.squadmap.trip.dto.ExtendTripRequest;
 import com.squadmap.trip.dto.InviteResponse;
 import com.squadmap.trip.dto.TripResponse;
+import com.squadmap.trip.domain.Destination;
+import com.squadmap.trip.service.DestinationResolver;
 import com.squadmap.trip.service.TripLifecycleService;
 import com.squadmap.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,10 +45,12 @@ public class TripController {
     private final TripLifecycleService lifecycle;
     private final RateLimiter rateLimiter;
     private final IdempotencyKeys idempotency;
+    private final DestinationResolver destinations;
 
     public TripController(TripService trips, TripLifecycleService lifecycle, RateLimiter rateLimiter,
-                          IdempotencyKeys idempotency) {
+                          IdempotencyKeys idempotency, DestinationResolver destinations) {
         this.trips = trips;
+        this.destinations = destinations;
         this.lifecycle = lifecycle;
         this.rateLimiter = rateLimiter;
         this.idempotency = idempotency;
@@ -55,7 +59,9 @@ public class TripController {
     @PostMapping
     @Operation(summary = "Start a trip",
             description = "The caller becomes its host. Returns the invite code and link. Send an "
-                    + "Idempotency-Key header so a retried request returns the same trip (200) instead of a second one.")
+                    + "Idempotency-Key header so a retried request returns the same trip (200) instead of a second one. "
+                    + "A destination from place search (`fromSearch: true`) is confirmed with Mapbox first: "
+                    + "422 PLACE_NOT_CONFIRMED if it can't be found again, 503 PLACES_UNAVAILABLE if Mapbox is down.")
     public ResponseEntity<TripResponse> create(
             @AuthenticationPrincipal Jwt token, @Valid @RequestBody CreateTripRequest request,
             @RequestHeader(name = IdempotencyKeys.HEADER, required = false) String idempotencyKey) {
@@ -63,7 +69,9 @@ public class TripController {
         IdempotencyKeys.Result<TripResponse> result = idempotency.once("trip", userId.toString(), idempotencyKey,
                 () -> {
                     rateLimiter.check(RateLimit.TRIP_CREATE_PER_USER, userId.toString());
-                    TripResponse created = trips.create(userId, request);
+                    // Checked before the trip is saved, so a slow place lookup never holds a database transaction.
+                    Destination destination = destinations.resolve(request.destination());
+                    TripResponse created = trips.create(userId, request, destination);
                     return new IdempotencyKeys.IdAnd<>(created.id().toString(), created);
                 },
                 storedId -> trips.get(UUID.fromString(storedId), Caller.user(userId)));

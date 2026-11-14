@@ -32,6 +32,12 @@ All notable changes to SquadMap are recorded here. The format follows
   "Not now"; if the browser blocks location, the person can still join and only see friends. An
   ended trip's link shows when it ended. A guest can leave the trip, and after a reload a guest
   whose trip is over is told it has ended.
+- Place search for a trip's destination: up to 6 matching places from Mapbox, nearest first when
+  you share where you are (rounded to about 1 km before it leaves the server), limited to 30
+  searches a minute per person. Results are shown, never stored. A searched place chosen for a
+  trip is looked up again in Mapbox's permanent mode, which may be stored, and saved only if the
+  same place comes back; a dropped pin is saved as given. Recent places list your last 5
+  different destinations from your own trips.
 
 ### Security
 

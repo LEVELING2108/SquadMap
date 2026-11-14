@@ -17,6 +17,7 @@ import com.squadmap.trip.repo.TripMemberRepository;
 import com.squadmap.trip.repo.TripRepository;
 import com.squadmap.user.domain.User;
 import com.squadmap.user.service.UserService;
+import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,6 +40,8 @@ public class TripService {
     /** A host can run a few trips at once (say, two groups heading out); more is likely abuse. */
     static final int MAX_LIVE_HOSTED_TRIPS = 3;
     private static final int CODE_ATTEMPTS = 5;
+    static final int RECENT_PLACES = 5;
+    private static final int RECENT_TRIPS_SCANNED = 50;
 
     private final TripRepository trips;
     private final TripMemberRepository members;
@@ -53,7 +59,10 @@ public class TripService {
     }
 
     @Transactional
-    public TripResponse create(UUID hostId, CreateTripRequest request) {
+    /**
+     * @param destination where the trip is heading, already checked by {@link DestinationResolver}; may be null
+     */
+    public TripResponse create(UUID hostId, CreateTripRequest request, Destination destination) {
         User host = users.findActiveById(hostId).orElseThrow(TripService::notFound);
         String name = Text.clean(request.name());
         if (name.isEmpty()) {
@@ -66,15 +75,6 @@ public class TripService {
         if (trips.countLiveHostedBy(hostId, now) >= MAX_LIVE_HOSTED_TRIPS) {
             throw new ApiException(HttpStatus.CONFLICT, ErrorCode.TOO_MANY_TRIPS,
                     "You already have " + MAX_LIVE_HOSTED_TRIPS + " trips running. End one to start another.");
-        }
-
-        Destination destination = null;
-        if (request.destination() != null) {
-            String destinationName = Text.clean(request.destination().name());
-            if (destinationName.isEmpty()) {
-                throw invalid("Destination needs a name.");
-            }
-            destination = new Destination(destinationName, request.destination().lat(), request.destination().lng());
         }
 
         Trip trip = new Trip(UuidV7.generate(clock), hostId, name, uniqueCode(), destination,
@@ -123,6 +123,26 @@ public class TripService {
         return members.findByTripIdAndUserIdAndLeftAtIsNull(trip.getId(), userId)
                 .map(TripMember::getRole)
                 .orElseThrow(TripService::notFound);
+    }
+
+    /**
+     * The account's last {@value #RECENT_PLACES} different destinations, newest first, from trips it hosted or
+     * joined. Nothing extra is stored for this: it reads the trips themselves.
+     */
+    @Transactional(readOnly = true)
+    public List<Destination> recentDestinations(UUID userId) {
+        Map<String, Destination> distinct = new LinkedHashMap<>();
+        for (Trip trip : trips.findWithDestinationForUser(userId, Limit.of(RECENT_TRIPS_SCANNED))) {
+            Destination destination = trip.getDestination();
+            // The same place picked twice counts once: same name, within about 100 m.
+            String key = destination.name().toLowerCase(Locale.ROOT) + "|"
+                    + Math.round(destination.lat() * 1000) + "|" + Math.round(destination.lng() * 1000);
+            distinct.putIfAbsent(key, destination);
+            if (distinct.size() == RECENT_PLACES) {
+                break;
+            }
+        }
+        return List.copyOf(distinct.values());
     }
 
     private TripResponse toResponse(Trip trip, MemberRole role, long memberCount) {
