@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { Compass } from 'lucide-react';
+import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
 import { signOut, useSession } from '../auth/session';
@@ -55,7 +56,11 @@ export function HomePage() {
   const guest = useSession((state) => state.guest);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col justify-center gap-4 bg-sand px-5 py-8">
+    <main
+      className={`mx-auto flex min-h-dvh w-full max-w-[600px] flex-col justify-center gap-4 bg-sand px-5 pt-8 ${
+        status === 'signedIn' ? BOTTOM_NAV_SPACE : 'pb-8'
+      }`}
+    >
       <p className="flex items-center gap-2 font-extrabold">
         <Compass aria-hidden="true" className="size-6 text-blue" />
         SquadMap
@@ -117,6 +122,7 @@ export function HomePage() {
           </ButtonLink>
         </section>
       )}
+      {status === 'signedIn' && <BottomNav />}
     </main>
   );
 }

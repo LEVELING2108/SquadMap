@@ -13,6 +13,7 @@ import { Segmented } from '../../components/ui/Segmented';
 import { Switch } from '../../components/ui/Switch';
 import { TextField } from '../../components/ui/TextField';
 import { describeFailure, focusFirstInvalid } from '../auth/formErrors';
+import { historyKey } from '../history/historyApi';
 import { tripKeys } from '../trip/tripQueries';
 import type { Trip } from '../trip/types';
 import { resetTripDraft, SHARE_HOURS, suggestedName, useTripDraft } from './tripDraft';
@@ -49,6 +50,7 @@ export function NewTripPage() {
     onSuccess: async (trip) => {
       queryClient.setQueryData(tripKeys.one(trip.id), trip);
       await queryClient.invalidateQueries({ queryKey: tripKeys.active() });
+      void queryClient.invalidateQueries({ queryKey: historyKey });
       resetTripDraft();
       navigate(`/trip/${trip.id}/invite`, { replace: true });
     },

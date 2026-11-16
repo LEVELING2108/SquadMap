@@ -10,8 +10,10 @@ import com.squadmap.trip.domain.Destination;
 import com.squadmap.trip.domain.MemberRole;
 import com.squadmap.trip.domain.Trip;
 import com.squadmap.trip.domain.TripMember;
+import com.squadmap.trip.domain.TripStatus;
 import com.squadmap.trip.dto.CreateTripRequest;
 import com.squadmap.trip.dto.InviteResponse;
+import com.squadmap.trip.dto.TripHistoryResponse;
 import com.squadmap.trip.dto.TripResponse;
 import com.squadmap.trip.repo.TripMemberRepository;
 import com.squadmap.trip.repo.TripRepository;
@@ -31,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TripService {
@@ -41,6 +44,8 @@ public class TripService {
     static final int MAX_LIVE_HOSTED_TRIPS = 3;
     private static final int CODE_ATTEMPTS = 5;
     static final int RECENT_PLACES = 5;
+    static final int MAX_HISTORY_PAGE = 50;
+    private static final int HISTORY_FRIEND_NAMES = 5;
     private static final int RECENT_TRIPS_SCANNED = 50;
 
     private final TripRepository trips;
@@ -143,6 +148,42 @@ public class TripService {
             }
         }
         return List.copyOf(distinct.values());
+    }
+
+    /**
+     * A page of every trip the account has been on, newest first, with who else was on each.
+     *
+     * @param before the id of the last trip of the previous page, or null for the first page
+     */
+    @Transactional(readOnly = true)
+    public TripHistoryResponse history(UUID userId, UUID before, int limit) {
+        int size = Math.clamp(limit, 1, MAX_HISTORY_PAGE);
+        // One extra row tells whether another page exists.
+        List<Trip> found = before == null
+                ? trips.findAllForUser(userId, Limit.of(size + 1))
+                : trips.findAllForUserBefore(userId, before, Limit.of(size + 1));
+        List<Trip> page = found.size() > size ? found.subList(0, size) : found;
+
+        Map<UUID, List<TripMember>> membersByTrip = members
+                .findByTripIdInOrderByJoinedAt(page.stream().map(Trip::getId).toList()).stream()
+                .collect(Collectors.groupingBy(TripMember::getTripId));
+        Instant now = clock.instant();
+        List<TripHistoryResponse.Item> items = page.stream()
+                .map(trip -> historyItem(trip, membersByTrip.getOrDefault(trip.getId(), List.of()), userId, now))
+                .toList();
+        return new TripHistoryResponse(items, found.size() > size ? page.get(page.size() - 1).getId() : null);
+    }
+
+    private static TripHistoryResponse.Item historyItem(Trip trip, List<TripMember> everyone, UUID userId,
+                                                        Instant now) {
+        List<TripMember> others = everyone.stream().filter(member -> !userId.equals(member.getUserId())).toList();
+        TripStatus status = trip.statusAt(now);
+        Instant endedAt = status == TripStatus.active ? null
+                : trip.getEndedAt() != null ? trip.getEndedAt() : trip.getExpiresAt();
+        MemberRole role = trip.getHostId().equals(userId) ? MemberRole.host : MemberRole.member;
+        return new TripHistoryResponse.Item(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartsAt(),
+                endedAt, status, role, others.size(),
+                others.stream().map(TripMember::getDisplayName).limit(HISTORY_FRIEND_NAMES).toList());
     }
 
     private TripResponse toResponse(Trip trip, MemberRole role, long memberCount) {

@@ -476,6 +476,125 @@ test.describe('new trip screens', () => {
   }
 });
 
+const historyTrips = [
+  {
+    id: 'h1',
+    name: 'Running now',
+    destination: { name: 'Phoenix Marketcity', lat: 18.5622, lng: 73.9167 },
+    startsAt: new Date().toISOString(),
+    endedAt: null,
+    status: 'active',
+    role: 'host',
+    friendCount: 1,
+    friends: ['Aman'],
+  },
+  {
+    id: 'h2',
+    name: 'Saturday at Phoenix with a rather long name that has to be cut off somewhere',
+    destination: { name: 'Phoenix Marketcity', lat: 18.5622, lng: 73.9167 },
+    startsAt: '2026-10-12T10:00:00Z',
+    endedAt: '2026-10-12T14:00:00Z',
+    status: 'ended',
+    role: 'host',
+    friendCount: 4,
+    friends: ['Aman', 'Sourav', 'Rohan', 'Meera'],
+  },
+  {
+    id: 'h3',
+    name: 'Airport pickup',
+    destination: null,
+    startsAt: '2026-09-02T10:00:00Z',
+    endedAt: '2026-09-02T11:00:00Z',
+    status: 'expired',
+    role: 'member',
+    friendCount: 2,
+    friends: ['Aman', 'Priya'],
+  },
+];
+
+/** A signed-in person with a few past trips. Mapbox is blocked, so thumbnails show the picture. */
+async function withTripHistory(page: Page) {
+  await asHostWithATrip(page);
+  await page.route(/https:\/\/([a-z]+\.)?mapbox\.com\//, (route) => route.abort());
+  await page.route('**/api/v1/me/trips?*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: historyTrips, nextBefore: null }),
+    }),
+  );
+  await page.route('**/api/v1/trips?*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([signedInTrip]) }),
+  );
+}
+
+test.describe('trip history', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await withTripHistory(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/me/history');
+      await expect(page.getByRole('list', { name: 'Trips' }).getByRole('listitem')).toHaveCount(3);
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+    });
+  }
+
+  test('every control is at least 44 px tall and nothing is hidden behind the navigation', async ({
+    page,
+  }) => {
+    await withTripHistory(page);
+    await page.goto('/me/history');
+    await expect(page.getByRole('list', { name: 'Trips' }).getByRole('listitem')).toHaveCount(3);
+
+    for (const control of await page.locator('a:visible, button:visible').all()) {
+      const box = await control.boundingBox();
+      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+      expect(box?.height, label).toBeGreaterThanOrEqual(44);
+    }
+    // Scrolled to the end, the last card sits above the navigation bar.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const lastCard = await page
+      .getByRole('list', { name: 'Trips' })
+      .getByRole('listitem')
+      .last()
+      .boundingBox();
+    const nav = await page.getByRole('navigation', { name: 'Main' }).boundingBox();
+    expect(lastCard!.y + lastCard!.height).toBeLessThanOrEqual(nav!.y);
+  });
+
+  test('the navigation moves between Explore and Trips', async ({ page }) => {
+    await withTripHistory(page);
+    await page.goto('/home');
+
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Trip history' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Trips' })).toHaveAttribute('aria-current', 'page');
+
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Explore' }).click();
+    await expect(page).toHaveURL(/\/home$/);
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`no sideways scroll at ${width} px`, async ({ page }) => {
+      await withTripHistory(page);
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/me/history');
+      await expect(page.getByRole('list', { name: 'Trips' }).getByRole('listitem')).toHaveCount(3);
+
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+    });
+  }
+});
+
 test.describe('theme', () => {
   test('follows a dark system setting before the app loads', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });

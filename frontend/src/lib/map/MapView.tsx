@@ -161,9 +161,10 @@ export function MapView({
 
   return (
     <div
-      role={interactive ? 'application' : 'img'}
-      aria-label={label}
-      aria-roledescription="map"
+      // The picture is one image with a description. The real map is not: Mapbox puts its own controls
+      // (credits, and the canvas when it can be moved) inside, and those must stay reachable.
+      role={fallback ? 'img' : undefined}
+      aria-label={fallback ? label : undefined}
       // No position here: the caller's className places it, and a second position class could override it.
       className={`overflow-hidden bg-sand ${className}`}
       style={{ '--map-inset-bottom': `${bottomInset}px` } as React.CSSProperties}
@@ -179,12 +180,11 @@ export function MapView({
           )}
         </>
       ) : (
-        // Sized with width and height, not inset: Mapbox's stylesheet makes its container position: relative.
-        <div
-          ref={containerRef}
-          aria-hidden={interactive ? undefined : true}
-          className="map-canvas size-full"
-        />
+        <>
+          <p className="sr-only">{label}</p>
+          {/* Sized with width and height, not inset: Mapbox's stylesheet makes its container position: relative. */}
+          <div ref={containerRef} className="map-canvas size-full" />
+        </>
       )}
       {!fallback && pinElement && createPortal(<DestinationPin />, pinElement)}
     </div>
