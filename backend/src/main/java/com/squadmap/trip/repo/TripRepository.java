@@ -34,6 +34,25 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             """)
     List<Trip> findLiveForUser(@Param("userId") UUID userId, @Param("now") Instant now);
 
+    /**
+     * Every trip an account has been on, running or over, newest first. Trip ids are time-ordered, so
+     * "older than this id" pages through them without skipping or repeating when new trips appear.
+     */
+    @Query("""
+            SELECT t FROM Trip t
+            WHERE EXISTS (SELECT m.id FROM TripMember m WHERE m.tripId = t.id AND m.userId = :userId)
+            ORDER BY t.id DESC
+            """)
+    List<Trip> findAllForUser(@Param("userId") UUID userId, Limit limit);
+
+    @Query("""
+            SELECT t FROM Trip t
+            WHERE t.id < :before
+              AND EXISTS (SELECT m.id FROM TripMember m WHERE m.tripId = t.id AND m.userId = :userId)
+            ORDER BY t.id DESC
+            """)
+    List<Trip> findAllForUserBefore(@Param("userId") UUID userId, @Param("before") UUID before, Limit limit);
+
     /** Trips with a destination that an account has been on, newest first, whether or not it left. */
     @Query("""
             SELECT t FROM Trip t

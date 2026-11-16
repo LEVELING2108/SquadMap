@@ -6,6 +6,7 @@ import { RequireAuth } from './features/auth/RequireAuth';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { NotFoundPage } from './features/foundation/NotFoundPage';
+import { TripHistoryPage } from './features/history/TripHistoryPage';
 import { HomePage } from './features/home/HomePage';
 import { ConsentPage } from './features/invite/ConsentPage';
 import { ExpiredPage } from './features/invite/ExpiredPage';
@@ -44,6 +45,14 @@ export function AppRoutes() {
       <Route path="/join/expired" element={<ExpiredPage />} />
       <Route path="/join/:code" element={<JoinPage />} />
       <Route path="/join/:code/consent" element={<ConsentPage />} />
+      <Route
+        path="/me/history"
+        element={
+          <RequireAuth>
+            <TripHistoryPage />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/trip/new"
         element={

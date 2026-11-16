@@ -44,6 +44,11 @@ All notable changes to SquadMap are recorded here. The format follows
   whether friends can chat, and create it, which opens the invite. Maps use Mapbox GL, loaded
   only on the screens that show one; without a token or when the map can't load, an illustrated
   map is shown instead and picking on the map points to search. A double tap can't start two trips.
+- Trip history: every trip you hosted or joined, running or over, newest first, with the day,
+  who came along and a Live or Done badge, loaded a page at a time. Trips with a destination show
+  a still map of it. Filters for this month and for the friend you travel with most. A running
+  trip opens from its card. A bottom navigation bar links Explore and Trips; more tabs join it as
+  their screens are built.
 
 ### Security
 
