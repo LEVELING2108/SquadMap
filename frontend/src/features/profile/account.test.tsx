@@ -124,7 +124,8 @@ describe('Change password', () => {
         "That isn't your current password.",
       ),
     );
-    expect(screen.getByLabelText('Current password')).toHaveFocus();
+    // Focus moves to the field on the next frame, after the error is shown.
+    await waitFor(() => expect(screen.getByLabelText('Current password')).toHaveFocus());
   });
 
   it('checks both fields before sending', async () => {
