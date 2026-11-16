@@ -58,14 +58,23 @@ public class RefreshTokenService {
         RefreshToken token = found.get();
         Instant now = clock.instant();
 
+        if (token.isRevoked() || token.isExpired(now)) {
+            // An ended session stays ended: no old token brings it back.
+            return Rotation.REJECTED;
+        }
         if (token.isSpent()) {
+            if (isRetry(token, now)) {
+                // The reply that carried its replacement was lost (say, the page reloaded mid-refresh), so
+                // the browser still holds this token. Carry on the session, keeping a single usable token.
+                tokens.supersedeFamily(token.getFamilyId(), now);
+                log.info("Refresh retried within the grace period; session {} continues", token.getFamilyId());
+                return new Rotation(token.getUserId(), token.getFamilyId(),
+                        issue(token.getUserId(), token.getFamilyId()));
+            }
             int revoked = tokens.revokeFamily(token.getFamilyId(), now);
             if (revoked > 0) {
                 log.warn("Refresh token reuse detected; ended session {}", token.getFamilyId());
             }
-            return Rotation.REJECTED;
-        }
-        if (token.isExpired(now)) {
             return Rotation.REJECTED;
         }
 
@@ -124,6 +133,15 @@ public class RefreshTokenService {
             log.info("Purged {} expired refresh tokens", removed);
         }
         return removed;
+    }
+
+    /**
+     * A replaced token presented again shortly after its replacement: the browser most likely never got
+     * the reply. Later than that, it was copied, and the session ends.
+     */
+    private boolean isRetry(RefreshToken token, Instant now) {
+        Instant used = token.getUsedAt();
+        return used != null && !now.isAfter(used.plus(properties.refreshRetryGrace()));
     }
 
     private String issue(UUID userId, UUID familyId) {

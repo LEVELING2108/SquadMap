@@ -14,6 +14,8 @@ import java.time.Duration;
  * @param refreshCookieSecure send the refresh cookie over HTTPS only. Turned off only for local
  *                            development over plain HTTP.
  * @param termsVersion        version of the Terms and Privacy Policy a new account agrees to
+ * @param refreshRetryGrace   how soon after a refresh its old token may be presented again and still be
+ *                            treated as a lost reply rather than a copied token
  */
 @ConfigurationProperties("squadmap.auth")
 public record AuthProperties(
@@ -22,5 +24,6 @@ public record AuthProperties(
         @DefaultValue("15m") Duration accessTokenTtl,
         @DefaultValue("30d") Duration refreshTokenTtl,
         @DefaultValue("true") boolean refreshCookieSecure,
-        @DefaultValue("2026-11") String termsVersion) {
+        @DefaultValue("2026-11") String termsVersion,
+        @DefaultValue("20s") Duration refreshRetryGrace) {
 }
