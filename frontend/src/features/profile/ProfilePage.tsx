@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
+  Bell,
   ChevronRight,
   Clock,
   KeyRound,
@@ -13,6 +14,7 @@ import heroLight from '../../assets/illustrations/hero.svg';
 import heroDark from '../../assets/illustrations/hero-dark.svg';
 import { BackButton } from '../../components/ui/BackButton';
 import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
+import { useUnreadAlerts } from '../alerts/alertsApi';
 import { signOut, useSession } from '../auth/session';
 import { LogOutOthers } from './LogOutOthers';
 import { useStats } from './settingsApi';
@@ -34,10 +36,16 @@ function Stat({ value, label }: { value: ReactNode; label: string }) {
   );
 }
 
-function Row({ to, label, Icon, tile }: { to: string; label: string; Icon: LucideIcon; tile: string }) {
+type RowProps = { to: string; label: string; Icon: LucideIcon; tile: string; count?: number };
+
+function Row({ to, label, Icon, tile, count = 0 }: RowProps) {
   return (
     <li>
-      <Link to={to} className="flex min-h-[64px] items-center gap-3.5 px-4 py-2.5">
+      <Link
+        to={to}
+        aria-label={count > 0 ? `${label}, ${count} unread` : undefined}
+        className="flex min-h-[64px] items-center gap-3.5 px-4 py-2.5"
+      >
         <span
           aria-hidden="true"
           className={`flex size-10 flex-none items-center justify-center rounded-control ${tile}`}
@@ -45,7 +53,16 @@ function Row({ to, label, Icon, tile }: { to: string; label: string; Icon: Lucid
           <Icon className="size-5" />
         </span>
         <span className="flex-1 text-base leading-[22px] font-bold">{label}</span>
-        <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+        {count > 0 ? (
+          <span
+            aria-hidden="true"
+            className="flex h-6 min-w-6 items-center justify-center rounded-pill bg-red px-1.5 text-xs font-extrabold text-on-primary"
+          >
+            {count > 9 ? '9+' : count}
+          </span>
+        ) : (
+          <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+        )}
       </Link>
     </li>
   );
@@ -56,6 +73,7 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const user = useSession((state) => state.user);
   const stats = useStats();
+  const unreadAlerts = useUnreadAlerts();
 
   if (!user) return null;
 
@@ -113,6 +131,13 @@ export function ProfilePage() {
         <nav aria-label="Your account">
           <ul className="glass-strong m-0 list-none divide-y divide-line overflow-hidden rounded-card p-0">
             <Row to="/me/history" label="Trip history" Icon={Clock} tile="bg-tint text-blue-d" />
+            <Row
+              to="/me/alerts"
+              label="Alerts"
+              Icon={Bell}
+              tile="bg-amber-bg text-amber"
+              count={unreadAlerts}
+            />
             <Row to="/me/settings" label="Settings" Icon={SettingsIcon} tile="bg-track text-ink" />
           </ul>
         </nav>

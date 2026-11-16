@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
@@ -71,12 +72,27 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
      * Records every trip whose time has run out as expired. Safe to run on several instances at once:
      * a trip can only move from active to expired once.
      */
-    @Modifying
-    @Query("""
-            UPDATE Trip t SET t.status = com.squadmap.trip.domain.TripStatus.expired
-            WHERE t.status = com.squadmap.trip.domain.TripStatus.active AND t.expiresAt <= :now
+    @Transactional
+    @Query(nativeQuery = true, value = """
+            UPDATE trips SET status = 'expired'
+            WHERE status = 'active' AND expires_at <= :now
+            RETURNING id
             """)
-    int expireDue(@Param("now") Instant now);
+    List<UUID> expireDue(@Param("now") Instant now);
+
+    /**
+     * Marks running trips that end within the warning time as warned about, and returns them, so each
+     * warning goes out exactly once even with several instances. An extension changes the end time, so
+     * the trip is warned about again before its new end.
+     */
+    @Transactional
+    @Query(nativeQuery = true, value = """
+            UPDATE trips SET ending_soon_alerted_for = expires_at
+            WHERE status = 'active' AND expires_at > :now AND expires_at <= :warnBefore
+              AND ending_soon_alerted_for IS DISTINCT FROM expires_at
+            RETURNING id
+            """)
+    List<UUID> markEndingSoonDue(@Param("now") Instant now, @Param("warnBefore") Instant warnBefore);
 
     /** Location consent ends with the trip: marks it withdrawn for every trip that is over. */
     @Modifying

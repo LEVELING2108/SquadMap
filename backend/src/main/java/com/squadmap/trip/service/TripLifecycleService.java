@@ -3,6 +3,7 @@ package com.squadmap.trip.service;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.security.Caller;
+import com.squadmap.notify.alert.AlertService;
 import com.squadmap.trip.domain.MemberRole;
 import com.squadmap.trip.domain.Trip;
 import com.squadmap.trip.domain.TripMember;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,6 +31,8 @@ public class TripLifecycleService {
 
     /** Extensions offered on the "ending soon" dialog, in minutes. */
     public static final Set<Integer> EXTEND_MINUTES = Set.of(30, 60, 120);
+    /** How long before sharing ends the host is warned. */
+    static final int WARN_MINUTES = 10;
     /** No trip shares location for longer than this in total. */
     static final Duration MAX_LENGTH = Duration.ofHours(12);
 
@@ -36,13 +41,15 @@ public class TripLifecycleService {
     private final TripRepository trips;
     private final TripMemberRepository members;
     private final TripService tripService;
+    private final AlertService alerts;
     private final Clock clock;
 
     public TripLifecycleService(TripRepository trips, TripMemberRepository members, TripService tripService,
-                                Clock clock) {
+                                AlertService alerts, Clock clock) {
         this.trips = trips;
         this.members = members;
         this.tripService = tripService;
+        this.alerts = alerts;
         this.clock = clock;
     }
 
@@ -77,6 +84,9 @@ public class TripLifecycleService {
         trip.end(now);
         trips.flush();
         trips.withdrawConsentForFinishedTrips(now);
+        // Everyone else with an account hears it; the host ended it, so needs no telling.
+        alerts.tripEnded(accountsOn(tripId).stream().filter(id -> !id.equals(trip.getHostId())).toList(),
+                tripId, trip.getName());
         log.info("Trip {} ended by its host", tripId);
         return tripService.get(tripId, Caller.user(userId));
     }
@@ -101,6 +111,8 @@ public class TripLifecycleService {
         Instant now = clock.instant();
         member.leave(now);
         trips.withdrawConsentOf(member.getId(), now);
+        trips.findById(tripId).ifPresent(trip -> alerts.memberLeft(trip.getHostId(), tripId, trip.getName(),
+                member.getDisplayName(), member.getColor()));
     }
 
     /**
@@ -111,12 +123,39 @@ public class TripLifecycleService {
     @Transactional
     public int expireDueTrips() {
         Instant now = clock.instant();
-        int expired = trips.expireDue(now);
+        List<UUID> expired = trips.expireDue(now);
         int withdrawn = trips.withdrawConsentForFinishedTrips(now);
-        if (expired > 0) {
-            log.info("Expired {} trips; ended {} location consents", expired, withdrawn);
+        // Only this run's own trips: the update hands each expired trip to exactly one run.
+        for (Trip trip : trips.findAllById(expired)) {
+            alerts.tripEnded(accountsOn(trip.getId()), trip.getId(), trip.getName());
         }
-        return expired;
+        if (!expired.isEmpty()) {
+            log.info("Expired {} trips; ended {} location consents", expired.size(), withdrawn);
+        }
+        return expired.size();
+    }
+
+    /**
+     * Every 30 seconds, warns hosts whose trip stops sharing within {@value #WARN_MINUTES} minutes, so
+     * there is time to extend it. Once per end time; again after an extension.
+     */
+    @Scheduled(fixedDelay = 30_000, initialDelay = 20_000)
+    @Transactional
+    public int warnEndingSoon() {
+        Instant now = clock.instant();
+        List<UUID> due = trips.markEndingSoonDue(now, now.plus(Duration.ofMinutes(WARN_MINUTES)));
+        for (Trip trip : trips.findAllById(due)) {
+            alerts.endingSoon(trip.getHostId(), trip.getId(), trip.getName());
+        }
+        return due.size();
+    }
+
+    /** The accounts on a trip now, host included. Guests have none, so they get no alerts. */
+    private List<UUID> accountsOn(UUID tripId) {
+        return members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId).stream()
+                .map(TripMember::getUserId)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private Trip hostedLiveTrip(UUID tripId, UUID userId, String action) {

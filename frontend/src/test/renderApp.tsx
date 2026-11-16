@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router';
 import { AppRoutes } from '../AppRoutes';
+import { alertKeys } from '../features/alerts/alertsApi';
 import { AccountPreferences } from '../features/profile/AccountPreferences';
 import { DEFAULT_SETTINGS, settingsKey, type Settings } from '../features/profile/settingsApi';
 import type { Trip } from '../features/trip/types';
@@ -19,14 +20,18 @@ type RenderOptions = {
    * defaults; null leaves them to be fetched, for tests of the settings themselves.
    */
   settings?: Settings | null;
+  /** The unread count on the Alerts tab, as if already loaded; null leaves it to be fetched. */
+  unreadAlerts?: number | null;
 };
 
 export function renderApp(
   entry: string | { pathname: string; hash?: string; state?: unknown },
-  { settings = DEFAULT_SETTINGS }: RenderOptions = {},
+  { settings = DEFAULT_SETTINGS, unreadAlerts = 0 }: RenderOptions = {},
 ) {
   const queryClient = createQueryClient();
   if (settings) queryClient.setQueryData(settingsKey, settings);
+  // The unread badge is on every signed-in screen; tests of alerts set their own.
+  if (unreadAlerts !== null) queryClient.setQueryData(alertKeys.unread, { unread: unreadAlerts });
   return render(
     <QueryClientProvider client={queryClient}>
       <AccountPreferences />
