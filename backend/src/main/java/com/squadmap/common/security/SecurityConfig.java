@@ -65,6 +65,9 @@ public class SecurityConfig {
                             "/api/v1/auth/forgot", "/api/v1/auth/reset").permitAll();
                     // Account routes are for signed-in accounts only; a guest token is refused.
                     auth.requestMatchers("/api/v1/me", "/api/v1/me/**").hasAuthority(TokenKind.USER.authority());
+                    // Account security changes live under /auth so they receive the refresh cookie.
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/password", "/api/v1/auth/logout-others")
+                            .hasAuthority(TokenKind.USER.authority());
                     // Joining works from an invite link, with or without an account.
                     auth.requestMatchers("/api/v1/join/**").permitAll();
                     // A guest's session comes from their cookie, checked by the guest session routes.
@@ -106,7 +109,8 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(properties.allowedOrigins());
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        // Every method an API route uses must be here, or the browser's call is refused with a 403.
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"));
         // The refresh cookie must be sent on cross-origin calls from the web app.
         config.setAllowCredentials(true);

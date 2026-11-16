@@ -111,4 +111,16 @@ public class User {
         this.passwordHash = newHash;
         this.updatedAt = now;
     }
+
+    public void changeProfile(String newName, String newColor, Instant now) {
+        this.name = newName;
+        this.color = newColor;
+        this.updatedAt = now;
+    }
+
+    /** @param newEmail already normalised to lower case */
+    public void changeEmail(String newEmail, Instant now) {
+        this.email = newEmail;
+        this.updatedAt = now;
+    }
 }

@@ -3,15 +3,13 @@ import { createPortal } from 'react-dom';
 import type { Map as MapboxMap, Marker } from 'mapbox-gl';
 import mapLight from '../../assets/illustrations/map.svg';
 import mapDark from '../../assets/illustrations/map-dark.svg';
-import { useMapTheme } from '../../features/profile/settingsApi';
+import { useMapStyle } from '../../features/profile/settingsApi';
 import type { LatLng } from './geo';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '';
 
-const STYLES = {
-  light: 'mapbox://styles/mapbox/streets-v12',
-  dark: 'mapbox://styles/mapbox/dark-v11',
-} as const;
+/** "mapbox/streets-v12" becomes the address Mapbox GL loads. */
+const styleUrl = (style: string) => `mapbox://styles/${style}`;
 
 type MapViewProps = {
   center: LatLng;
@@ -50,9 +48,10 @@ export function DestinationPin({ className = '' }: { className?: string }) {
 }
 
 function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-  );
+  if (typeof window === 'undefined') return false;
+  // The account's "Reduce animations" setting, or the device's own preference.
+  if (document.documentElement.hasAttribute('data-reduce-motion')) return true;
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 }
 
 /**
@@ -75,23 +74,23 @@ export function MapView({
   const markerRef = useRef<Marker | null>(null);
   const [mode, setMode] = useState<'loading' | 'ready' | 'fallback'>(TOKEN ? 'loading' : 'fallback');
   const [pinElement, setPinElement] = useState<HTMLElement | null>(null);
-  const theme = useMapTheme();
+  const style = useMapStyle();
   const onCenterChangeRef = useRef(onCenterChange);
   useEffect(() => {
     onCenterChangeRef.current = onCenterChange;
   }, [onCenterChange]);
   // The first view is set once; later changes move the map (see below).
   const initial = useRef({ center, zoom, pin, interactive });
-  const themeRef = useRef(theme);
-  const appliedTheme = useRef<'light' | 'dark' | null>(null);
+  const styleRef = useRef(style);
+  const appliedStyle = useRef<string | null>(null);
   useEffect(() => {
-    themeRef.current = theme;
-  }, [theme]);
-  // The map is created once its style is known (see useMapTheme), not drawn twice.
-  const themeKnown = theme !== null;
+    styleRef.current = style;
+  }, [style]);
+  // The map is created once its style is known (see useMapStyle), not drawn twice.
+  const styleKnown = style !== null;
 
   useEffect(() => {
-    if (!TOKEN || !themeKnown || !containerRef.current) return;
+    if (!TOKEN || !styleKnown || !containerRef.current) return;
     let cancelled = false;
     const container = containerRef.current;
 
@@ -99,12 +98,12 @@ export function MapView({
       .then(([{ default: mapboxgl }]) => {
         if (cancelled) return;
         const start = initial.current;
-        const style = themeRef.current ?? 'light';
-        appliedTheme.current = style;
+        const firstStyle = styleRef.current ?? 'mapbox/streets-v12';
+        appliedStyle.current = firstStyle;
         const map = new mapboxgl.Map({
           accessToken: TOKEN,
           container,
-          style: STYLES[style],
+          style: styleUrl(firstStyle),
           center: [start.center.lng, start.center.lat],
           zoom: start.zoom,
           interactive: start.interactive,
@@ -141,13 +140,13 @@ export function MapView({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [themeKnown]);
+  }, [styleKnown]);
 
   useEffect(() => {
-    if (!theme || !mapRef.current || appliedTheme.current === theme) return;
-    appliedTheme.current = theme;
-    mapRef.current.setStyle(STYLES[theme]);
-  }, [theme]);
+    if (!style || !mapRef.current || appliedStyle.current === style) return;
+    appliedStyle.current = style;
+    mapRef.current.setStyle(styleUrl(style));
+  }, [style]);
 
   const onReadyRef = useRef(onReady);
   useEffect(() => {

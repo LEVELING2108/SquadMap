@@ -1,11 +1,20 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ChevronRight, Clock, Settings as SettingsIcon, type LucideIcon } from 'lucide-react';
+import {
+  ChevronRight,
+  Clock,
+  KeyRound,
+  Mail,
+  Pencil,
+  Settings as SettingsIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import heroLight from '../../assets/illustrations/hero.svg';
 import heroDark from '../../assets/illustrations/hero-dark.svg';
 import { BackButton } from '../../components/ui/BackButton';
 import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { signOut, useSession } from '../auth/session';
+import { LogOutOthers } from './LogOutOthers';
 import { useStats } from './settingsApi';
 
 /** "Nov 2026": the month an account was made. */
@@ -105,6 +114,16 @@ export function ProfilePage() {
           <ul className="glass-strong m-0 list-none divide-y divide-line overflow-hidden rounded-card p-0">
             <Row to="/me/history" label="Trip history" Icon={Clock} tile="bg-tint text-blue-d" />
             <Row to="/me/settings" label="Settings" Icon={SettingsIcon} tile="bg-track text-ink" />
+          </ul>
+        </nav>
+
+        <nav aria-label="Account">
+          <h2 className="mb-2 px-2 text-xs leading-4 font-bold tracking-[1.5px] text-muted">ACCOUNT</h2>
+          <ul className="glass-strong m-0 list-none divide-y divide-line overflow-hidden rounded-card p-0">
+            <Row to="/me/edit" label="Edit name and colour" Icon={Pencil} tile="bg-sea-bg text-sea-d" />
+            <Row to="/me/password" label="Change password" Icon={KeyRound} tile="bg-amber-bg text-amber" />
+            <Row to="/me/email" label="Change email" Icon={Mail} tile="bg-tint text-blue-d" />
+            <LogOutOthers />
           </ul>
         </nav>
 

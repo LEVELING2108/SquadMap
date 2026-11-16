@@ -16,6 +16,7 @@ import java.util.UUID;
 public record TripHistoryResponse(List<Item> items, UUID nextBefore) {
 
     /**
+     * @param expiresAt   when sharing is set to stop (or stopped, for a trip that ran out)
      * @param endedAt     when sharing stopped: ended by the host, or ran out. Null while the trip runs
      * @param role        the caller's role on the trip
      * @param friendCount everyone else who was on the trip at any point
@@ -26,6 +27,7 @@ public record TripHistoryResponse(List<Item> items, UUID nextBefore) {
             String name,
             Destination destination,
             Instant startsAt,
+            Instant expiresAt,
             Instant endedAt,
             TripStatus status,
             MemberRole role,

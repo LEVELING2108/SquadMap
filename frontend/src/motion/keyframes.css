@@ -146,3 +146,8 @@ html[data-page-hidden] .motion-shine::after {
     display: none;
   }
 }
+
+html[data-reduce-motion] .motion-shine::after,
+html[data-reduce-motion] .motion-pulse {
+  display: none;
+}

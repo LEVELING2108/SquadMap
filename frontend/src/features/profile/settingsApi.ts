@@ -4,6 +4,8 @@ import { useResolvedTheme } from '../../lib/useResolvedTheme';
 import { useSession } from '../auth/session';
 
 export type DistanceUnit = 'km' | 'mi';
+export type MapStyle = 'streets' | 'outdoors' | 'satellite';
+export type TimeFormat = '12h' | '24h';
 
 /** The account's preferences (GET /me/settings). */
 export type Settings = {
@@ -11,10 +13,24 @@ export type Settings = {
   darkMap: boolean;
   distanceUnit: DistanceUnit;
   defaultShareHours: 1 | 2 | 4 | 8;
+  mapStyle: MapStyle;
+  /** Whether "Friends can chat" starts on for a new trip. */
+  chatDefault: boolean;
+  /** Turns off the app's moving effects, even where the device allows them. */
+  reduceMotion: boolean;
+  timeFormat: TimeFormat;
 };
 
 /** What applies before the account's settings arrive, and for anyone without an account. */
-export const DEFAULT_SETTINGS: Settings = { darkMap: false, distanceUnit: 'km', defaultShareHours: 4 };
+export const DEFAULT_SETTINGS: Settings = {
+  darkMap: false,
+  distanceUnit: 'km',
+  defaultShareHours: 4,
+  mapStyle: 'streets',
+  chatDefault: true,
+  reduceMotion: false,
+  timeFormat: '12h',
+};
 
 export const settingsKey = ['me', 'settings'] as const;
 export const statsKey = ['me', 'stats'] as const;
@@ -72,15 +88,17 @@ export function useUpdateSettings() {
 }
 
 /**
- * The look maps should use: always dark with the Dark map setting, otherwise the app's theme. Null while
- * a signed-in account's settings are still loading, so a map isn't drawn in one style and then again in
- * the other.
+ * The Mapbox style every map uses, as "owner/style". Streets follows the app's theme, or is always dark
+ * with the Dark map setting; Outdoors and Satellite look the same day and night. Null while a signed-in
+ * account's settings are still loading, so a map isn't drawn in one style and then again in another.
  */
-export function useMapTheme(): 'light' | 'dark' | null {
+export function useMapStyle(): string | null {
   const theme = useResolvedTheme();
   const { settings, isLoading } = useSettings();
   if (isLoading) return null;
-  return settings.darkMap ? 'dark' : theme;
+  if (settings.mapStyle === 'outdoors') return 'mapbox/outdoors-v12';
+  if (settings.mapStyle === 'satellite') return 'mapbox/satellite-streets-v12';
+  return settings.darkMap || theme === 'dark' ? 'mapbox/dark-v11' : 'mapbox/streets-v12';
 }
 
 export type Stats = { trips: number; friends: number };

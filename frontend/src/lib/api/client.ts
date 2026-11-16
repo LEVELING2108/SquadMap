@@ -2,7 +2,7 @@ import { getAccessToken, refreshSession } from '../../features/auth/session';
 import { ApiError } from './ApiError';
 import { API_BASE } from './config';
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 type RequestOptions = {
   method?: Method;

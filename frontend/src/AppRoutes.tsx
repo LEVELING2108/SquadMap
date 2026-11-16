@@ -8,6 +8,9 @@ import { SignupPage } from './features/auth/SignupPage';
 import { NotFoundPage } from './features/foundation/NotFoundPage';
 import { TripHistoryPage } from './features/history/TripHistoryPage';
 import { HomePage } from './features/home/HomePage';
+import { ChangeEmailPage } from './features/profile/ChangeEmailPage';
+import { ChangePasswordPage } from './features/profile/ChangePasswordPage';
+import { EditProfilePage } from './features/profile/EditProfilePage';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { SettingsPage } from './features/profile/SettingsPage';
 import { ConsentPage } from './features/invite/ConsentPage';
@@ -52,6 +55,30 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <ProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/edit"
+        element={
+          <RequireAuth>
+            <EditProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/password"
+        element={
+          <RequireAuth>
+            <ChangePasswordPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/email"
+        element={
+          <RequireAuth>
+            <ChangeEmailPage />
           </RequireAuth>
         }
       />

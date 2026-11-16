@@ -5,6 +5,8 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.squadmap.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -139,6 +141,20 @@ class AccessTokenIT extends IntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getAccessControlAllowOrigin()).isEqualTo(ALLOWED_ORIGIN);
         assertThat(response.getHeaders().getAccessControlAllowCredentials()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "POST", "PUT", "PATCH", "DELETE"})
+    void theWebAppMayUseEveryMethodTheApiHas(String method) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setOrigin(ALLOWED_ORIGIN);
+        headers.setAccessControlRequestMethod(HttpMethod.valueOf(method));
+
+        ResponseEntity<String> response =
+                rest.exchange("/api/v1/me/email", HttpMethod.OPTIONS, new HttpEntity<>(headers), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getAccessControlAllowMethods()).contains(HttpMethod.valueOf(method));
     }
 
     @Test

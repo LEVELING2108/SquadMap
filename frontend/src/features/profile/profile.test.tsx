@@ -76,9 +76,9 @@ describe('Profile', () => {
 
 describe('Settings', () => {
   it('shows the saved settings', async () => {
-    saved = { darkMap: true, distanceUnit: 'mi', defaultShareHours: 2 };
+    saved = { ...DEFAULT_SETTINGS, darkMap: true, distanceUnit: 'mi', defaultShareHours: 2 };
     serve();
-    renderApp('/me/settings');
+    renderApp('/me/settings', { settings: null });
 
     await waitFor(() => expect(screen.getByRole('switch', { name: 'Dark map' })).toBeChecked());
     expect(screen.getByRole('radio', { name: 'Miles' })).toBeChecked();
@@ -88,14 +88,16 @@ describe('Settings', () => {
   it('saves each change straight away', async () => {
     const user = userEvent.setup();
     serve();
-    renderApp('/me/settings');
+    renderApp('/me/settings', { settings: null });
     await screen.findByRole('switch', { name: 'Dark map' });
 
     await user.click(screen.getByRole('switch', { name: 'Dark map' }));
     await user.click(screen.getByRole('radio', { name: 'Miles' }));
     await user.click(screen.getByRole('radio', { name: '8 hours' }));
 
-    await waitFor(() => expect(saved).toEqual({ darkMap: true, distanceUnit: 'mi', defaultShareHours: 8 }));
+    await waitFor(() =>
+      expect(saved).toEqual({ ...DEFAULT_SETTINGS, darkMap: true, distanceUnit: 'mi', defaultShareHours: 8 }),
+    );
     const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
     expect(patches.map(([, init]) => JSON.parse(String(init!.body)))).toEqual([
       { darkMap: true },
@@ -107,7 +109,7 @@ describe('Settings', () => {
   it('puts a setting back and says so when it could not be saved', async () => {
     const user = userEvent.setup();
     serve({ failPatch: true });
-    renderApp('/me/settings');
+    renderApp('/me/settings', { settings: null });
     const darkMap = await screen.findByRole('switch', { name: 'Dark map' });
 
     await user.click(darkMap);
@@ -118,7 +120,7 @@ describe('Settings', () => {
 
   it('includes the app theme for this device', () => {
     serve();
-    renderApp('/me/settings');
+    renderApp('/me/settings', { settings: null });
 
     expect(screen.getByRole('group', { name: 'Theme' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'System' })).toBeInTheDocument();

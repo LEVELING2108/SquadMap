@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import mapLight from '../../assets/illustrations/map.svg';
 import mapDark from '../../assets/illustrations/map-dark.svg';
-import { useMapTheme } from '../../features/profile/settingsApi';
+import { useMapStyle } from '../../features/profile/settingsApi';
 import { staticMapUrl, type LatLng } from './geo';
 import { DestinationPin } from './MapView';
 
@@ -11,11 +11,11 @@ const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '';
  * (the place is named next to it), and falls back to the illustrated map without a token or offline.
  */
 export function MapThumb({ center, className = '' }: { center: LatLng; className?: string }) {
-  const theme = useMapTheme();
+  const style = useMapStyle();
   const [failed, setFailed] = useState(false);
   const real = TOKEN !== '' && !failed;
   // Until the account's map style is known, keep the space without asking Mapbox for a picture.
-  if (real && theme === null) {
+  if (real && style === null) {
     return (
       <div aria-hidden="true" className={`relative aspect-[3/1] overflow-hidden bg-sand ${className}`} />
     );
@@ -26,7 +26,7 @@ export function MapThumb({ center, className = '' }: { center: LatLng; className
     <div aria-hidden="true" className={`relative aspect-[3/1] overflow-hidden bg-sand ${className}`}>
       {real ? (
         <img
-          src={staticMapUrl(center, theme ?? 'light', TOKEN)}
+          src={staticMapUrl(center, style ?? 'mapbox/streets-v12', TOKEN)}
           alt=""
           loading="lazy"
           decoding="async"

@@ -91,6 +91,26 @@ public class RefreshTokenService {
 
     /** Signs an account out on every device, for example after its password changes. */
     @Transactional
+    /**
+     * The session a refresh cookie belongs to, if it is a live one of this account. Used to keep the
+     * current device signed in while ending the others.
+     */
+    public Optional<UUID> familyOf(String rawToken, UUID userId) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return Optional.empty();
+        }
+        Instant now = clock.instant();
+        return tokens.findByTokenHash(SecureTokens.hash(rawToken))
+                .filter(token -> token.getUserId().equals(userId))
+                .filter(token -> !token.isSpent() && !token.isExpired(now))
+                .map(RefreshToken::getFamilyId);
+    }
+
+    /** Ends every session of the account except one. @return how many tokens were revoked */
+    public int endSessionsExcept(UUID userId, UUID keepFamilyId) {
+        return tokens.revokeAllForUserExcept(userId, keepFamilyId, clock.instant());
+    }
+
     public int endAllSessions(UUID userId) {
         return tokens.revokeAllForUser(userId, clock.instant());
     }

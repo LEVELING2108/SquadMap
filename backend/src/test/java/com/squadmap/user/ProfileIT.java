@@ -78,6 +78,27 @@ class ProfileIT extends IntegrationTest {
         assertThat(settings.get("darkMap").asBoolean()).isFalse();
         assertThat(settings.get("distanceUnit").asText()).isEqualTo("km");
         assertThat(settings.get("defaultShareHours").asInt()).isEqualTo(4);
+        assertThat(settings.get("mapStyle").asText()).isEqualTo("streets");
+        assertThat(settings.get("chatDefault").asBoolean()).isTrue();
+        assertThat(settings.get("reduceMotion").asBoolean()).isFalse();
+        assertThat(settings.get("timeFormat").asText()).isEqualTo("12h");
+    }
+
+    @Test
+    void mapStyleChatMotionAndTimeFormatCanBeChanged() {
+        ResponseEntity<JsonNode> response = send(HttpMethod.PATCH, SETTINGS, priya, Map.of("mapStyle", "outdoors",
+                "chatDefault", false, "reduceMotion", true, "timeFormat", "24h"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode settings = get(SETTINGS, priya).getBody();
+        assertThat(settings.get("mapStyle").asText()).isEqualTo("outdoors");
+        assertThat(settings.get("chatDefault").asBoolean()).isFalse();
+        assertThat(settings.get("reduceMotion").asBoolean()).isTrue();
+        assertThat(settings.get("timeFormat").asText()).isEqualTo("24h");
+        assertThat(send(HttpMethod.PATCH, SETTINGS, priya, Map.of("mapStyle", "watercolor")).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(send(HttpMethod.PATCH, SETTINGS, priya, Map.of("timeFormat", "36h")).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test

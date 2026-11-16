@@ -31,6 +31,7 @@ export function NewTripPage() {
   const name = draft.name ?? suggestedName(destination);
   const { settings } = useSettings();
   const shareHours = draft.shareHours ?? settings.defaultShareHours;
+  const chatEnabled = draft.chatEnabled ?? settings.chatDefault;
   const [nameMissing, setNameMissing] = useState(false);
 
   const create = useMutation({
@@ -41,7 +42,7 @@ export function NewTripPage() {
         body: {
           name: name.trim(),
           shareHours,
-          chatEnabled: draft.chatEnabled,
+          chatEnabled,
           destination: destination && {
             name: destination.name,
             lat: destination.lat,
@@ -150,7 +151,7 @@ export function NewTripPage() {
           <Switch
             label="Friends can chat"
             description="Quick messages on the trip"
-            checked={draft.chatEnabled}
+            checked={chatEnabled}
             onChange={(chatEnabled) => useTripDraft.setState({ chatEnabled })}
           />
 

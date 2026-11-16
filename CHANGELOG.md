@@ -55,6 +55,18 @@ All notable changes to SquadMap are recorded here. The format follows
   dark), distance unit (km or mi, used for place distances) and the default sharing time a new trip
   starts on; the app's light or dark theme is chosen per device. Changes made in quick succession
   are all kept.
+- Account options on the profile: edit your name and colour (used on trips from then on), change
+  your password with the current one (other devices are logged out, this one stays in, and any
+  reset link already sent stops working), change your email with your password (the old address
+  gets a notice), and log out everywhere else. Five wrong current passwords in 15 minutes pause
+  further tries. More settings: map style (Streets, Outdoors or Satellite), chat on by default for
+  new trips, reduce animations (remembered on the device so a reload starts still), and 12 or
+  24-hour time, shown as "Live until …" on running trips.
+
+### Fixed
+
+- The web app could not send PUT requests: the browser call rules allowed GET, POST, PATCH and
+  DELETE only, so the first PUT route answered 403. A test now checks every method the API uses.
 
 ### Security
 

@@ -289,9 +289,9 @@ describe('New trip screen', () => {
     // A new draft starts fresh.
     expect(useTripDraft.getState()).toMatchObject({
       destination: undefined,
-      // Back to "use my default sharing time".
+      // Back to "use my defaults".
       shareHours: null,
-      chatEnabled: true,
+      chatEnabled: null,
     });
     expect(useTripDraft.getState().idempotencyKey).not.toBe(key);
   });
@@ -312,11 +312,11 @@ describe('New trip screen', () => {
     expect(JSON.parse(String(callsTo('POST', '/trips')[0]![1]!.body))).toMatchObject({ destination: null });
   });
 
-  it('starts on the account’s default sharing time', async () => {
-    serve({ 'GET /me/settings': () => jsonResponse(200, { ...DEFAULT_SETTINGS, defaultShareHours: 8 }) });
-    renderApp('/trip/new');
+  it('starts on the account’s default sharing time and chat setting', () => {
+    renderApp('/trip/new', { settings: { ...DEFAULT_SETTINGS, defaultShareHours: 8, chatDefault: false } });
 
-    await waitFor(() => expect(screen.getByRole('radio', { name: '8 hours' })).toBeChecked());
+    expect(screen.getByRole('radio', { name: '8 hours' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Friends can chat' })).not.toBeChecked();
   });
 
   it('moves between hours with the arrow keys', async () => {

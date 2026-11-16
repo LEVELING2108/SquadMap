@@ -8,9 +8,22 @@ import { ThemeSwitch } from '../../components/ui/ThemeSwitch';
 import { describeFailure } from '../auth/formErrors';
 import { signOut } from '../auth/session';
 import { SHARE_HOURS } from '../newTrip/tripDraft';
-import { useSettings, useUpdateSettings, type DistanceUnit } from './settingsApi';
+import {
+  useSettings,
+  useUpdateSettings,
+  type DistanceUnit,
+  type MapStyle,
+  type TimeFormat,
+} from './settingsApi';
 
 const UNITS: readonly DistanceUnit[] = ['km', 'mi'];
+const MAP_STYLES: readonly MapStyle[] = ['streets', 'outdoors', 'satellite'];
+const MAP_STYLE_NAMES: Record<MapStyle, string> = {
+  streets: 'Streets',
+  outdoors: 'Outdoors',
+  satellite: 'Satellite',
+};
+const TIME_FORMATS: readonly TimeFormat[] = ['12h', '24h'];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = `settings-${title.toLowerCase()}`;
@@ -54,13 +67,24 @@ export function SettingsPage() {
 
         <Section title="Map">
           <Item>
-            <Switch
-              label="Dark map"
-              description="Easier on the eyes at night"
-              checked={settings.darkMap}
-              onChange={(darkMap) => update.mutate({ darkMap })}
+            <Segmented
+              label="Map style"
+              options={MAP_STYLES}
+              value={settings.mapStyle}
+              onChange={(mapStyle) => update.mutate({ mapStyle })}
+              format={(style) => MAP_STYLE_NAMES[style]}
             />
           </Item>
+          {settings.mapStyle === 'streets' && (
+            <Item>
+              <Switch
+                label="Dark map"
+                description="Easier on the eyes at night"
+                checked={settings.darkMap}
+                onChange={(darkMap) => update.mutate({ darkMap })}
+              />
+            </Item>
+          )}
           <Item>
             <Segmented
               label="Distance unit"
@@ -82,6 +106,35 @@ export function SettingsPage() {
               onChange={(defaultShareHours) => update.mutate({ defaultShareHours })}
               format={(hours) => `${hours} h`}
               describe={(hours) => (hours === 1 ? '1 hour' : `${hours} hours`)}
+            />
+          </Item>
+          <Item>
+            <Switch
+              label="Chat on by default"
+              description="Whether friends can chat on a new trip"
+              checked={settings.chatDefault}
+              onChange={(chatDefault) => update.mutate({ chatDefault })}
+            />
+          </Item>
+        </Section>
+
+        <Section title="Display">
+          <Item>
+            <Switch
+              label="Reduce animations"
+              description="Turn off moving effects in the app"
+              checked={settings.reduceMotion}
+              onChange={(reduceMotion) => update.mutate({ reduceMotion })}
+            />
+          </Item>
+          <Item>
+            <Segmented
+              label="Time format"
+              options={TIME_FORMATS}
+              value={settings.timeFormat}
+              onChange={(timeFormat) => update.mutate({ timeFormat })}
+              format={(format) => (format === '12h' ? '9:30 PM' : '21:30')}
+              describe={(format) => (format === '12h' ? '12-hour, like 9:30 PM' : '24-hour, like 21:30')}
             />
           </Item>
         </Section>
