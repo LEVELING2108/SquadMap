@@ -25,6 +25,10 @@ export function usePlaceSearch(query: string, near: LatLng | null) {
   });
 }
 
-export function useRecentPlaces() {
-  return useQuery({ queryKey: placeKeys.recent, queryFn: () => api<PlaceResult[]>('/places/recent') });
+export function useRecentPlaces(enabled = true) {
+  return useQuery({
+    queryKey: placeKeys.recent,
+    queryFn: () => api<PlaceResult[]>('/places/recent'),
+    enabled,
+  });
 }
