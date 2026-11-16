@@ -171,11 +171,22 @@ class SessionRefreshIT extends IntegrationTest {
 
     // --- reuse detection ---
 
-    @Test
-    void reusingAReplacedCookieEndsTheWholeSession() {
-        String second = refreshCookie(withCookie(REFRESH, firstCookie)).getValue();
+    /** Moves every replaced token's replacement time back a minute: past the retry grace period. */
+    private void waitPastTheGracePeriod() {
+        jdbc.update("UPDATE refresh_tokens SET used_at = used_at - interval '1 minute' WHERE used_at IS NOT NULL");
+    }
 
-        // Someone presents the old cookie again: it was copied.
+    private int usableTokens() {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM refresh_tokens WHERE used_at IS NULL AND revoked_at IS NULL", Integer.class);
+    }
+
+    @Test
+    void reusingAReplacedCookieLaterEndsTheWholeSession() {
+        String second = refreshCookie(withCookie(REFRESH, firstCookie)).getValue();
+        waitPastTheGracePeriod();
+
+        // Someone presents the old cookie well after it was replaced: it was copied.
         assertSessionEnded(withCookie(REFRESH, firstCookie));
 
         // The legitimate holder's newer cookie no longer works either.
@@ -185,10 +196,48 @@ class SessionRefreshIT extends IntegrationTest {
     }
 
     @Test
+    void aReplyLostToAReloadDoesNotEndTheSession() {
+        // The refresh happened on the server, but the page reloaded before the new cookie arrived.
+        String lost = refreshCookie(withCookie(REFRESH, firstCookie)).getValue();
+
+        // So the browser sends the old cookie again, moments later.
+        ResponseEntity<JsonNode> retry = withCookie(REFRESH, firstCookie);
+
+        assertThat(retry.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String current = refreshCookie(retry).getValue();
+        assertThat(current).isNotEqualTo(lost).isNotEqualTo(firstCookie);
+        // Only the cookie the browser now has can be used: the lost one is retired.
+        assertThat(usableTokens()).isEqualTo(1);
+        assertThat(withCookie(REFRESH, current).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void theRetiredReplacementStillCountsAsReuseOnceTheGracePeriodIsOver() {
+        String lost = refreshCookie(withCookie(REFRESH, firstCookie)).getValue();
+        String current = refreshCookie(withCookie(REFRESH, firstCookie)).getValue();
+        waitPastTheGracePeriod();
+
+        // The cookie whose reply was lost turns up much later: treated as copied.
+        assertSessionEnded(withCookie(REFRESH, lost));
+        assertSessionEnded(withCookie(REFRESH, current));
+    }
+
+    @Test
+    void anEndedSessionCannotBeRevivedWithARecentlyReplacedCookie() {
+        String second = refreshCookie(withCookie(REFRESH, firstCookie)).getValue();
+        withCookie(LOGOUT, second);
+
+        // Within the grace period, but the session was ended on purpose: it stays ended.
+        assertSessionEnded(withCookie(REFRESH, firstCookie));
+        assertThat(usableTokens()).isZero();
+    }
+
+    @Test
     void reuseInOneSessionDoesNotEndTheAccountsOtherSessions() {
         String otherDevice = refreshCookie(post(LOGIN, Map.of("email", "priya@example.com", "password", PASSWORD)))
                 .getValue();
         withCookie(REFRESH, firstCookie);
+        waitPastTheGracePeriod();
 
         assertSessionEnded(withCookie(REFRESH, firstCookie));
 
@@ -196,7 +245,7 @@ class SessionRefreshIT extends IntegrationTest {
     }
 
     @Test
-    void twoSimultaneousRefreshesWithTheSameCookieNeverBothSucceed() throws Exception {
+    void twoSimultaneousRefreshesWithTheSameCookieLeaveOneUsableToken() throws Exception {
         java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
         java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
         java.util.concurrent.Callable<HttpStatus> refresh = () -> {
@@ -210,8 +259,9 @@ class SessionRefreshIT extends IntegrationTest {
 
             List<HttpStatus> results = List.of(a.get(), b.get());
 
-            assertThat(results).containsOnly(HttpStatus.OK, HttpStatus.UNAUTHORIZED);
-            assertThat(results).filteredOn(HttpStatus.OK::equals).hasSizeLessThanOrEqualTo(1);
+            // They take turns on the token's row; the second is a retry within the grace period.
+            assertThat(results).containsOnly(HttpStatus.OK);
+            assertThat(usableTokens()).isEqualTo(1);
         } finally {
             pool.shutdownNow();
         }

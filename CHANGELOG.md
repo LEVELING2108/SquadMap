@@ -65,6 +65,12 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ### Fixed
 
+- A reload at the wrong moment could log you out. If the page reloaded while the app was renewing
+  its sign-in, the server had already replaced the cookie but the browser never got the new one,
+  so its next renewal looked like a stolen cookie and the session was ended. A replaced cookie
+  presented again within 20 seconds is now treated as a lost reply: the session continues with a
+  single usable cookie. Later reuse still ends the session, and a session that was ended (log out,
+  password change, log out everywhere else) can't be revived this way.
 - The web app could not send PUT requests: the browser call rules allowed GET, POST, PATCH and
   DELETE only, so the first PUT route answered 403. A test now checks every method the API uses.
 
