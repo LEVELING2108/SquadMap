@@ -192,6 +192,9 @@ async function asHostWithATrip(page: Page) {
       body: JSON.stringify(['#0F6E56', '#534AB7', '#993C1D', '#854F0B', '#993556']),
     }),
   );
+  await page.route('**/api/v1/me/alerts/unread-count', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unread: 2 }) }),
+  );
   await page.route('**/api/v1/me/stats', (route) =>
     route.fulfill({
       status: 200,
@@ -810,6 +813,121 @@ test.describe('account screens', () => {
       .first()
       .evaluate((element) => getComputedStyle(element).animationDuration);
     expect(parseFloat(duration)).toBeLessThan(0.001);
+  });
+});
+
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+const sampleAlerts = [
+  {
+    id: 'a1',
+    kind: 'member_joined',
+    tripId: 'trip-1',
+    tripName: 'Saturday at Phoenix',
+    actorName: 'Rohan',
+    actorColor: '#534AB7',
+    createdAt: minutesAgo(2),
+    read: false,
+    tripLive: true,
+  },
+  {
+    id: 'a2',
+    kind: 'ending_soon',
+    tripId: 'trip-1',
+    tripName: 'Saturday at Phoenix',
+    actorName: null,
+    actorColor: null,
+    createdAt: minutesAgo(8),
+    read: false,
+    tripLive: true,
+  },
+  {
+    id: 'a3',
+    kind: 'member_left',
+    tripId: 'trip-1',
+    tripName: 'Saturday at Phoenix',
+    actorName: 'Aman',
+    actorColor: '#993C1D',
+    createdAt: '2026-11-10T10:00:00Z',
+    read: true,
+    tripLive: true,
+  },
+  {
+    id: 'a4',
+    kind: 'trip_ended',
+    tripId: 'trip-0',
+    tripName: 'Lonavala trip',
+    actorName: null,
+    actorColor: null,
+    createdAt: '2026-10-12T10:00:00Z',
+    read: true,
+    tripLive: false,
+  },
+];
+
+test.describe('alerts', () => {
+  async function withAlerts(page: Page) {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/me/alerts?*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: sampleAlerts, nextBefore: null, unread: 2 }),
+      }),
+    );
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await withAlerts(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/me/alerts');
+      await expect(page.getByRole('region', { name: 'Today' }).getByRole('button')).toHaveCount(2);
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+    });
+  }
+
+  test('every control is at least 44 px tall, with no sideways scroll at 320 px', async ({ page }) => {
+    await withAlerts(page);
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.goto('/me/alerts');
+    await expect(page.getByRole('region', { name: 'Today' }).getByRole('button')).toHaveCount(2);
+
+    for (const control of await page.locator('a:visible, button:visible').all()) {
+      const box = await control.boundingBox();
+      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+      expect(box?.height, label).toBeGreaterThanOrEqual(44);
+    }
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(0);
+  });
+
+  test('the Alerts tab shows the unread count on every main screen', async ({ page }) => {
+    await withAlerts(page);
+    for (const path of ['/home', '/me']) {
+      await page.goto(path);
+      await expect(
+        page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Alerts, 2 unread' }),
+      ).toBeVisible();
+    }
+  });
+
+  test('an alert opens with the keyboard', async ({ page }) => {
+    await withAlerts(page);
+    await page.route('**/api/v1/me/alerts/a1/read', (route) => route.fulfill({ status: 204 }));
+    await page.goto('/me/alerts');
+
+    await page.getByRole('button', { name: /Rohan joined your trip/ }).focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/trip\/trip-1\/invite$/);
   });
 });
 

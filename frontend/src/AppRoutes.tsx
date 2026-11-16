@@ -6,6 +6,7 @@ import { RequireAuth } from './features/auth/RequireAuth';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { NotFoundPage } from './features/foundation/NotFoundPage';
+import { AlertsPage } from './features/alerts/AlertsPage';
 import { TripHistoryPage } from './features/history/TripHistoryPage';
 import { HomePage } from './features/home/HomePage';
 import { ChangeEmailPage } from './features/profile/ChangeEmailPage';
@@ -87,6 +88,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <SettingsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/alerts"
+        element={
+          <RequireAuth>
+            <AlertsPage />
           </RequireAuth>
         }
       />

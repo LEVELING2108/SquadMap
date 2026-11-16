@@ -62,6 +62,12 @@ All notable changes to SquadMap are recorded here. The format follows
   further tries. More settings: map style (Streets, Outdoors or Satellite), chat on by default for
   new trips, reduce animations (remembered on the device so a reload starts still), and 12 or
   24-hour time, shown as "Live until …" on running trips.
+- Alerts tab: an in-app inbox with Today and Earlier groups, unread dots and Mark all read. A host
+  hears when someone joins or leaves their trip and when sharing ends within 10 minutes (once per
+  end time, again after an extension); everyone on a trip with an account hears when it ends,
+  except the host who ended it. Tapping an alert opens the running trip, or trip history once it's
+  over. The Alerts tab and the profile show the unread count. Guests get no alerts. Alerts are
+  deleted after 30 days.
 
 ### Fixed
 
