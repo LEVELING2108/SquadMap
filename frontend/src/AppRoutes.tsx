@@ -10,6 +10,9 @@ import { HomePage } from './features/home/HomePage';
 import { ConsentPage } from './features/invite/ConsentPage';
 import { ExpiredPage } from './features/invite/ExpiredPage';
 import { JoinPage } from './features/invite/JoinPage';
+import { ChooseOnMapPage } from './features/newTrip/ChooseOnMapPage';
+import { DestinationPage } from './features/newTrip/DestinationPage';
+import { NewTripPage } from './features/newTrip/NewTripPage';
 import { InvitePage } from './features/trip/InvitePage';
 import { TripPlaceholderPage } from './features/trip/TripPlaceholderPage';
 import { WelcomePage } from './features/welcome/WelcomePage';
@@ -41,6 +44,30 @@ export function AppRoutes() {
       <Route path="/join/expired" element={<ExpiredPage />} />
       <Route path="/join/:code" element={<JoinPage />} />
       <Route path="/join/:code/consent" element={<ConsentPage />} />
+      <Route
+        path="/trip/new"
+        element={
+          <RequireAuth>
+            <NewTripPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/new/destination"
+        element={
+          <RequireAuth>
+            <DestinationPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/new/map"
+        element={
+          <RequireAuth>
+            <ChooseOnMapPage />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/trip/:tripId/invite"
         element={

@@ -313,6 +313,169 @@ test.describe('join screens', () => {
   }
 });
 
+/** A signed-in host planning a trip. Mapbox is blocked, so maps show their picture and tests stay offline. */
+async function asHostPlanning(page: Page) {
+  await asHostWithATrip(page);
+  await page.route(/https:\/\/([a-z]+\.)?mapbox\.com\//, (route) => route.abort());
+  await page.route('**/api/v1/places/recent', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: null,
+          name: 'Lonavala Viewpoint',
+          address: null,
+          lat: 18.75,
+          lng: 73.4,
+          kind: 'recent',
+          distanceMeters: null,
+        },
+      ]),
+    }),
+  );
+  await page.route('**/api/v1/places/search?*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 'p1',
+          name: 'Phoenix Marketcity',
+          address: 'Viman Nagar, Pune, India',
+          lat: 18.5622,
+          lng: 73.9167,
+          kind: 'poi',
+          distanceMeters: 6200,
+        },
+        {
+          id: 'p2',
+          name: 'Pune',
+          address: 'Maharashtra, India',
+          lat: 18.52,
+          lng: 73.85,
+          kind: 'place',
+          distanceMeters: 9100,
+        },
+        {
+          id: 'p3',
+          name: 'Pune Airport',
+          address: 'Lohegaon, Pune, India',
+          lat: 18.58,
+          lng: 73.92,
+          kind: 'poi',
+          distanceMeters: 11000,
+        },
+      ]),
+    }),
+  );
+}
+
+test.describe('new trip screens', () => {
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+  const violations = async (page: Page) =>
+    (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`,
+    );
+
+  async function tallEnough(page: Page) {
+    for (const control of await page.locator('a:visible, button:visible, input:visible').all()) {
+      const box = await control.boundingBox();
+      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+      expect(box?.height, label).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`destination search has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await asHostPlanning(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/new/destination');
+      await expect(page.getByRole('region', { name: 'RECENT' })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+
+      await page.getByLabel('Search for a place').fill('pune');
+      await expect(page.getByRole('list', { name: 'Places found' }).getByRole('button')).toHaveCount(3);
+      expect(await violations(page)).toEqual([]);
+      await tallEnough(page);
+    });
+
+    test(`new trip has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await asHostPlanning(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/new/destination');
+      await page.getByLabel('Search for a place').fill('phoenix');
+      await page.getByRole('button', { name: /Phoenix Marketcity/ }).click();
+      await expect(page.getByRole('heading', { name: 'Plan your trip' })).toBeVisible();
+      await expect(page.getByRole('img', { name: 'Map showing Phoenix Marketcity' })).toBeVisible();
+
+      expect(await violations(page)).toEqual([]);
+      await tallEnough(page);
+    });
+
+    test(`choose on map has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await asHostPlanning(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/new/map');
+      // Mapbox is blocked here, so the screen explains and offers search instead.
+      await expect(page.getByRole('alert')).toContainText('The map couldn’t load here');
+
+      expect(await violations(page)).toEqual([]);
+      await tallEnough(page);
+    });
+  }
+
+  test('the whole set-up works with the keyboard', async ({ page }) => {
+    await asHostPlanning(page);
+    await page.route('**/api/v1/trips', (route) =>
+      route.request().method() === 'POST'
+        ? route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(signedInTrip) })
+        : route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify([signedInTrip]),
+          }),
+    );
+    await page.goto('/trip/new/destination');
+
+    await page.keyboard.type('phoenix');
+    const result = page.getByRole('button', { name: /Phoenix Marketcity/ });
+    await expect(result).toBeVisible();
+    await result.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Plan your trip' })).toBeVisible();
+
+    await page.getByRole('radio', { name: '4 hours' }).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+    await page.getByRole('switch', { name: 'Friends can chat' }).focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('switch', { name: 'Friends can chat' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    await page.getByRole('button', { name: 'Create trip and invite' }).focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/trip\/trip-1\/invite$/);
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`no sideways scroll on the set-up screens at ${width} px`, async ({ page }) => {
+      await asHostPlanning(page);
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of ['/trip/new/destination', '/trip/new', '/trip/new/map']) {
+        await page.goto(path);
+        await page.waitForLoadState('networkidle');
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow, path).toBe(0);
+      }
+    });
+  }
+});
+
 test.describe('theme', () => {
   test('follows a dark system setting before the app loads', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
