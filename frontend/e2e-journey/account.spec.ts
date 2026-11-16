@@ -37,6 +37,13 @@ async function asFreshVisitor(page: Page) {
   await page.setExtraHTTPHeaders({ 'X-Forwarded-For': `198.51.${octet()}.${octet()}` });
 }
 
+/** Logging out lives on the profile (the You tab). */
+async function logOut(page: Page) {
+  await page.getByRole('link', { name: /^Your profile/ }).click();
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+}
+
 test('an account can be created, used, and recovered by email', async ({ page, context }) => {
   const email = `journey-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
   const firstPassword = 'Kite-7 Rivermoon';
@@ -53,12 +60,12 @@ test('an account can be created, used, and recovered by email', async ({ page, c
     await page.getByLabel('Password', { exact: true }).fill(firstPassword);
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page.getByRole('heading', { name: 'Hi, Rohan' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Your profile, Rohan' })).toBeVisible();
   });
 
   await test.step('stay signed in after a reload', async () => {
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Hi, Rohan' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Your profile, Rohan' })).toBeVisible();
   });
 
   await test.step('log in page skips straight home while signed in', async () => {
@@ -67,10 +74,10 @@ test('an account can be created, used, and recovered by email', async ({ page, c
   });
 
   await test.step('log out, and a reload does not sign back in', async () => {
-    await page.getByRole('button', { name: 'Log out' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await logOut(page);
     await page.goto('/home');
-    await expect(page.getByRole('heading', { name: 'You are exploring' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Create account' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Your profile, Rohan' })).toHaveCount(0);
   });
 
   await test.step('a wrong password is refused, the right one works', async () => {
@@ -82,9 +89,8 @@ test('an account can be created, used, and recovered by email', async ({ page, c
 
     await page.getByLabel('Password', { exact: true }).fill(firstPassword);
     await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page.getByRole('heading', { name: 'Hi, Rohan' })).toBeVisible();
-    await page.getByRole('button', { name: 'Log out' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('link', { name: 'Your profile, Rohan' })).toBeVisible();
+    await logOut(page);
   });
 
   let link = '';
@@ -125,7 +131,7 @@ test('an account can be created, used, and recovered by email', async ({ page, c
 
     await page.getByLabel('Password', { exact: true }).fill(newPassword);
     await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page.getByRole('heading', { name: 'Hi, Rohan' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Your profile, Rohan' })).toBeVisible();
   });
 
   expect(scriptErrors).toEqual([]);

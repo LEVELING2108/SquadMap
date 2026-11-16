@@ -14,6 +14,8 @@ async function withNoSession(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await withNoSession(page);
+  // No test depends on Mapbox: maps show their picture, and nothing reaches the network.
+  await page.route(/https:\/\/([a-z]+\.)?mapbox\.com\//, (route) => route.abort());
 });
 
 test.describe('welcome screen', () => {
@@ -71,7 +73,7 @@ const accountScreens = [
   ['forgot password', '/forgot', 'Lost your way?'],
   ['set a new password', '/reset-password#token=preview-token', 'Choose a new password'],
   ['expired reset link', '/reset-password', 'This link has expired'],
-  ['home', '/home', 'You are exploring'],
+  ['home', '/home', 'Ready for a trip?'],
 ] as const;
 
 test.describe('account screens', () => {
@@ -135,7 +137,7 @@ test.describe('account screens', () => {
     await page.keyboard.type('correct horse');
     await page.keyboard.press('Enter');
 
-    await expect(page.getByRole('heading', { name: 'Hi, Priya' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Your profile, Priya' })).toBeVisible();
   });
 });
 
@@ -470,6 +472,8 @@ test.describe('new trip screens', () => {
           }),
     );
     await page.goto('/trip/new/destination');
+    // Typing starts once the search box is there and focused, as it is for a person.
+    await expect(page.getByLabel('Search for a place')).toBeFocused();
 
     await page.keyboard.type('phoenix');
     const result = page.getByRole('button', { name: /Phoenix Marketcity/ });
@@ -928,6 +932,98 @@ test.describe('alerts', () => {
     await page.keyboard.press('Enter');
 
     await expect(page).toHaveURL(/\/trip\/trip-1\/invite$/);
+  });
+});
+
+test.describe('home with the map', () => {
+  async function asHostOnHome(page: Page) {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/trips?*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ ...signedInTrip, memberCount: 4 }]),
+      }),
+    );
+    await page.route('**/api/v1/places/recent', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+    );
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`signed in, it has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await asHostOnHome(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/home');
+      await expect(page.getByRole('link', { name: /Live now · 3 friends/ })).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+    });
+  }
+
+  test('signed in, every control is at least 44 px tall', async ({ page }) => {
+    await asHostOnHome(page);
+    await page.goto('/home');
+    await expect(page.getByRole('link', { name: /Live now/ })).toBeVisible();
+
+    for (const control of await page.locator('a:visible, button:visible').all()) {
+      const box = await control.boundingBox();
+      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+      expect(box?.height, label).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`signed in, nothing overlaps or scrolls sideways at ${width} px`, async ({ page }) => {
+      await asHostOnHome(page);
+      await page.setViewportSize({ width, height: 740 });
+      await page.goto('/home');
+      await expect(page.getByRole('link', { name: /Live now/ })).toBeVisible();
+
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+      // The panel sits above the navigation, and the recenter button above the panel.
+      const panel = (await page.getByRole('region', { name: 'Ready for a trip?' }).boundingBox())!;
+      const nav = (await page.getByRole('navigation', { name: 'Main' }).boundingBox())!;
+      const locate = (await page.getByRole('button', { name: 'Show where I am' }).boundingBox())!;
+      expect(panel.y + panel.height).toBeLessThanOrEqual(nav.y + 1);
+      expect(locate.y + locate.height).toBeLessThanOrEqual(panel.y);
+    });
+  }
+
+  test('the top bar works with the keyboard', async ({ page }) => {
+    await asHostOnHome(page);
+    await page.goto('/home');
+    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
+
+    await page.getByRole('link', { name: /Where to\?/ }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/trip\/new\/destination$/);
+  });
+
+  test('never asks for location on its own', async ({ page, context }) => {
+    await context.clearPermissions();
+    await asHostOnHome(page);
+    await page.addInitScript(() => {
+      (window as unknown as { asked: number }).asked = 0;
+      const original = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+      navigator.geolocation.getCurrentPosition = (...args) => {
+        (window as unknown as { asked: number }).asked += 1;
+        original(...args);
+      };
+    });
+    await page.goto('/home');
+    await expect(page.getByRole('link', { name: /Live now/ })).toBeVisible();
+    await page.waitForTimeout(500);
+
+    expect(await page.evaluate(() => (window as unknown as { asked: number }).asked)).toBe(0);
   });
 });
 

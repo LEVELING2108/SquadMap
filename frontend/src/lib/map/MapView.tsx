@@ -18,6 +18,8 @@ type MapViewProps = {
   label: string;
   /** A destination pin on the centre point. */
   pin?: boolean;
+  /** Where the person is, shown as the "You" dot; nothing when unknown. */
+  you?: LatLng | null;
   /** Lets the person pan and zoom; reports where the centre ends up. */
   interactive?: boolean;
   onCenterChange?: (center: LatLng) => void;
@@ -30,7 +32,28 @@ type MapViewProps = {
    * their terms require both to stay visible.
    */
   bottomInset?: number;
+  /**
+   * Parts of the map covered by panels, in px, so the centre (and the "You" dot) sits in the part people
+   * can see. Not for screens where a pin drawn in the middle of the box must match the map's centre.
+   */
+  padding?: { top: number; bottom: number };
 };
+
+/** The person's own position: a blue dot in a soft halo, labelled "You" as in the design. */
+function YouDot() {
+  return (
+    <div aria-hidden="true" className="flex flex-col items-center">
+      <span className="relative flex size-16 items-center justify-center">
+        <span className="motion-pulse absolute inset-0 rounded-pill bg-you/25" />
+        <span className="absolute inset-2 rounded-pill bg-you/20" />
+        <span className="relative size-5 rounded-pill border-[3px] border-screen bg-you shadow-md" />
+      </span>
+      <span className="-mt-3 rounded-pill bg-screen px-2 py-0.5 text-xs font-bold text-ink shadow-sm">
+        You
+      </span>
+    </div>
+  );
+}
 
 /** The pin drawn on the map and on the fallback picture: coral, as destinations are in the design. */
 export function DestinationPin({ className = '' }: { className?: string }) {
@@ -63,24 +86,33 @@ export function MapView({
   zoom,
   label,
   pin = false,
+  you = null,
   interactive = false,
   onCenterChange,
   onReady,
   className,
   bottomInset = 0,
+  padding,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const [mode, setMode] = useState<'loading' | 'ready' | 'fallback'>(TOKEN ? 'loading' : 'fallback');
   const [pinElement, setPinElement] = useState<HTMLElement | null>(null);
+  const [youElement, setYouElement] = useState<HTMLElement | null>(null);
+  const youMarkerRef = useRef<Marker | null>(null);
   const style = useMapStyle();
   const onCenterChangeRef = useRef(onCenterChange);
   useEffect(() => {
     onCenterChangeRef.current = onCenterChange;
   }, [onCenterChange]);
-  // The first view is set once; later changes move the map (see below).
-  const initial = useRef({ center, zoom, pin, interactive });
+  // The map is created with the latest view (it may change while the map library loads); later changes
+  // move it (see below). Pin and interactivity are fixed once the map exists.
+  const initial = useRef({ pin, interactive });
+  const view = useRef({ center, zoom });
+  useEffect(() => {
+    view.current = { center, zoom };
+  }, [center, zoom]);
   const styleRef = useRef(style);
   const appliedStyle = useRef<string | null>(null);
   useEffect(() => {
@@ -97,6 +129,11 @@ export function MapView({
     Promise.all([import('mapbox-gl'), import('mapbox-gl/dist/mapbox-gl.css')])
       .then(([{ default: mapboxgl }]) => {
         if (cancelled) return;
+        // The "You" marker exists from the start and is put on the map while `you` is known.
+        const youDot = document.createElement('div');
+        youDot.setAttribute('aria-hidden', 'true');
+        youMarkerRef.current = new mapboxgl.Marker({ element: youDot, anchor: 'center', offset: [0, 10] });
+        setYouElement(youDot);
         const start = initial.current;
         const firstStyle = styleRef.current ?? 'mapbox/streets-v12';
         appliedStyle.current = firstStyle;
@@ -104,8 +141,8 @@ export function MapView({
           accessToken: TOKEN,
           container,
           style: styleUrl(firstStyle),
-          center: [start.center.lng, start.center.lat],
-          zoom: start.zoom,
+          center: [view.current.center.lng, view.current.center.lat],
+          zoom: view.current.zoom,
           interactive: start.interactive,
           attributionControl: true,
           // The map is decoration on most screens; keyboard and screen reader users get the label instead.
@@ -126,7 +163,7 @@ export function MapView({
           const element = document.createElement('div');
           element.setAttribute('aria-hidden', 'true');
           markerRef.current = new mapboxgl.Marker({ element, anchor: 'bottom' })
-            .setLngLat([start.center.lng, start.center.lat])
+            .setLngLat([view.current.center.lng, view.current.center.lat])
             .addTo(map);
           setPinElement(element);
         }
@@ -135,6 +172,8 @@ export function MapView({
 
     return () => {
       cancelled = true;
+      youMarkerRef.current?.remove();
+      youMarkerRef.current = null;
       markerRef.current?.remove();
       markerRef.current = null;
       mapRef.current?.remove();
@@ -167,6 +206,24 @@ export function MapView({
     else map.flyTo({ center: target, zoom, duration: 600 });
   }, [center.lat, center.lng, zoom]);
 
+  // The "You" dot follows `you`; on the fallback picture there is no map to place it on.
+  useEffect(() => {
+    const map = mapRef.current;
+    const marker = youMarkerRef.current;
+    if (mode !== 'ready' || !map || !marker) return;
+    if (you) marker.setLngLat([you.lng, you.lat]).addTo(map);
+    else marker.remove();
+  }, [mode, you]);
+
+  const padTop = padding?.top ?? 0;
+  const padBottom = padding?.bottom ?? 0;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (mode !== 'ready' || !map) return;
+    map.setPadding({ top: padTop, bottom: padBottom, left: 0, right: 0 });
+    map.jumpTo({ center: [view.current.center.lng, view.current.center.lat], zoom: view.current.zoom });
+  }, [mode, padTop, padBottom]);
+
   const fallback = mode === 'fallback';
 
   return (
@@ -197,6 +254,7 @@ export function MapView({
         </>
       )}
       {!fallback && pinElement && createPortal(<DestinationPin />, pinElement)}
+      {!fallback && youElement && createPortal(<YouDot />, youElement)}
     </div>
   );
 }

@@ -68,6 +68,12 @@ All notable changes to SquadMap are recorded here. The format follows
   except the host who ended it. Tapping an alert opens the running trip, or trip history once it's
   over. The Alerts tab and the profile show the unread count. Guests get no alerts. Alerts are
   deleted after 30 days.
+- Home with the map: a full-screen map in your map style, a "You" dot where you are (only if
+  location is already allowed; the recenter button asks when tapped), a "Where to?" bar that starts
+  a trip, Settings and profile buttons, and a "Ready for a trip?" panel with New trip, Join and your
+  live trips (name, friends and when sharing ends). The map centres on the part left visible
+  between the top bar and the panel. Signed out, it offers Create account, Log in and Join with a
+  code; a guest is sent back to their trip. The bottom navigation is now complete.
 
 ### Fixed
 

@@ -176,6 +176,12 @@
   }
 }
 
+/* Mapbox's credits button is smaller than the 24 px minimum target; give it room to be tapped. */
+.map-canvas .mapboxgl-ctrl-attrib-button {
+  min-width: 24px;
+  min-height: 24px;
+}
+
 /* Mapbox's logo and credits stay above any panel covering the map's bottom edge (see MapView). */
 .map-canvas .mapboxgl-ctrl-bottom-left,
 .map-canvas .mapboxgl-ctrl-bottom-right {
