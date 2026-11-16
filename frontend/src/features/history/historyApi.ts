@@ -8,6 +8,8 @@ export type HistoryTrip = {
   name: string;
   destination: Destination | null;
   startsAt: string;
+  /** When sharing is set to stop. */
+  expiresAt: string;
   /** When sharing stopped; null while the trip runs. */
   endedAt: string | null;
   status: TripStatus;

@@ -4,11 +4,14 @@ import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
 import { signOut, useSession } from '../auth/session';
+import { formatClock } from '../../lib/time';
+import { useSettings } from '../profile/settingsApi';
 import { useActiveTrips } from '../trip/tripQueries';
 
 /** Running trips, each leading to its invite (host) or its trip page (member). */
 function YourTrips() {
   const trips = useActiveTrips(true);
+  const { settings } = useSettings();
 
   if (trips.isPending) return <p className="text-sm leading-5 text-muted">Loading your trips…</p>;
   if (trips.isError) return <p className="text-sm leading-5 text-red">{describeFailure(trips.error)}</p>;
@@ -33,7 +36,8 @@ function YourTrips() {
                 <span className="block truncate font-bold">{trip.name}</span>
                 <span className="block text-xs leading-4 text-muted">
                   {trip.role === 'host' ? 'You host' : 'You joined'} · {trip.memberCount}{' '}
-                  {trip.memberCount === 1 ? 'person' : 'people'}
+                  {trip.memberCount === 1 ? 'person' : 'people'} · until{' '}
+                  {formatClock(trip.expiresAt, settings.timeFormat)}
                 </span>
               </span>
               <span className="font-mono text-sm tracking-[1px] text-blue-d">{trip.code}</span>

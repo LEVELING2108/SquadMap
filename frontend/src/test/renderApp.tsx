@@ -2,6 +2,8 @@ import { render } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router';
 import { AppRoutes } from '../AppRoutes';
+import { AccountPreferences } from '../features/profile/AccountPreferences';
+import { DEFAULT_SETTINGS, settingsKey, type Settings } from '../features/profile/settingsApi';
 import type { Trip } from '../features/trip/types';
 import { createQueryClient } from '../lib/api/queryClient';
 
@@ -11,10 +13,23 @@ function LocationProbe() {
   return <div data-testid="location">{location.pathname + location.hash}</div>;
 }
 
-export function renderApp(entry: string | { pathname: string; hash?: string; state?: unknown }) {
+type RenderOptions = {
+  /**
+   * The account's settings, as if already loaded, so screens don't ask for them. Defaults to the
+   * defaults; null leaves them to be fetched, for tests of the settings themselves.
+   */
+  settings?: Settings | null;
+};
+
+export function renderApp(
+  entry: string | { pathname: string; hash?: string; state?: unknown },
+  { settings = DEFAULT_SETTINGS }: RenderOptions = {},
+) {
   const queryClient = createQueryClient();
+  if (settings) queryClient.setQueryData(settingsKey, settings);
   return render(
     <QueryClientProvider client={queryClient}>
+      <AccountPreferences />
       <MemoryRouter initialEntries={[entry]}>
         <AppRoutes />
         <LocationProbe />

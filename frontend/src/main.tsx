@@ -4,12 +4,15 @@ import { BrowserRouter } from 'react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppRoutes } from './AppRoutes';
 import { restoreSession } from './features/auth/session';
+import { AccountPreferences } from './features/profile/AccountPreferences';
+import { applyRememberedPreferences } from './features/profile/reducedMotion';
 import { createQueryClient } from './lib/api/queryClient';
 import { initTheme } from './lib/theme';
 import { trackPageVisibility } from './motion/pageVisibility';
 import './styles/index.css';
 
 initTheme();
+applyRememberedPreferences();
 trackPageVisibility();
 // Picks up an existing session from the refresh cookie; the page renders meanwhile.
 void restoreSession();
@@ -22,6 +25,7 @@ if (!root) throw new Error('Root element #root is missing from index.html');
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <AccountPreferences />
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>

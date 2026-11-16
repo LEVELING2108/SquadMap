@@ -182,7 +182,7 @@ public class TripService {
                 : trip.getEndedAt() != null ? trip.getEndedAt() : trip.getExpiresAt();
         MemberRole role = trip.getHostId().equals(userId) ? MemberRole.host : MemberRole.member;
         return new TripHistoryResponse.Item(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartsAt(),
-                endedAt, status, role, others.size(),
+                trip.getExpiresAt(), endedAt, status, role, others.size(),
                 others.stream().map(TripMember::getDisplayName).limit(HISTORY_FRIEND_NAMES).toList());
     }
 

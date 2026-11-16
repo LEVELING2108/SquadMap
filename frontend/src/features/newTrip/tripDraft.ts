@@ -9,8 +9,10 @@ type TripDraft = {
   destination: DraftDestination | null | undefined;
   /** The name as typed; null while the suggested name is still in use. */
   name: string | null;
-  shareHours: ShareHours;
-  chatEnabled: boolean;
+  /** null until the host picks one: the account's default sharing time applies until then. */
+  shareHours: ShareHours | null;
+  /** null until the host flips it: the account's chat default applies until then. */
+  chatEnabled: boolean | null;
   /** One key per draft, so a double tap or a retry can't start two trips. */
   idempotencyKey: string;
 };
@@ -19,8 +21,8 @@ function fresh(): TripDraft {
   return {
     destination: undefined,
     name: null,
-    shareHours: 4,
-    chatEnabled: true,
+    shareHours: null,
+    chatEnabled: null,
     idempotencyKey: crypto.randomUUID(),
   };
 }

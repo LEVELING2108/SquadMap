@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatDistance } from '../../lib/map/geo';
 import { jsonResponse, renderApp, sampleTrip, testUser } from '../../test/renderApp';
 import { useSession } from '../auth/session';
+import { DEFAULT_SETTINGS } from '../profile/settingsApi';
 import { resetTripDraft, setDraftDestination, suggestedName, useTripDraft } from './tripDraft';
 
 /** The map itself needs WebGL; here it is a stand-in that can "move" and can fail to load. */
@@ -42,6 +43,7 @@ function serve(routes: Routes) {
     const url = String(input).replace('/api/v1', '');
     const path = url.split('?')[0];
     const key = `${init?.method ?? 'GET'} ${path}`;
+    if (key === 'GET /me/settings' && !routes[key]) return jsonResponse(200, DEFAULT_SETTINGS);
     const answer = routes[key];
     if (!answer) throw new Error(`Unexpected call: ${key}`);
     return answer(init);
@@ -287,8 +289,9 @@ describe('New trip screen', () => {
     // A new draft starts fresh.
     expect(useTripDraft.getState()).toMatchObject({
       destination: undefined,
-      shareHours: 4,
-      chatEnabled: true,
+      // Back to "use my defaults".
+      shareHours: null,
+      chatEnabled: null,
     });
     expect(useTripDraft.getState().idempotencyKey).not.toBe(key);
   });
@@ -309,8 +312,16 @@ describe('New trip screen', () => {
     expect(JSON.parse(String(callsTo('POST', '/trips')[0]![1]!.body))).toMatchObject({ destination: null });
   });
 
+  it('starts on the account’s default sharing time and chat setting', () => {
+    renderApp('/trip/new', { settings: { ...DEFAULT_SETTINGS, defaultShareHours: 8, chatDefault: false } });
+
+    expect(screen.getByRole('radio', { name: '8 hours' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Friends can chat' })).not.toBeChecked();
+  });
+
   it('moves between hours with the arrow keys', async () => {
     const user = userEvent.setup();
+    serve({});
     renderApp('/trip/new');
 
     screen.getByRole('radio', { name: '4 hours' }).focus();
@@ -322,6 +333,7 @@ describe('New trip screen', () => {
 
   it('needs a trip name', async () => {
     const user = userEvent.setup();
+    serve({});
     renderApp('/trip/new');
 
     await user.clear(screen.getByLabelText('Trip name'));
@@ -329,7 +341,7 @@ describe('New trip screen', () => {
 
     expect(screen.getByLabelText('Trip name')).toHaveAccessibleDescription('Give the trip a name.');
     await waitFor(() => expect(screen.getByLabelText('Trip name')).toHaveFocus());
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(callsTo('POST', '/trips')).toHaveLength(0);
   });
 
   it('explains a place that could not be confirmed and keeps the choices', async () => {

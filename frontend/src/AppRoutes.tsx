@@ -8,6 +8,11 @@ import { SignupPage } from './features/auth/SignupPage';
 import { NotFoundPage } from './features/foundation/NotFoundPage';
 import { TripHistoryPage } from './features/history/TripHistoryPage';
 import { HomePage } from './features/home/HomePage';
+import { ChangeEmailPage } from './features/profile/ChangeEmailPage';
+import { ChangePasswordPage } from './features/profile/ChangePasswordPage';
+import { EditProfilePage } from './features/profile/EditProfilePage';
+import { ProfilePage } from './features/profile/ProfilePage';
+import { SettingsPage } from './features/profile/SettingsPage';
 import { ConsentPage } from './features/invite/ConsentPage';
 import { ExpiredPage } from './features/invite/ExpiredPage';
 import { JoinPage } from './features/invite/JoinPage';
@@ -45,6 +50,46 @@ export function AppRoutes() {
       <Route path="/join/expired" element={<ExpiredPage />} />
       <Route path="/join/:code" element={<JoinPage />} />
       <Route path="/join/:code/consent" element={<ConsentPage />} />
+      <Route
+        path="/me"
+        element={
+          <RequireAuth>
+            <ProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/edit"
+        element={
+          <RequireAuth>
+            <EditProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/password"
+        element={
+          <RequireAuth>
+            <ChangePasswordPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/email"
+        element={
+          <RequireAuth>
+            <ChangeEmailPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/settings"
+        element={
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/me/history"
         element={

@@ -110,7 +110,7 @@ class RateLimitIT extends IntegrationTest {
         }
 
         assertLimited(postFrom("198.51.100.99", FORGOT, Map.of("email", "priya@example.com")));
-        assertThat(mailpit.settledMessagesTo("priya@example.com")).hasSize(3);
+        assertThat(mailpit.awaitMessagesTo("priya@example.com", 3)).hasSize(3);
     }
 
     @Test

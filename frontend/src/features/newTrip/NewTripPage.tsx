@@ -14,6 +14,7 @@ import { Switch } from '../../components/ui/Switch';
 import { TextField } from '../../components/ui/TextField';
 import { describeFailure, focusFirstInvalid } from '../auth/formErrors';
 import { historyKey } from '../history/historyApi';
+import { useSettings } from '../profile/settingsApi';
 import { tripKeys } from '../trip/tripQueries';
 import type { Trip } from '../trip/types';
 import { resetTripDraft, SHARE_HOURS, suggestedName, useTripDraft } from './tripDraft';
@@ -28,6 +29,9 @@ export function NewTripPage() {
   const draft = useTripDraft();
   const destination = draft.destination ?? null;
   const name = draft.name ?? suggestedName(destination);
+  const { settings } = useSettings();
+  const shareHours = draft.shareHours ?? settings.defaultShareHours;
+  const chatEnabled = draft.chatEnabled ?? settings.chatDefault;
   const [nameMissing, setNameMissing] = useState(false);
 
   const create = useMutation({
@@ -37,8 +41,8 @@ export function NewTripPage() {
         headers: { 'Idempotency-Key': draft.idempotencyKey },
         body: {
           name: name.trim(),
-          shareHours: draft.shareHours,
-          chatEnabled: draft.chatEnabled,
+          shareHours,
+          chatEnabled,
           destination: destination && {
             name: destination.name,
             lat: destination.lat,
@@ -138,7 +142,7 @@ export function NewTripPage() {
           <Segmented
             label="Share my location for"
             options={SHARE_HOURS}
-            value={draft.shareHours}
+            value={shareHours}
             onChange={(shareHours) => useTripDraft.setState({ shareHours })}
             format={(hours) => `${hours} h`}
             describe={(hours) => (hours === 1 ? '1 hour' : `${hours} hours`)}
@@ -147,7 +151,7 @@ export function NewTripPage() {
           <Switch
             label="Friends can chat"
             description="Quick messages on the trip"
-            checked={draft.chatEnabled}
+            checked={chatEnabled}
             onChange={(chatEnabled) => useTripDraft.setState({ chatEnabled })}
           />
 

@@ -1,5 +1,6 @@
 import { Building2, Clock, MapPin, Navigation, Plane, type LucideIcon } from 'lucide-react';
 import { formatDistance } from '../../lib/map/geo';
+import { useSettings } from '../profile/settingsApi';
 import type { PlaceResult } from './types';
 
 type Look = { Icon: LucideIcon; tile: string };
@@ -21,7 +22,10 @@ function lookOf(place: PlaceResult): Look {
 /** One place in the destination list: an icon for its kind, its name, and where it is. */
 export function PlaceRow({ place, onPick }: { place: PlaceResult; onPick: (place: PlaceResult) => void }) {
   const { Icon, tile } = lookOf(place);
-  const details = [place.address, formatDistance(place.distanceMeters)].filter(Boolean).join(' · ');
+  const { settings } = useSettings();
+  const details = [place.address, formatDistance(place.distanceMeters, settings.distanceUnit)]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <li>
       <button

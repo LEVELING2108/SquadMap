@@ -169,6 +169,36 @@ async function asHostWithATrip(page: Page) {
   await page.route('**/api/v1/trips/trip-1', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(signedInTrip) }),
   );
+  // Settings change for real within a test, so a saved choice shows up again.
+  let settings = {
+    darkMap: false,
+    distanceUnit: 'km',
+    defaultShareHours: 4,
+    mapStyle: 'streets',
+    chatDefault: true,
+    reduceMotion: false,
+    timeFormat: '12h',
+  };
+  await page.route('**/api/v1/me/settings', (route) => {
+    if (route.request().method() === 'PATCH') {
+      settings = { ...settings, ...(route.request().postDataJSON() as object) };
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(settings) });
+  });
+  await page.route('**/api/v1/me/colors', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(['#0F6E56', '#534AB7', '#993C1D', '#854F0B', '#993556']),
+    }),
+  );
+  await page.route('**/api/v1/me/stats', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ trips: 12, friends: 9 }),
+    }),
+  );
 }
 
 test.describe('invite screen', () => {
@@ -593,6 +623,194 @@ test.describe('trip history', () => {
       expect(overflow).toBe(0);
     });
   }
+});
+
+test.describe('profile and settings', () => {
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+  const violations = async (page: Page) =>
+    (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`,
+    );
+
+  for (const [name, path, heading] of [
+    ['profile', '/me', 'Priya'],
+    ['settings', '/me/settings', 'Settings'],
+  ] as const) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+        if (name === 'profile') await expect(page.getByLabel('Your numbers')).toContainText('12');
+
+        expect(await violations(page)).toEqual([]);
+      });
+    }
+
+    test(`${name}: every control is at least 44 px tall`, async ({ page }) => {
+      await asHostWithATrip(page);
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+      for (const control of await page.locator('a:visible, button:visible, label:visible:has(input)').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+
+    for (const width of [320, 390, 768]) {
+      test(`${name}: no sideways scroll at ${width} px`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow).toBe(0);
+      });
+    }
+  }
+
+  test('settings can be changed with the keyboard and stay changed', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/me/settings');
+
+    await page.getByRole('switch', { name: 'Dark map' }).focus();
+    await page.keyboard.press('Space');
+    await page.getByRole('radio', { name: 'Kilometres' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await page.getByRole('radio', { name: '4 hours' }).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Dark map' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByRole('radio', { name: 'Miles' })).toBeChecked();
+    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+  });
+
+  test('the You tab opens the profile, and its settings button opens settings', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/home');
+
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'You' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Priya' })).toBeVisible();
+    await page.getByRole('link', { name: 'Settings' }).first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  });
+});
+
+test.describe('account screens', () => {
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+  const violations = async (page: Page) =>
+    (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`,
+    );
+
+  for (const [name, path, heading] of [
+    ['edit profile', '/me/edit', 'Edit profile'],
+    ['change password', '/me/password', 'Change password'],
+    ['change email', '/me/email', 'Change email'],
+  ] as const) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+        if (name === 'edit profile') await expect(page.getByRole('radio')).toHaveCount(5);
+
+        expect(await violations(page)).toEqual([]);
+      });
+    }
+
+    test(`${name}: every control is at least 44 px tall, with no sideways scroll at 320 px`, async ({
+      page,
+    }) => {
+      await asHostWithATrip(page);
+      await page.setViewportSize({ width: 320, height: 720 });
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+      for (const control of await page
+        .locator(
+          'a:visible, button:visible, input:visible:not([type=radio]), label:visible:has(input[type=radio])',
+        )
+        .all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+    });
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`the log out everywhere dialog has no accessibility violations in ${colorScheme} mode`, async ({
+      page,
+    }) => {
+      await asHostWithATrip(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/me');
+      await page.getByRole('button', { name: 'Log out everywhere else' }).click();
+      await expect(page.getByRole('dialog', { name: 'Log out everywhere else?' })).toBeVisible();
+
+      expect(await violations(page)).toEqual([]);
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Log out everywhere else' })).toBeFocused();
+    });
+  }
+
+  test('the colour can be picked with the keyboard', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/me', (route) =>
+      route.request().method() === 'PATCH'
+        ? route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              id: 'u1',
+              name: 'Priya',
+              email: 'priya@example.com',
+              color: '#534AB7',
+              createdAt: '',
+            }),
+          })
+        : route.fallback(),
+    );
+    await page.goto('/me/edit');
+    await page.getByRole('radio', { name: 'Green' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('radio', { name: 'Violet' })).toBeChecked();
+    await page.getByRole('button', { name: 'Save' }).focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('status')).toContainText('Saved.');
+  });
+
+  test('Reduce animations stops the moving effects', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/me/settings');
+    await page.getByRole('switch', { name: 'Reduce animations' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', '');
+
+    await page.goto('/');
+    const duration = await page
+      .locator('.motion-drift')
+      .first()
+      .evaluate((element) => getComputedStyle(element).animationDuration);
+    expect(parseFloat(duration)).toBeLessThan(0.001);
+  });
 });
 
 test.describe('theme', () => {

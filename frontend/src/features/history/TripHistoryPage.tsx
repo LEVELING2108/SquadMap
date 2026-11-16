@@ -6,6 +6,8 @@ import { Banner } from '../../components/ui/Banner';
 import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { MapThumb } from '../../lib/map/MapThumb';
+import { formatClock } from '../../lib/time';
+import { useSettings } from '../profile/settingsApi';
 import { describeFailure } from '../auth/formErrors';
 import {
   friendsLabel,
@@ -32,7 +34,11 @@ function Badge({ live }: { live: boolean }) {
 
 function TripCard({ trip }: { trip: HistoryTrip }) {
   const live = trip.status === 'active';
-  const details = `${whenLabel(trip.startsAt)} · ${friendsLabel(trip)}`;
+  const { settings } = useSettings();
+  const when = live
+    ? `Live until ${formatClock(trip.expiresAt, settings.timeFormat)}`
+    : whenLabel(trip.startsAt);
+  const details = `${when} · ${friendsLabel(trip)}`;
 
   const body = (
     <>
