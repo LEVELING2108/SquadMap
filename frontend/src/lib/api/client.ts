@@ -10,6 +10,8 @@ type RequestOptions = {
   signal?: AbortSignal;
   /** False sends the call without the access token, as someone with no session. */
   withToken?: boolean;
+  /** Extra headers, such as an Idempotency-Key. */
+  headers?: Record<string, string>;
 };
 
 /**
@@ -39,7 +41,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 }
 
 async function send(path: string, options: RequestOptions, token: string | null): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { ...options.headers, Accept: 'application/json' };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 

@@ -38,6 +38,12 @@ All notable changes to SquadMap are recorded here. The format follows
   trip is looked up again in Mapbox's permanent mode, which may be stored, and saved only if the
   same place comes back; a dropped pin is saved as given. Recent places list your last 5
   different destinations from your own trips.
+- Starting a trip from the app: pick a destination by searching (results sorted by distance when
+  location is already allowed; this screen never asks), from recent places, by dropping a pin on
+  the map, or skip it. Then name the trip (a name is suggested), choose 1, 2, 4 or 8 hours and
+  whether friends can chat, and create it, which opens the invite. Maps use Mapbox GL, loaded
+  only on the screens that show one; without a token or when the map can't load, an illustrated
+  map is shown instead and picking on the map points to search. A double tap can't start two trips.
 
 ### Security
 

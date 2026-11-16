@@ -165,3 +165,9 @@
     background: var(--glass-fallback);
   }
 }
+
+/* Mapbox's logo and credits stay above any panel covering the map's bottom edge (see MapView). */
+.map-canvas .mapboxgl-ctrl-bottom-left,
+.map-canvas .mapboxgl-ctrl-bottom-right {
+  bottom: var(--map-inset-bottom, 0px);
+}

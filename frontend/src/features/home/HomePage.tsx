@@ -14,7 +14,7 @@ function YourTrips() {
   if (trips.data.length === 0) {
     return (
       <p className="text-sm leading-5 text-muted">
-        No trips running. Starting a trip from here arrives with the map; the live map follows.
+        No trips running. Start one with New trip, then invite friends with its link.
       </p>
     );
   }
@@ -78,6 +78,7 @@ export function HomePage() {
               <p className="truncate text-sm leading-5 text-muted">{user.email}</p>
             </div>
           </div>
+          <ButtonLink to="/trip/new/destination">New trip</ButtonLink>
           <YourTrips />
           <Button
             variant="glass"
