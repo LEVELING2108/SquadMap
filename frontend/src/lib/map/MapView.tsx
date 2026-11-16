@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Map as MapboxMap, Marker } from 'mapbox-gl';
 import mapLight from '../../assets/illustrations/map.svg';
 import mapDark from '../../assets/illustrations/map-dark.svg';
-import { useResolvedTheme } from '../useResolvedTheme';
+import { useMapTheme } from '../../features/profile/settingsApi';
 import type { LatLng } from './geo';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '';
@@ -75,16 +75,23 @@ export function MapView({
   const markerRef = useRef<Marker | null>(null);
   const [mode, setMode] = useState<'loading' | 'ready' | 'fallback'>(TOKEN ? 'loading' : 'fallback');
   const [pinElement, setPinElement] = useState<HTMLElement | null>(null);
-  const theme = useResolvedTheme();
+  const theme = useMapTheme();
   const onCenterChangeRef = useRef(onCenterChange);
   useEffect(() => {
     onCenterChangeRef.current = onCenterChange;
   }, [onCenterChange]);
   // The first view is set once; later changes move the map (see below).
-  const initial = useRef({ center, zoom, theme, pin, interactive });
+  const initial = useRef({ center, zoom, pin, interactive });
+  const themeRef = useRef(theme);
+  const appliedTheme = useRef<'light' | 'dark' | null>(null);
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
+  // The map is created once its style is known (see useMapTheme), not drawn twice.
+  const themeKnown = theme !== null;
 
   useEffect(() => {
-    if (!TOKEN || !containerRef.current) return;
+    if (!TOKEN || !themeKnown || !containerRef.current) return;
     let cancelled = false;
     const container = containerRef.current;
 
@@ -92,10 +99,12 @@ export function MapView({
       .then(([{ default: mapboxgl }]) => {
         if (cancelled) return;
         const start = initial.current;
+        const style = themeRef.current ?? 'light';
+        appliedTheme.current = style;
         const map = new mapboxgl.Map({
           accessToken: TOKEN,
           container,
-          style: STYLES[start.theme],
+          style: STYLES[style],
           center: [start.center.lng, start.center.lat],
           zoom: start.zoom,
           interactive: start.interactive,
@@ -132,10 +141,12 @@ export function MapView({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [themeKnown]);
 
   useEffect(() => {
-    mapRef.current?.setStyle(STYLES[theme]);
+    if (!theme || !mapRef.current || appliedTheme.current === theme) return;
+    appliedTheme.current = theme;
+    mapRef.current.setStyle(STYLES[theme]);
   }, [theme]);
 
   const onReadyRef = useRef(onReady);

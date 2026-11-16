@@ -4,6 +4,7 @@ import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.id.UuidV7;
 import com.squadmap.user.domain.User;
+import com.squadmap.user.domain.UserSettings;
 import com.squadmap.user.repo.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -60,6 +62,38 @@ public class UserService {
     @Transactional(readOnly = true)
     public Optional<User> findActiveById(UUID id) {
         return users.findById(id).filter(user -> !user.isDeleted());
+    }
+
+    @Transactional(readOnly = true)
+    public UserSettings settingsOf(UUID userId) {
+        return findActiveById(userId).map(User::getSettings).orElseThrow(UserService::signedOut);
+    }
+
+    /**
+     * Applies the settings given; the rest keep their values.
+     *
+     * @throws ApiException 400 {@code VALIDATION_FAILED} for a sharing time trips don't offer
+     */
+    @Transactional
+    public UserSettings updateSettings(UUID userId, Boolean darkMap, String distanceUnit, Integer defaultShareHours) {
+        if (defaultShareHours != null && !UserSettings.SHARE_HOURS.contains(defaultShareHours)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, "One or more fields are invalid.")
+                    .with("errors", List.of(Map.of("field", "defaultShareHours", "message", "Choose 1, 2, 4 or 8 hours.")));
+        }
+        // Locked, so two changes sent at once (say, two switches flipped quickly) can't overwrite each other.
+        User user = users.lockById(userId).filter(found -> !found.isDeleted()).orElseThrow(UserService::signedOut);
+        UserSettings current = user.getSettings();
+        UserSettings changed = new UserSettings(
+                darkMap != null ? darkMap : current.darkMap(),
+                distanceUnit != null ? UserSettings.DistanceUnit.valueOf(distanceUnit) : current.distanceUnit(),
+                defaultShareHours != null ? defaultShareHours : current.defaultShareHours());
+        user.changeSettings(changed, clock.instant());
+        return changed;
+    }
+
+    /** A valid token for an account that no longer exists: treat as signed out. */
+    private static ApiException signedOut() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHENTICATED, "Sign in to continue.");
     }
 
     /** Replaces the password hash of an active account. */

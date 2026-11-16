@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { staticMapUrl } from '../../lib/map/geo';
 import { jsonResponse, renderApp, testUser } from '../../test/renderApp';
 import { useSession } from '../auth/session';
+import { DEFAULT_SETTINGS } from '../profile/settingsApi';
 import { friendsLabel, isThisMonth, topFriend, whenLabel, type HistoryTrip } from './historyApi';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -27,6 +28,7 @@ function trip(overrides: Partial<HistoryTrip>): HistoryTrip {
 function serveHistory(...pages: Array<{ items: HistoryTrip[]; nextBefore: string | null }>) {
   fetchMock.mockImplementation(async (input) => {
     const url = String(input);
+    if (url === '/api/v1/me/settings') return jsonResponse(200, DEFAULT_SETTINGS);
     if (!url.startsWith('/api/v1/me/trips')) throw new Error(`Unexpected call: ${url}`);
     const before = new URL(url, 'http://x').searchParams.get('before');
     const index = before === null ? 0 : pages.findIndex((page) => page.nextBefore === before) + 1;
@@ -143,7 +145,9 @@ describe('Trip history', () => {
     expect(await screen.findByRole('heading', { name: 'Older' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Newer' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show older trips' })).not.toBeInTheDocument();
-    expect(String(fetchMock.mock.calls[1]![0])).toBe('/api/v1/me/trips?limit=20&before=b');
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).toContain(
+      '/api/v1/me/trips?limit=20&before=b',
+    );
   });
 
   it('invites someone new to start a trip', async () => {

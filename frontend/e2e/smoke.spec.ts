@@ -169,6 +169,21 @@ async function asHostWithATrip(page: Page) {
   await page.route('**/api/v1/trips/trip-1', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(signedInTrip) }),
   );
+  // Settings change for real within a test, so a saved choice shows up again.
+  let settings = { darkMap: false, distanceUnit: 'km', defaultShareHours: 4 };
+  await page.route('**/api/v1/me/settings', (route) => {
+    if (route.request().method() === 'PATCH') {
+      settings = { ...settings, ...(route.request().postDataJSON() as object) };
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(settings) });
+  });
+  await page.route('**/api/v1/me/stats', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ trips: 12, friends: 9 }),
+    }),
+  );
 }
 
 test.describe('invite screen', () => {
@@ -593,6 +608,86 @@ test.describe('trip history', () => {
       expect(overflow).toBe(0);
     });
   }
+});
+
+test.describe('profile and settings', () => {
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+  const violations = async (page: Page) =>
+    (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`,
+    );
+
+  for (const [name, path, heading] of [
+    ['profile', '/me', 'Priya'],
+    ['settings', '/me/settings', 'Settings'],
+  ] as const) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+        if (name === 'profile') await expect(page.getByLabel('Your numbers')).toContainText('12');
+
+        expect(await violations(page)).toEqual([]);
+      });
+    }
+
+    test(`${name}: every control is at least 44 px tall`, async ({ page }) => {
+      await asHostWithATrip(page);
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+      for (const control of await page.locator('a:visible, button:visible, label:visible:has(input)').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+
+    for (const width of [320, 390, 768]) {
+      test(`${name}: no sideways scroll at ${width} px`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow).toBe(0);
+      });
+    }
+  }
+
+  test('settings can be changed with the keyboard and stay changed', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/me/settings');
+
+    await page.getByRole('switch', { name: 'Dark map' }).focus();
+    await page.keyboard.press('Space');
+    await page.getByRole('radio', { name: 'Kilometres' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await page.getByRole('radio', { name: '4 hours' }).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Dark map' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByRole('radio', { name: 'Miles' })).toBeChecked();
+    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+  });
+
+  test('the You tab opens the profile, and its settings button opens settings', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.goto('/home');
+
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'You' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Priya' })).toBeVisible();
+    await page.getByRole('link', { name: 'Settings' }).first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  });
 });
 
 test.describe('theme', () => {

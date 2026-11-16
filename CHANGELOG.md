@@ -49,6 +49,12 @@ All notable changes to SquadMap are recorded here. The format follows
   a still map of it. Filters for this month and for the friend you travel with most. A running
   trip opens from its card. A bottom navigation bar links Explore and Trips; more tabs join it as
   their screens are built.
+- You tab: a profile with your avatar, name and "Explorer since", the number of trips you've been
+  on and of different people you've shared one with, links to trip history and settings, and log
+  out. Settings are saved to the account and follow you to other devices: Dark map (maps always
+  dark), distance unit (km or mi, used for place distances) and the default sharing time a new trip
+  starts on; the app's light or dark theme is chosen per device. Changes made in quick succession
+  are all kept.
 
 ### Security
 
