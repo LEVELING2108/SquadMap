@@ -37,7 +37,15 @@ type MapViewProps = {
    * can see. Not for screens where a pin drawn in the middle of the box must match the map's centre.
    */
   padding?: { top: number; bottom: number };
+  /**
+   * Places to mark with a small dot, such as nearby cafes. The dots are for the eye only: the screen lists
+   * the same places as buttons for keyboards and screen readers.
+   */
+  spots?: MapSpot[];
+  onSpotClick?: (id: string) => void;
 };
+
+export type MapSpot = { id: string; lat: number; lng: number; kind: string; selected: boolean };
 
 /** The person's own position: a blue dot in a soft halo, labelled "You" as in the design. */
 function YouDot() {
@@ -93,6 +101,8 @@ export function MapView({
   className,
   bottomInset = 0,
   padding,
+  spots,
+  onSpotClick,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -129,6 +139,7 @@ export function MapView({
     Promise.all([import('mapbox-gl'), import('mapbox-gl/dist/mapbox-gl.css')])
       .then(([{ default: mapboxgl }]) => {
         if (cancelled) return;
+        markerClass.current = mapboxgl.Marker;
         // The "You" marker exists from the start and is put on the map while `you` is known.
         const youDot = document.createElement('div');
         youDot.setAttribute('aria-hidden', 'true');
@@ -170,8 +181,11 @@ export function MapView({
       })
       .catch(() => !cancelled && setMode('fallback'));
 
+    const markers = spotMarkers.current;
     return () => {
       cancelled = true;
+      markers.forEach((marker) => marker.remove());
+      markers.clear();
       youMarkerRef.current?.remove();
       youMarkerRef.current = null;
       markerRef.current?.remove();
@@ -214,6 +228,39 @@ export function MapView({
     if (you) marker.setLngLat([you.lng, you.lat]).addTo(map);
     else marker.remove();
   }, [mode, you]);
+
+  // Nearby places as plain DOM markers, keyed by id; styled by .map-spot in index.css.
+  const spotMarkers = useRef(new Map<string, Marker>());
+  const markerClass = useRef<typeof import('mapbox-gl').Marker | null>(null);
+  const onSpotClickRef = useRef(onSpotClick);
+  useEffect(() => {
+    onSpotClickRef.current = onSpotClick;
+  }, [onSpotClick]);
+  useEffect(() => {
+    const map = mapRef.current;
+    const MarkerClass = markerClass.current;
+    if (mode !== 'ready' || !map || !MarkerClass) return;
+    const wanted = new Map((spots ?? []).map((spot) => [spot.id, spot]));
+    for (const [id, marker] of spotMarkers.current) {
+      if (!wanted.has(id)) {
+        marker.remove();
+        spotMarkers.current.delete(id);
+      }
+    }
+    for (const spot of wanted.values()) {
+      let marker = spotMarkers.current.get(spot.id);
+      if (!marker) {
+        const element = document.createElement('div');
+        element.setAttribute('aria-hidden', 'true');
+        element.addEventListener('click', () => onSpotClickRef.current?.(spot.id));
+        marker = new MarkerClass({ element, anchor: 'center' }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        spotMarkers.current.set(spot.id, marker);
+      }
+      const element = marker.getElement();
+      element.className = `map-spot${spot.selected ? ' map-spot-selected' : ''}`;
+      element.dataset.kind = spot.kind;
+    }
+  }, [mode, spots]);
 
   const padTop = padding?.top ?? 0;
   const padBottom = padding?.bottom ?? 0;

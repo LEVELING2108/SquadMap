@@ -13,6 +13,11 @@ public record GeoPoint(double lat, double lng) {
         return new GeoPoint(Math.round(lat * 100) / 100.0, Math.round(lng * 100) / 100.0);
     }
 
+    /** The same point to about 100 m (three decimal places): enough to find what's nearby. */
+    public GeoPoint nearby() {
+        return new GeoPoint(Math.round(lat * 1000) / 1000.0, Math.round(lng * 1000) / 1000.0);
+    }
+
     /** Great-circle distance in metres. */
     public double metersTo(GeoPoint other) {
         double dLat = Math.toRadians(other.lat - lat);

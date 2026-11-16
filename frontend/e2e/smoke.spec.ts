@@ -998,6 +998,66 @@ test.describe('home with the map', () => {
     });
   }
 
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`with cafes shown, it has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await asHostOnHome(page);
+      await page.route('**/api/v1/places/nearby?*', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              id: 'c1',
+              name: 'Cafe Chopped Leaf',
+              address: 'Rose Garden Society, Pune',
+              lat: 18.5684,
+              lng: 73.9145,
+              kind: 'cafes',
+              distanceMeters: 60,
+            },
+            {
+              id: 'c2',
+              name: 'Alag Aasmaan',
+              address: 'Bhakti Apartments, Pune',
+              lat: 18.569,
+              lng: 73.915,
+              kind: 'cafes',
+              distanceMeters: 1200,
+            },
+          ]),
+        }),
+      );
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/home');
+      await page.getByRole('button', { name: 'Cafes' }).click();
+      // The pressed chip is solid blue: the scan can't judge contrast on see-through glass, so check it.
+      const chip = await page.getByRole('button', { name: 'Cafes', exact: true }).evaluate((element) => {
+        const probe = document.createElement('div');
+        probe.style.backgroundColor = 'var(--blue)';
+        document.body.append(probe);
+        const blue = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return { background: getComputedStyle(element).backgroundColor, blue };
+      });
+      expect(chip.background).toBe(chip.blue);
+      await page.getByRole('button', { name: /Cafe Chopped Leaf/ }).click();
+      await expect(page.getByRole('button', { name: 'Plan a trip here' })).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+      for (const control of await page.locator('a:visible, button:visible').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
   test('the top bar works with the keyboard', async ({ page }) => {
     await asHostOnHome(page);
     await page.goto('/home');

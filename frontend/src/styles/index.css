@@ -176,6 +176,28 @@
   }
 }
 
+/* Nearby places on the Home map (see MapView spots): a dot in the colour of their kind. */
+.map-spot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 3px solid var(--screen);
+  background: var(--coral);
+  box-shadow: var(--glass-shadow);
+  cursor: pointer;
+}
+.map-spot[data-kind='stays'] {
+  background: var(--friend-2);
+}
+.map-spot[data-kind='sights'] {
+  background: var(--sea);
+}
+.map-spot-selected {
+  width: 26px;
+  height: 26px;
+  border-width: 4px;
+}
+
 /* Mapbox's credits button is smaller than the 24 px minimum target; give it room to be tapped. */
 .map-canvas .mapboxgl-ctrl-attrib-button {
   min-width: 24px;

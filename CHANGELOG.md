@@ -74,6 +74,12 @@ All notable changes to SquadMap are recorded here. The format follows
   live trips (name, friends and when sharing ends). The map centres on the part left visible
   between the top bar and the panel. Signed out, it offers Create account, Log in and Join with a
   code; a guest is sent back to their trip. The bottom navigation is now complete.
+- Cafes, Stays and Sights chips on Home: up to 10 places of that kind near where the map is, as dots
+  on the map and a list with distances, nearest first. Choosing one shows it with "Plan a trip
+  here", which opens Choose on map at that spot with its name filled in; it is saved as your own
+  pin, since these results may not be stored. The search point is rounded to about 100 m before it
+  leaves the server, searches are limited to 20 a minute, and repeating one in the same area within
+  2 minutes is answered from memory. An Alerts chip opens the inbox.
 
 ### Fixed
 

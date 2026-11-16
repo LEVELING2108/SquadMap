@@ -39,8 +39,11 @@ public final class FakeMapbox {
             throw new UncheckedIOException(e);
         }
         server.setExecutor(Executors.newCachedThreadPool());
-        server.createContext("/search/geocode/v6/forward", exchange -> {
-            requests.add(query(exchange.getRequestURI().getRawQuery()));
+        com.sun.net.httpserver.HttpHandler handler = exchange -> {
+            Map<String, String> request = query(exchange.getRequestURI().getRawQuery());
+            // The path too, so tests can tell place search from category search.
+            request.put("_path", exchange.getRequestURI().getPath());
+            requests.add(request);
             try {
                 Thread.sleep(delay.toMillis());
             } catch (InterruptedException e) {
@@ -56,7 +59,9 @@ public final class FakeMapbox {
             } catch (IOException e) {
                 // The app gave up waiting (a timeout test); nothing to do.
             }
-        });
+        };
+        server.createContext("/search/geocode/v6/forward", handler);
+        server.createContext("/search/searchbox/v1/category", handler);
         server.start();
         reset();
     }

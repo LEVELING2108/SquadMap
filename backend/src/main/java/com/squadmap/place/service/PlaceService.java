@@ -4,6 +4,7 @@ import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.text.Text;
 import com.squadmap.place.domain.GeoPoint;
+import com.squadmap.place.domain.NearbyCategory;
 import com.squadmap.place.domain.Place;
 import com.squadmap.place.dto.PlaceResponse;
 import org.springframework.http.HttpStatus;
@@ -23,10 +24,25 @@ public class PlaceService {
     static final double SAME_SPOT_METERS = 50;
     private static final int CONFIRM_CANDIDATES = 5;
 
-    private final MapboxGeocoder geocoder;
+    static final int NEARBY_RESULTS = 10;
 
-    public PlaceService(MapboxGeocoder geocoder) {
+    private final MapboxGeocoder geocoder;
+    private final MapboxCategorySearch categories;
+
+    public PlaceService(MapboxGeocoder geocoder, MapboxCategorySearch categories) {
         this.geocoder = geocoder;
+        this.categories = categories;
+    }
+
+    /**
+     * Up to {@value #NEARBY_RESULTS} places of one kind near a point, nearest first. The point goes to Mapbox
+     * rounded to about 100 m; the exact one only works out distances here.
+     */
+    public List<PlaceResponse> nearby(NearbyCategory category, GeoPoint near) {
+        return categories.near(category, near.nearby(), NEARBY_RESULTS).stream()
+                .map(place -> PlaceResponse.of(place, near))
+                .sorted(Comparator.comparing(PlaceResponse::distanceMeters))
+                .toList();
     }
 
     /**
