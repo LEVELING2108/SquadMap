@@ -48,11 +48,13 @@ GET    /places/search?q=    GET   /places/recent
 Conventions: JSON, ISO-8601 UTC timestamps, ids are UUIDv7 (time-ordered), pagination by cursor, idempotency key header on create endpoints, problem+json errors with `code` such as `TRIP_EXPIRED`, `INVALID_CODE`, `RATE_LIMITED`.
 
 ## WebSocket protocol (STOMP over SockJS)
-- Connect `/ws` with header `Authorization: Bearer <token>` (user token or trip-scoped guest token).
-- Subscribe: `/topic/trip.{id}.locations`, `/topic/trip.{id}.events`, `/topic/trip.{id}.chat`. An interceptor checks membership on every SUBSCRIBE.
-- Send: `/app/trip.{id}.loc` payload `{lat, lng, acc, speed, heading, ts}`. Server clamps to 1 update per 2 s, rejects accuracy over 200 m and impossible jumps, stores to Redis `trip:{id}:loc:{memberId}` TTL 600 s, and broadcasts `{memberId, lat, lng, speed, ts}`.
-- Events: `MEMBER_JOINED`, `MEMBER_LEFT`, `ARRIVED`, `TRIP_EXTENDED`, `TRIP_ENDING_SOON`, `TRIP_ENDED`, `PAUSED`, `RESUMED`.
-- Heartbeats 10 s. Client reconnects with exponential backoff (1, 2, 4, 8, max 15 s) and re-subscribes; on reconnect it fetches `/trips/{id}/members` for the latest snapshot.
+- Connect `/ws` (plain WebSocket at `/ws/websocket`, SockJS for clients that can't use one) with the STOMP CONNECT header `Authorization: Bearer <token>` (user token or trip-scoped guest token). The connection must sign in again once that token runs out.
+- Subscribe: `/topic/trip.{id}.locations`, `/topic/trip.{id}.events`, `/topic/trip.{id}.chat`, and `/user/queue/errors` for the client's own refused updates. An interceptor checks membership of a running trip on every SUBSCRIBE; any other destination, and any SEND other than a location, is refused.
+- Refusals close the connection with an ERROR frame whose message is a stable code: `UNAUTHENTICATED` (sign in again and reconnect), `TRIP_NOT_FOUND`, `TRIP_EXPIRED`, `FORBIDDEN` (stop).
+- Send: `/app/trip.{id}.loc` payload `{lat, lng, acc, speed, heading, ts}` (`ts` ISO-8601). Only from a member who agreed to share (`POST /trips/{id}/sharing` records it for the host and for people who chose "Not now"). Server allows 1 update per 2 s on average, rejects accuracy over 200 m, readings over 5 min old or in the future, and impossible jumps (over 70 m/s once accuracy is allowed for), ignores readings older than the one kept, stores to Redis `trip:{id}:loc:{memberId}` TTL 600 s, and broadcasts `{memberId, lat, lng, acc, speed, heading, ts}`. Refusals go to the sender's error queue as `{code, message, retryAfter}`.
+- Fan-out: every instance publishes to the Redis channel `squadmap:live` and relays what it hears to its own clients, so several instances serve the same trip.
+- Events: `MEMBER_JOINED`, `MEMBER_LEFT`, `SHARING_STARTED`, `TRIP_EXTENDED`, `TRIP_ENDED` so far; `ARRIVED`, `TRIP_ENDING_SOON`, `PAUSED`, `RESUMED` come with ETAs and the trip menu. Leaving deletes that member's spot; ending or expiry deletes every spot on the trip.
+- Heartbeats 10 s. Client reconnects with exponential backoff (1, 2, 4, 8, max 15 s) and re-subscribes; on reconnect it fetches `/trips/{id}/members` (everyone, whether they share, and spots under 10 min old) for the latest snapshot.
 
 ## Data model (summary)
 `users(id, email, password_hash, name, color, settings jsonb, created_at, deleted_at)`
