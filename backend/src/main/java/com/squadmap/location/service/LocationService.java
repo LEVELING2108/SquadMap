@@ -2,10 +2,12 @@ package com.squadmap.location.service;
 
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
+import com.squadmap.common.geo.GeoMath;
 import com.squadmap.common.id.UuidV7;
 import com.squadmap.common.ratelimit.RateLimit;
 import com.squadmap.common.ratelimit.RateLimiter;
 import com.squadmap.common.security.Caller;
+import com.squadmap.eta.service.EtaService;
 import com.squadmap.invite.config.InviteProperties;
 import com.squadmap.invite.domain.LocationConsent;
 import com.squadmap.invite.repo.LocationConsentRepository;
@@ -43,8 +45,6 @@ public class LocationService {
     /** Phone clocks drift; a reading this far in the future is wrong. */
     static final Duration MAX_CLOCK_AHEAD = Duration.ofSeconds(30);
 
-    private static final double EARTH_RADIUS_M = 6_371_000;
-
     private final TripAccess access;
     private final TripMemberRepository members;
     private final LocationConsentRepository consents;
@@ -53,11 +53,14 @@ public class LocationService {
     private final LiveTrips liveTrips;
     private final RateLimiter rateLimiter;
     private final InviteProperties inviteProperties;
+    private final EtaService etas;
     private final Clock clock;
 
     public LocationService(TripAccess access, TripMemberRepository members, LocationConsentRepository consents,
                            PositionStore positions, LiveChannel channel, LiveTrips liveTrips,
-                           RateLimiter rateLimiter, InviteProperties inviteProperties, Clock clock) {
+                           RateLimiter rateLimiter, InviteProperties inviteProperties, EtaService etas,
+                           Clock clock) {
+        this.etas = etas;
         this.access = access;
         this.members = members;
         this.consents = consents;
@@ -98,6 +101,8 @@ public class LocationService {
         }
         positions.put(tripId, member.getId(), position);
         channel.publish(LiveChannel.locationsTopic(tripId), MemberLocation.of(member.getId(), position));
+        // In the background: the ETA and the arrival check never hold up the update itself.
+        etas.update(tripId, member.getId(), position);
     }
 
     /** Everyone on the trip, with the spots that are still fresh, for the map's first load. */
@@ -111,7 +116,7 @@ public class LocationService {
         return everyone.stream()
                 .map(member -> new LiveMemberResponse(member.getId(), member.getDisplayName(), member.getColor(),
                         member.getRole(), member.getId().equals(me.getId()), sharing.contains(member.getId()),
-                        spots.get(member.getId())))
+                        spots.get(member.getId()), member.getArrivedAt()))
                 .toList();
     }
 
@@ -173,17 +178,9 @@ public class LocationService {
      */
     static boolean impossibleJump(Position from, Position to) {
         double seconds = Math.max(1, Duration.between(from.ts(), to.ts()).toMillis() / 1000.0);
-        double metres = Math.max(0, distance(from.lat(), from.lng(), to.lat(), to.lng()) - from.acc() - to.acc());
+        double metres = Math.max(0, GeoMath.metres(from.lat(), from.lng(), to.lat(), to.lng()) - from.acc()
+                - to.acc());
         return metres / seconds > MAX_SPEED_MPS;
-    }
-
-    /** Great-circle distance in metres. */
-    static double distance(double lat1, double lng1, double lat2, double lng2) {
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLng = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
-                * Math.cos(Math.toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
     }
 
     private static double round(double value, int places) {

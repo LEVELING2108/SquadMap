@@ -40,6 +40,10 @@ public class TripMember {
     @Column(name = "left_at")
     private Instant leftAt;
 
+    /** When they reached the destination: within 60 m for 20 seconds. Set once, by an UPDATE. */
+    @Column(name = "arrived_at", insertable = false, updatable = false)
+    private Instant arrivedAt;
+
     protected TripMember() {
         // for JPA
     }
@@ -81,6 +85,10 @@ public class TripMember {
 
     public Instant getJoinedAt() {
         return joinedAt;
+    }
+
+    public Instant getArrivedAt() {
+        return arrivedAt;
     }
 
     public boolean isActive() {

@@ -28,6 +28,11 @@ public enum RateLimit {
      * since network delay can bunch updates the phone sent 2 seconds apart.
      */
     LOCATION_PER_MEMBER("location-member", 2, Duration.ofSeconds(4)),
+    /**
+     * Mapbox Directions calls for one trip's ETAs, a paid API. Past this, ETAs are scaled from each
+     * person's last real route instead of asking Mapbox again.
+     */
+    DIRECTIONS_PER_TRIP("directions-trip", 300, Duration.ofHours(1)),
     /** Starting to share records consent; no one needs to do that more than a few times. */
     SHARING_PER_MEMBER("sharing-member", 10, Duration.ofHours(1)),
     /**

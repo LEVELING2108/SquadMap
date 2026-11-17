@@ -2,9 +2,11 @@ package com.squadmap.trip.repo;
 
 import com.squadmap.trip.domain.TripMember;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +19,17 @@ public interface TripMemberRepository extends JpaRepository<TripMember, UUID> {
     Optional<TripMember> findByTripIdAndUserIdAndLeftAtIsNull(UUID tripId, UUID userId);
 
     long countByTripIdAndLeftAtIsNull(UUID tripId);
+
+    /**
+     * Records that the member reached the destination. Only the first time counts: the update changes
+     * nothing (and returns 0) once they have arrived, so the arrival is announced exactly once.
+     */
+    @Modifying
+    @Query(nativeQuery = true, value = """
+            UPDATE trip_members SET arrived_at = :now
+            WHERE id = :memberId AND arrived_at IS NULL AND left_at IS NULL
+            """)
+    int markArrived(@Param("memberId") UUID memberId, @Param("now") Instant now);
 
     Optional<TripMember> findByIdAndTripIdAndLeftAtIsNull(UUID id, UUID tripId);
 
