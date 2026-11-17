@@ -38,7 +38,7 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     public static final String ERRORS_QUEUE = "/user/queue/errors";
 
     private static final String UUID_PATTERN = "([0-9a-fA-F-]{36})";
-    private static final Pattern TRIP_TOPIC = Pattern.compile("^/topic/trip\\." + UUID_PATTERN + "\\.(locations|events)$");
+    private static final Pattern TRIP_TOPIC = Pattern.compile("^/topic/trip\\." + UUID_PATTERN + "\\.(locations|events|eta)$");
     private static final Pattern LOCATION_SEND = Pattern.compile("^/app/trip\\." + UUID_PATTERN + "\\.loc$");
 
     private final JwtDecoder tokens;

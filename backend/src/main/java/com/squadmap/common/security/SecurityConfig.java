@@ -80,9 +80,11 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.DELETE, "/api/v1/trips/*/members/me")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     // The live map is for everyone on the trip, guests included; the service checks membership.
-                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*/members")
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*/members", "/api/v1/trips/*/eta")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/locations", "/api/v1/trips/*/sharing")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/guest-pass")
                             .hasAuthority(TokenKind.GUEST.authority());

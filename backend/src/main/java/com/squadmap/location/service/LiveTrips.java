@@ -1,5 +1,6 @@
 package com.squadmap.location.service;
 
+import com.squadmap.eta.service.EtaStore;
 import com.squadmap.location.dto.TripEvent;
 import com.squadmap.trip.domain.TripMember;
 import org.springframework.stereotype.Service;
@@ -11,19 +12,21 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Keeps the live map in step with the trip: tells everyone when people join or leave and when the trip
- * changes, and deletes spots as soon as they may no longer be shared.
+ * Keeps the live map in step with the trip: tells everyone when people join, leave or arrive and when the
+ * trip changes, and deletes spots and ETAs as soon as they may no longer be shared.
  */
 @Service
 public class LiveTrips {
 
     private final LiveChannel channel;
     private final PositionStore positions;
+    private final EtaStore etas;
     private final Clock clock;
 
-    public LiveTrips(LiveChannel channel, PositionStore positions, Clock clock) {
+    public LiveTrips(LiveChannel channel, PositionStore positions, EtaStore etas, Clock clock) {
         this.channel = channel;
         this.positions = positions;
+        this.etas = etas;
         this.clock = clock;
     }
 
@@ -31,9 +34,10 @@ public class LiveTrips {
         publish(member.getTripId(), TripEvent.Type.MEMBER_JOINED, member, null);
     }
 
-    /** The member's spot is deleted straight away: they no longer share with this trip. */
+    /** The member's spot and ETA are deleted straight away: they no longer share with this trip. */
     public void memberLeft(TripMember member) {
         positions.delete(member.getTripId(), List.of(member.getId()));
+        etas.delete(member.getTripId(), List.of(member.getId()));
         publish(member.getTripId(), TripEvent.Type.MEMBER_LEFT, member, null);
     }
 
@@ -41,14 +45,21 @@ public class LiveTrips {
         publish(member.getTripId(), TripEvent.Type.SHARING_STARTED, member, null);
     }
 
+    /** The member reached the destination; their ETA is no longer needed. */
+    public void arrived(TripMember member) {
+        etas.delete(member.getTripId(), List.of(member.getId()));
+        publish(member.getTripId(), TripEvent.Type.ARRIVED, member, null);
+    }
+
     public void extended(UUID tripId, Instant expiresAt) {
         channel.publish(LiveChannel.eventsTopic(tripId),
                 new TripEvent(TripEvent.Type.TRIP_EXTENDED, null, null, null, expiresAt, clock.instant()));
     }
 
-    /** Ended by the host or out of time: every spot on the trip is deleted and everyone is told. */
+    /** Ended by the host or out of time: every spot and ETA on the trip is deleted and everyone is told. */
     public void ended(UUID tripId, Collection<UUID> memberIds) {
         positions.delete(tripId, memberIds);
+        etas.delete(tripId, memberIds);
         channel.publish(LiveChannel.eventsTopic(tripId),
                 new TripEvent(TripEvent.Type.TRIP_ENDED, null, null, null, null, clock.instant()));
     }

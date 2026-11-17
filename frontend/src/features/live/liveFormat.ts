@@ -20,6 +20,20 @@ export function staleLabel(ts: string, now: number): string | null {
   return minutes < 60 ? `${minutes} min ago` : `${Math.floor(minutes / 60)} h ago`;
 }
 
+/** "1 min", "14 min", "1 h 5 min", "3 h": time left to the destination. Under a minute rounds up to 1. */
+export function formatDuration(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/** "by car", "by bike", "on foot": how someone is travelling, in words. */
+export function modeWords(mode: 'car' | 'bike' | 'walk'): string {
+  return mode === 'walk' ? 'on foot' : `by ${mode}`;
+}
+
 /** "Aman", "Aman and Priya", "Aman, Priya and 2 more". */
 export function names(list: string[]): string {
   if (list.length <= 1) return list[0] ?? '';

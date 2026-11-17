@@ -2,15 +2,16 @@ import { onlineManager } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { lastClient } from '../../test/fakeStomp';
+import { FakeClient, lastClient } from '../../test/fakeStomp';
 import { jsonResponse, renderApp, sampleTrip, testUser } from '../../test/renderApp';
 import { useSession } from '../auth/session';
-import type { LiveMember } from './liveTypes';
+import type { Eta, LiveMember } from './liveTypes';
 import { useLiveStore } from './liveStore';
 
 const fetchMock = vi.fn<typeof fetch>();
 const LOCATIONS = '/topic/trip.trip-1.locations';
 const EVENTS = '/topic/trip.trip-1.events';
+const ETAS = '/topic/trip.trip-1.eta';
 const ERRORS = '/user/queue/errors';
 
 const priya: LiveMember = {
@@ -21,6 +22,8 @@ const priya: LiveMember = {
   you: true,
   sharing: true,
   location: null,
+  arrivedAt: null,
+  travelMode: null,
 };
 const aman: LiveMember = {
   memberId: 'm-aman',
@@ -30,6 +33,8 @@ const aman: LiveMember = {
   you: false,
   sharing: true,
   location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date().toISOString() },
+  arrivedAt: null,
+  travelMode: null,
 };
 const rohan: LiveMember = {
   ...aman,
@@ -46,6 +51,7 @@ function serve(members: LiveMember[], extra: Routes = {}) {
     'GET /trips/trip-1': () =>
       jsonResponse(200, { ...sampleTrip, expiresAt: new Date(Date.now() + 3 * 3_600_000).toISOString() }),
     'GET /trips/trip-1/members': () => jsonResponse(200, members),
+    'GET /trips/trip-1/eta': () => jsonResponse(200, []),
     ...extra,
   };
   fetchMock.mockImplementation(async (input, init) => {
@@ -130,7 +136,7 @@ describe('Live map', () => {
     serve([priya]);
     const client = await openLiveMap();
 
-    expect([...client.listeners.keys()]).toEqual([LOCATIONS, EVENTS, ERRORS]);
+    expect([...client.listeners.keys()]).toEqual([LOCATIONS, EVENTS, ETAS, ERRORS]);
     expect(client.connectHeaders).toEqual({ Authorization: 'Bearer t' });
   });
 
@@ -300,6 +306,138 @@ describe('Live map', () => {
 
     expect(calls('POST /api/v1/auth/refresh')).toHaveLength(1);
     expect(client.connectHeaders).toEqual({ Authorization: 'Bearer fresh' });
+  });
+});
+
+describe('Live map, ETAs and arrivals', () => {
+  const etaFor = (memberId: string, minutes: number, metres: number): Eta => ({
+    memberId,
+    distanceM: metres,
+    durationS: minutes * 60,
+    mode: 'car',
+    progress: 0.2,
+    estimated: false,
+    computedAt: new Date().toISOString(),
+  });
+  const sara: LiveMember = { ...aman, memberId: 'm-sara', displayName: 'Sara', color: '#534AB7' };
+
+  it('says who arrives next, and keeps it up to date', async () => {
+    withLocation();
+    serve([priya, aman, sara], {
+      'GET /trips/trip-1/eta': () => jsonResponse(200, [etaFor('m-aman', 4, 1600)]),
+    });
+    const client = await openLiveMap();
+
+    expect(await screen.findByText('Next: Aman in 4 min · by car')).toBeInTheDocument();
+    expect(within(friendsList()).getByText('Aman, live on the map, 4 min away by car')).toBeInTheDocument();
+
+    act(() => client.deliver(ETAS, etaFor('m-sara', 2, 700)));
+
+    expect(screen.getByText('Next: Sara in 2 min · by car')).toBeInTheDocument();
+  });
+
+  it('announces an arrival and marks it', async () => {
+    withLocation();
+    serve([priya, aman]);
+    const client = await openLiveMap();
+    serve([priya, { ...aman, arrivedAt: new Date().toISOString() }]);
+
+    act(() => client.deliver(EVENTS, { type: 'ARRIVED', memberId: 'm-aman', displayName: 'Aman', at: 'x' }));
+
+    expect(screen.getByText('Aman arrived at Phoenix Marketcity')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Everyone has arrived' })).toBeInTheDocument();
+    expect(screen.getByText('All at Phoenix Marketcity')).toBeInTheDocument();
+    expect(within(friendsList()).getByText('Aman, arrived')).toBeInTheDocument();
+  });
+
+  it('lists who’s on the way, soonest first and arrivals last, on the same connection', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    serve([priya, aman, sara, { ...rohan, sharing: true, arrivedAt: new Date().toISOString() }], {
+      'GET /trips/trip-1/eta': () =>
+        jsonResponse(200, [
+          etaFor('m-aman', 14, 6200),
+          etaFor('m-sara', 4, 1600),
+          etaFor('m-priya', 19, 8100),
+        ]),
+    });
+    await openLiveMap();
+
+    await user.click(await screen.findByRole('link', { name: 'Who’s on the way' }));
+
+    expect(await screen.findByRole('heading', { name: 'Who’s on the way' })).toBeInTheDocument();
+    expect(screen.getByText('To Phoenix Marketcity')).toBeInTheDocument();
+    const rows = within(screen.getByRole('list', { name: 'Everyone on this trip' })).getAllByRole('listitem');
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'SSara1.6 km · by carArrives in 4 min',
+      'AAman6.2 km · by carArrives in 14 min',
+      'PYou8.1 km · by carArrives in 19 min',
+      'RRohanAt destinationArrived',
+    ]);
+    expect(screen.getByRole('link', { name: 'Invite more friends' })).toHaveAttribute(
+      'href',
+      '/trip/trip-1/invite',
+    );
+    // The map and its live connection carried on.
+    expect(FakeClient.instances).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'Sort by name' }));
+    expect(
+      within(screen.getByRole('list', { name: 'Everyone on this trip' }))
+        .getAllByRole('listitem')
+        .map((row) => row.textContent?.charAt(1)),
+    ).toEqual(['A', 'R', 'S', 'Y']);
+
+    await user.click(screen.getByRole('link', { name: 'Back to the map' }));
+    expect(await screen.findByRole('heading', { name: '2 friends on the way' })).toBeInTheDocument();
+  });
+});
+
+describe('Live map, how you travel', () => {
+  it('says what was guessed and lets you change it', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    serve([{ ...priya, travelMode: null }, aman], {
+      'GET /trips/trip-1/eta': () =>
+        jsonResponse(200, [
+          {
+            memberId: 'm-priya',
+            distanceM: 18000,
+            durationS: 2700,
+            mode: 'car',
+            progress: 0,
+            estimated: false,
+            computedAt: new Date().toISOString(),
+          },
+        ]),
+      'PUT /trips/trip-1/members/me/travel-mode': () => new Response(null, { status: 204 }),
+    });
+    await openLiveMap();
+
+    const group = await screen.findByRole('radiogroup', { name: 'How are you travelling?' });
+    expect(within(group).getByRole('radio', { name: 'Car' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('We guessed by car from the distance. Tap to change it.')).toBeInTheDocument();
+
+    await user.click(within(group).getByRole('radio', { name: 'Walk' }));
+
+    await waitFor(() => expect(calls('PUT /api/v1/trips/trip-1/members/me/travel-mode')).toHaveLength(1));
+    const [, init] = calls('PUT /api/v1/trips/trip-1/members/me/travel-mode')[0]!;
+    expect(JSON.parse(String(init?.body))).toEqual({ mode: 'walk' });
+  });
+
+  it('is not offered on a trip without a destination', async () => {
+    withLocation();
+    serve([priya], {
+      'GET /trips/trip-1': () =>
+        jsonResponse(200, {
+          ...sampleTrip,
+          destination: null,
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        }),
+    });
+    await openLiveMap();
+
+    expect(screen.queryByRole('radiogroup', { name: 'How are you travelling?' })).not.toBeInTheDocument();
   });
 });
 

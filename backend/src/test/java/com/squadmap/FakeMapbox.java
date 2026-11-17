@@ -31,6 +31,9 @@ public final class FakeMapbox {
     private volatile int status;
     private volatile String body;
     private volatile Duration delay;
+    // Directions answers apart from search, so a test can set up both.
+    private volatile int directionsStatus;
+    private volatile String directionsBody;
 
     private FakeMapbox() {
         try {
@@ -49,10 +52,11 @@ public final class FakeMapbox {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+            boolean directions = exchange.getRequestURI().getPath().startsWith("/directions/");
+            byte[] bytes = (directions ? directionsBody : body).getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             try {
-                exchange.sendResponseHeaders(status, bytes.length);
+                exchange.sendResponseHeaders(directions ? directionsStatus : status, bytes.length);
                 try (OutputStream out = exchange.getResponseBody()) {
                     out.write(bytes);
                 }
@@ -62,6 +66,7 @@ public final class FakeMapbox {
         };
         server.createContext("/search/geocode/v6/forward", handler);
         server.createContext("/search/searchbox/v1/category", handler);
+        server.createContext("/directions/v5/mapbox", handler);
         server.start();
         reset();
     }
@@ -83,6 +88,26 @@ public final class FakeMapbox {
         status = 200;
         body = collection();
         delay = Duration.ZERO;
+        answerRoute(1500, 300, "route-line");
+    }
+
+    /** Directions answers with one route of this length (metres), time (seconds) and polyline. */
+    public void answerRoute(double distance, double duration, String polyline) {
+        directionsStatus = 200;
+        directionsBody = """
+                {"code":"Ok","routes":[{"distance":%s,"duration":%s,"geometry":"%s"}]}
+                """.formatted(distance, duration, polyline);
+    }
+
+    public void answerDirections(int status, String body) {
+        directionsStatus = status;
+        directionsBody = body;
+    }
+
+    /** The paths of the Directions requests so far, such as "/directions/v5/mapbox/driving/73.9,18.5;...". */
+    public List<String> directionsPaths() {
+        return requests.stream().map(request -> request.get("_path"))
+                .filter(path -> path.startsWith("/directions/")).toList();
     }
 
     public void answer(int status, String body) {

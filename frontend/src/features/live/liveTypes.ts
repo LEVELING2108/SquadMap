@@ -20,13 +20,37 @@ export type LiveMember = {
   /** Whether they agreed to share their location on this trip. */
   sharing: boolean;
   location: Position | null;
+  /** When they reached the destination, or null. */
+  arrivedAt: string | null;
+  /** How they said they are travelling, or null before they choose (the ETA's mode is then a guess). */
+  travelMode: TravelMode | null;
+};
+
+/** A bike is a motorbike or scooter: it takes the same roads as a car. */
+export type TravelMode = 'car' | 'bike' | 'walk';
+
+/** A member's way to the destination: GET /trips/:id/eta, then /topic/trip.{id}.eta. */
+export type Eta = {
+  memberId: string;
+  /** Metres left along the route. */
+  distanceM: number;
+  /** Seconds left. */
+  durationS: number;
+  mode: TravelMode;
+  /** The route still to go, polyline6; absent when estimated without one. */
+  route?: string;
+  /** Share of the way done, 0 to 1. */
+  progress: number;
+  /** True when worked out without a fresh route. */
+  estimated: boolean;
+  computedAt: string;
 };
 
 /** A member moved: what arrives on /topic/trip.{id}.locations. */
 export type MemberLocation = Position & { memberId: string };
 
 export type TripEventType =
-  'MEMBER_JOINED' | 'MEMBER_LEFT' | 'SHARING_STARTED' | 'TRIP_EXTENDED' | 'TRIP_ENDED';
+  'MEMBER_JOINED' | 'MEMBER_LEFT' | 'SHARING_STARTED' | 'ARRIVED' | 'TRIP_EXTENDED' | 'TRIP_ENDED';
 
 /** Something happened on the trip: what arrives on /topic/trip.{id}.events. */
 export type TripEvent = {

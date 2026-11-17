@@ -21,6 +21,8 @@ public record TripEvent(Type type, UUID memberId, String displayName, String col
         MEMBER_LEFT,
         /** A member started sharing their location. */
         SHARING_STARTED,
+        /** A member reached the destination: within 60 m of it for 20 seconds. */
+        ARRIVED,
         TRIP_EXTENDED,
         TRIP_ENDED
     }

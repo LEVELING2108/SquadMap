@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Map as MapboxMap, Marker } from 'mapbox-gl';
+import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapboxMap, Marker } from 'mapbox-gl';
+import { Check } from 'lucide-react';
 import mapLight from '../../assets/illustrations/map.svg';
 import mapDark from '../../assets/illustrations/map-dark.svg';
 import { useMapStyle } from '../../features/profile/settingsApi';
@@ -61,6 +62,8 @@ type MapViewProps = {
   destination?: LatLng | null;
   /** People on the live map: their dot, initial and name. For the eye only, like `spots`. */
   people?: MapPerson[];
+  /** Routes to the destination, under the people. For the eye only: ETAs are also given in words. */
+  routes?: MapRoute[];
 };
 
 export type MapSpot = { id: string; lat: number; lng: number; kind: string; selected: boolean };
@@ -74,7 +77,45 @@ export type MapPerson = {
   color: string;
   /** Shown under the name for a spot that hasn't been updated lately, such as "3 min ago". */
   stale?: string;
+  /** Reached the destination: a green check on the dot, as in the design. */
+  arrived?: boolean;
 };
+
+/** A route to the destination, drawn as a dotted line in the person's colour. */
+export type MapRoute = { id: string; color: string; points: [number, number][] };
+
+const ROUTES_SOURCE = 'squadmap-routes';
+const ROUTES_LAYER = 'squadmap-routes-line';
+
+/**
+ * Puts the routes on the map as one dotted line layer, adding it the first time. Called again after a
+ * style change, which drops every layer the app added.
+ */
+function drawRoutes(map: MapboxMap, routes: MapRoute[]) {
+  const data: GeoJSONSourceSpecification['data'] = {
+    type: 'FeatureCollection',
+    features: routes
+      .filter((route) => route.points.length > 1)
+      .map((route) => ({
+        type: 'Feature',
+        properties: { color: route.color },
+        geometry: { type: 'LineString', coordinates: route.points },
+      })),
+  };
+  const source = map.getSource(ROUTES_SOURCE) as GeoJSONSource | undefined;
+  if (source) {
+    source.setData(data);
+    return;
+  }
+  map.addSource(ROUTES_SOURCE, { type: 'geojson', data });
+  map.addLayer({
+    id: ROUTES_LAYER,
+    type: 'line',
+    source: ROUTES_SOURCE,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [0, 2] },
+  });
+}
 
 /** A friend on the live map: their initial in their colour, with their name below, as in the design. */
 function PersonDot({ person }: { person: MapPerson }) {
@@ -84,10 +125,15 @@ function PersonDot({ person }: { person: MapPerson }) {
       className={`flex flex-col items-center ${person.stale ? 'opacity-55 grayscale' : ''}`}
     >
       <span
-        className="flex size-12 items-center justify-center rounded-pill border-[3px] border-screen text-lg font-extrabold text-on-person shadow-md"
+        className="relative flex size-12 items-center justify-center rounded-pill border-[3px] border-screen text-lg font-extrabold text-on-person shadow-md"
         style={{ backgroundColor: person.color }}
       >
         {person.name.charAt(0).toUpperCase()}
+        {person.arrived && (
+          <span className="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-pill border-2 border-screen bg-green text-on-primary">
+            <Check className="size-3.5" strokeWidth={3} />
+          </span>
+        )}
       </span>
       <span className="mt-1 max-w-[120px] truncate rounded-pill bg-screen px-2 py-0.5 text-xs font-bold text-ink shadow-sm">
         {person.name}
@@ -163,6 +209,7 @@ export function MapView({
   recenterKey = 0,
   destination = null,
   people,
+  routes,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -303,6 +350,30 @@ export function MapView({
     if (destination) marker.setLngLat([destination.lng, destination.lat]).addTo(map);
     else marker.remove();
   }, [mode, destination]);
+
+  // Routes: drawn now, and again whenever the style is replaced (a map style or theme change).
+  const routesRef = useRef(routes);
+  useEffect(() => {
+    routesRef.current = routes;
+  });
+  useEffect(() => {
+    const map = mapRef.current;
+    if (mode !== 'ready' || !map) return;
+    const draw = () => {
+      try {
+        drawRoutes(map, routesRef.current ?? []);
+      } catch {
+        // A new style is still loading (Mapbox refuses layers until then): draw once it has.
+        map.once('styledata', draw);
+      }
+    };
+    draw();
+    map.on('style.load', draw);
+    return () => {
+      map.off('style.load', draw);
+      map.off('styledata', draw);
+    };
+  }, [mode, routes]);
 
   // People as DOM markers keyed by id, drawn with React through portals; moved, not recreated, on updates.
   const personMarkers = useRef(new Map<string, Marker>());

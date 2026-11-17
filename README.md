@@ -43,13 +43,13 @@ docker run --rm -i -e BASE=http://host.docker.internal:8480 grafana/k6 run - < i
 Verify: the summary shows `location_round_trip` p(95) under 3 s and `location_refused` under 0.5%.
 Raise the load with `-e TRIPS=200 -e MEMBERS=10 -e DURATION=15m` against a staging stack.
 
-Place search (choosing a trip's destination) needs your own Mapbox tokens; everything else works
-without them. Create two public tokens in your [Mapbox account](https://account.mapbox.com/access-tokens/):
+Place search (choosing a trip's destination) and routes to it need your own Mapbox tokens; everything
+else works without them (ETAs are then rough estimates). Create two public tokens in your [Mapbox account](https://account.mapbox.com/access-tokens/):
 
 | Token | Where it goes | URL restriction | Verify |
 | --- | --- | --- | --- |
 | Web app | `frontend/.env.local` as `VITE_MAPBOX_PUBLIC_TOKEN=pk...` | `http://localhost:5480` | the map loads in the app |
-| Server | `backend/.env.local` as `MAPBOX_SERVER_TOKEN=pk...` | none (the server sends no web address) | `GET /api/v1/places/search?q=pune` in the API docs returns places |
+| Server | `backend/.env.local` as `MAPBOX_SERVER_TOKEN=pk...` | none (the server sends no web address) | `GET /api/v1/places/search?q=pune` in the API docs returns places; on a trip with a destination, friends' dotted routes appear |
 
 Both files are ignored by git. Restart the API after adding the server token.
 

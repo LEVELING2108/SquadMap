@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  * A live-map client for tests: connects to {@code /ws} the way the web app does, and collects what it
  * receives per destination, plus any ERROR frame the server sends before closing the connection.
  */
-final class LiveClient implements AutoCloseable {
+public final class LiveClient implements AutoCloseable {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -36,7 +36,7 @@ final class LiveClient implements AutoCloseable {
     }
 
     /** Connects with the given access token (or none), waiting up to 5 seconds. */
-    static LiveClient connect(int port, String token) {
+    public static LiveClient connect(int port, String token) {
         LiveClient client = new LiveClient();
         StompHeaders connect = new StompHeaders();
         if (token != null) {
@@ -51,7 +51,7 @@ final class LiveClient implements AutoCloseable {
         return client;
     }
 
-    boolean connected() {
+    public boolean connected() {
         return session != null && session.isConnected();
     }
 
@@ -59,7 +59,7 @@ final class LiveClient implements AutoCloseable {
      * A refused subscription closes the connection, sometimes before the client has finished sending it;
      * that is fine, as the refusal is in {@link #nextError}.
      */
-    void subscribe(String destination) {
+    public void subscribe(String destination) {
         try {
             subscribeOrThrow(destination);
         } catch (RuntimeException closedByTheServer) {
@@ -81,7 +81,7 @@ final class LiveClient implements AutoCloseable {
         });
     }
 
-    void send(String destination, Object payload) {
+    public void send(String destination, Object payload) {
         try {
             StompHeaders headers = new StompHeaders();
             headers.setDestination(destination);
@@ -93,12 +93,12 @@ final class LiveClient implements AutoCloseable {
     }
 
     /** The next message on the destination, or null after the wait. */
-    JsonNode next(String destination, long millis) throws InterruptedException {
+    public JsonNode next(String destination, long millis) throws InterruptedException {
         return queue(destination).poll(millis, TimeUnit.MILLISECONDS);
     }
 
     /** The message of the next ERROR frame, or null after the wait. */
-    String nextError(long millis) throws InterruptedException {
+    public String nextError(long millis) throws InterruptedException {
         return errors.poll(millis, TimeUnit.MILLISECONDS);
     }
 

@@ -5,20 +5,27 @@ import { LocateFixed, Maximize, WifiOff } from 'lucide-react';
 import { api } from '../../lib/api/client';
 import { ApiError } from '../../lib/api/ApiError';
 import { DEFAULT_VIEW, type LatLng } from '../../lib/map/geo';
-import { MapView, type MapPerson } from '../../lib/map/MapView';
+import { MapView, type MapPerson, type MapRoute } from '../../lib/map/MapView';
+import { decodePolyline } from '../../lib/map/polyline';
 import { useElementHeight } from '../../lib/useElementHeight';
 import { Banner } from '../../components/ui/Banner';
 import { ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
 import { refreshSession, signOut, useSession } from '../auth/session';
-import { tripKeys, useTrip } from '../trip/tripQueries';
-import { liveKeys, useLiveMembers, useStartSharing } from './liveApi';
+import { useSettings } from '../profile/settingsApi';
+import { shortPlace, tripKeys, useTrip } from '../trip/tripQueries';
+import { EtaList } from './EtaList';
+import { liveKeys, useChooseTravelMode, useLiveMembers, useStartSharing, useTripEtas } from './liveApi';
+import { TravelModePicker } from './TravelModePicker';
 import { timeLeft, staleLabel } from './liveFormat';
 import {
+  applyEta,
   applyLocation,
   clearPositions,
+  forgetEta,
   forgetMember,
   openTrip,
+  seedEtas,
   seedPositions,
   useLiveStore,
 } from './liveStore';
@@ -57,11 +64,18 @@ function announce(event: TripEvent): string | null {
   }
 }
 
+/** A colour from the theme as Mapbox needs it (a real value, not a CSS variable). */
+function themeColor(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
 /**
  * The live map (D1): everyone on the trip moving on one map, in real time. It loads who is on the trip,
  * keeps a live connection for their moves, and shares this phone's location once the person has agreed.
+ * With `view="eta"` (D3) the sheet lists who's on the way; the map and connection stay the same.
  */
-export function LiveMapPage() {
+export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
   const { tripId = '' } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -70,15 +84,22 @@ export function LiveMapPage() {
   const [ended, setEnded] = useState(false);
   const tripOver = ended || (trip.data !== undefined && trip.data.status !== 'active');
   const members = useLiveMembers(tripId, !tripOver);
+  const etaSnapshot = useTripEtas(tripId, !tripOver);
   const positions = useLiveStore((state) => state.positions);
+  const etas = useLiveStore((state) => state.etas);
   const now = useNow(15_000);
   const [toast, setToast] = useState<string | null>(null);
   const startSharing = useStartSharing(tripId);
+  const chooseMode = useChooseTravelMode(tripId);
+  const { settings } = useSettings();
 
   useEffect(() => openTrip(tripId), [tripId]);
   useEffect(() => {
     if (members.data) seedPositions(members.data);
   }, [members.data]);
+  useEffect(() => {
+    if (etaSnapshot.data) seedEtas(etaSnapshot.data);
+  }, [etaSnapshot.data]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 4_000);
@@ -86,6 +107,7 @@ export function LiveMapPage() {
   }, [toast]);
 
   const refreshMembers = () => void queryClient.invalidateQueries({ queryKey: liveKeys.members(tripId) });
+  const destinationName = trip.data?.destination ? shortPlace(trip.data.destination.name) : null;
 
   function endTrip() {
     setEnded(true);
@@ -95,9 +117,18 @@ export function LiveMapPage() {
 
   const socket = useTripSocket(tripId, trip.data?.status === 'active' && !ended, {
     onLocation: applyLocation,
+    onEta: applyEta,
     onEvent: (event) => {
       if (event.type === 'TRIP_ENDED') {
         endTrip();
+        return;
+      }
+      if (event.type === 'ARRIVED') {
+        if (event.memberId) forgetEta(event.memberId);
+        refreshMembers();
+        const isMe = members.data?.some((member) => member.you && member.memberId === event.memberId);
+        const where = destinationName ? ` at ${destinationName}` : '';
+        setToast(isMe ? `You arrived${where}` : `${event.displayName ?? 'Someone'} arrived${where}`);
         return;
       }
       if (event.type === 'MEMBER_LEFT' && event.memberId) forgetMember(event.memberId);
@@ -116,7 +147,10 @@ export function LiveMapPage() {
       if (error.code === 'NOT_SHARING') refreshMembers();
       if (error.code === 'TRIP_EXPIRED') endTrip();
     },
-    onReconnected: refreshMembers,
+    onReconnected: () => {
+      refreshMembers();
+      void queryClient.invalidateQueries({ queryKey: liveKeys.etas(tripId) });
+    },
     onRefused: (code) => {
       if (code === 'TRIP_EXPIRED') endTrip();
       else if (code === 'TRIP_NOT_FOUND' || code === 'UNAUTHENTICATED') navigate('/', { replace: true });
@@ -163,8 +197,18 @@ export function LiveMapPage() {
             name: friend.displayName,
             color: friend.color,
             stale: staleLabel(spot.ts, now) ?? undefined,
+            arrived: friend.arrivedAt !== null,
           },
         ];
+      });
+  // Each route in its person's colour; yours in the "You" blue, like your dot.
+  const routes: MapRoute[] = tripOver
+    ? []
+    : (members.data ?? []).flatMap((member) => {
+        const eta = etas[member.memberId];
+        if (!eta?.route || member.arrivedAt) return [];
+        const color = member.you ? themeColor('--you', '#1A73E8') : member.color;
+        return [{ id: member.memberId, color, points: decodePolyline(eta.route) }];
       });
   const everyone: LatLng[] = [
     ...people.map(({ lat, lng }) => ({ lat, lng })),
@@ -213,6 +257,7 @@ export function LiveMapPage() {
         destination={destination}
         you={tripOver ? null : youSpot}
         people={people}
+        routes={routes}
         fitTo={everyone}
         fitKey={fitKey}
         bottomInset={sheetHeight + 20}
@@ -224,7 +269,14 @@ export function LiveMapPage() {
         code={code}
         status={statusText}
         live={!tripOver && socket.connection === 'live'}
-        showBack={status === 'signedIn'}
+        back={
+          view === 'eta'
+            ? { to: `/trip/${tripId}`, label: 'Back to the map' }
+            : status === 'signedIn'
+              ? { to: '/home', label: 'Back to home' }
+              : null
+        }
+        showHome={status === 'signedIn'}
         isHost={trip.data?.role === 'host'}
         tripId={tripId}
         onLeave={trip.data && trip.data.role !== 'host' && !tripOver ? () => leave.mutate() : undefined}
@@ -298,13 +350,41 @@ export function LiveMapPage() {
           />
         </section>
       ) : (
-        <LivePeekSheet ref={sheetRef} friends={friends} positions={positions} now={now} code={code}>
+        <LivePeekSheet
+          ref={sheetRef}
+          friends={friends}
+          positions={positions}
+          etas={etas}
+          now={now}
+          code={code}
+          listHref={`/trip/${tripId}/eta`}
+          destination={destinationName}
+          expanded={
+            view === 'eta' && members.data ? (
+              <EtaList
+                members={members.data}
+                etas={etas}
+                destination={destinationName}
+                unit={settings.distanceUnit}
+                inviteHref={trip.data?.role === 'host' ? `/trip/${tripId}/invite` : null}
+              />
+            ) : undefined
+          }
+        >
           {members.isError && <Banner tone="error">{describeFailure(members.error)}</Banner>}
           {me && !me.sharing && (
             <ShareLocationCard
               onShare={() => startSharing.mutate()}
               pending={startSharing.isPending}
               error={startSharing.error}
+            />
+          )}
+          {view === 'map' && me?.sharing && destination && !me.arrivedAt && (
+            <TravelModePicker
+              chosen={me.travelMode}
+              current={etas[me.memberId]?.mode ?? null}
+              onChoose={(mode) => chooseMode.mutate(mode)}
+              error={chooseMode.error}
             />
           )}
           {sharing.kind === 'denied' && (
@@ -316,7 +396,7 @@ export function LiveMapPage() {
           {sharing.kind === 'unavailable' && (
             <Banner tone="error">This browser can’t share its location. Friends can’t see you here.</Banner>
           )}
-          {trip.data?.role === 'host' && friends.length === 0 && (
+          {view === 'map' && trip.data?.role === 'host' && friends.length === 0 && (
             <ButtonLink to={`/trip/${tripId}/invite`} variant="glass">
               Show the invite
             </ButtonLink>
