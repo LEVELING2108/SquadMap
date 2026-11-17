@@ -73,6 +73,18 @@ describe('session', () => {
     expect(useSession.getState().status).toBe('signedOut');
   });
 
+  it('a late "no session" answer at startup does not undo a login made meanwhile', async () => {
+    let answer!: (response: Response) => void;
+    fetchMock.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+    const restoring = restoreSession();
+    setSignedIn({ ...signedInBody, accessToken: 'from-login' });
+    answer(json(401, { code: 'SESSION_EXPIRED' }));
+
+    expect(await restoring).toBe(true);
+    expect(useSession.getState()).toMatchObject({ status: 'signedIn', accessToken: 'from-login' });
+  });
+
   it('is signed out on first load when the server cannot be reached', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
