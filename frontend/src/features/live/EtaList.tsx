@@ -3,7 +3,8 @@ import { ArrowDownAZ, Check, ListFilter, Plus } from 'lucide-react';
 import { ButtonLink } from '../../components/ui/Button';
 import { formatDistance } from '../../lib/map/geo';
 import type { DistanceUnit } from '../profile/settingsApi';
-import { formatDuration } from './liveFormat';
+import { formatDuration, modeWords } from './liveFormat';
+import { TravelModeIcon } from './TravelModeIcon';
 import type { Eta, LiveMember } from './liveTypes';
 
 type EtaListProps = {
@@ -80,7 +81,7 @@ export function EtaList({ members, etas, destination, unit, inviteHref }: EtaLis
           const detail = member.arrivedAt
             ? 'At destination'
             : eta
-              ? `${formatDistance(eta.distanceM, unit)} · ${eta.mode}`
+              ? `${formatDistance(eta.distanceM, unit)} · ${modeWords(eta.mode)}`
               : !member.sharing
                 ? 'Not sharing yet'
                 : destination
@@ -100,7 +101,12 @@ export function EtaList({ members, etas, destination, unit, inviteHref }: EtaLis
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[17px] leading-[22px] font-extrabold">{name}</p>
-                <p className="truncate text-sm leading-5 text-muted">{detail}</p>
+                <p className="flex min-w-0 items-center gap-1.5 text-sm leading-5 text-muted">
+                  {eta && !member.arrivedAt && (
+                    <TravelModeIcon mode={eta.mode} className="size-4 flex-none" />
+                  )}
+                  <span className="truncate">{detail}</span>
+                </p>
               </div>
               {member.arrivedAt ? (
                 <span className="flex flex-none items-center gap-1 rounded-pill bg-green-bg px-3 py-1 text-sm font-bold text-green">

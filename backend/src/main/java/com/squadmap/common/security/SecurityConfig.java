@@ -84,6 +84,8 @@ public class SecurityConfig {
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/locations", "/api/v1/trips/*/sharing")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/guest-pass")
                             .hasAuthority(TokenKind.GUEST.authority());
                     // Everything else about trips is for signed-in accounts.

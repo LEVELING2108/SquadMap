@@ -12,7 +12,11 @@ import com.squadmap.eta.dto.EtaView;
 import com.squadmap.location.domain.Position;
 import com.squadmap.location.service.LiveChannel;
 import com.squadmap.location.service.LiveTrips;
+import com.squadmap.location.service.PositionStore;
 import com.squadmap.location.service.TripAccess;
+import com.squadmap.common.error.ApiException;
+import com.squadmap.common.error.ErrorCode;
+import org.springframework.http.HttpStatus;
 import com.squadmap.trip.domain.Destination;
 import com.squadmap.trip.domain.Trip;
 import com.squadmap.trip.domain.TripMember;
@@ -59,12 +63,15 @@ public class EtaService {
     private final LiveTrips liveTrips;
     private final TransactionTemplate transactions;
     private final TripAccess access;
+    private final PositionStore positions;
     private final Clock clock;
 
     public EtaService(TripRepository trips, TripMemberRepository members, EtaStore store,
                       MapboxDirections directions, RateLimiter rateLimiter, LiveChannel channel,
-                      LiveTrips liveTrips, TransactionTemplate transactions, TripAccess access, Clock clock) {
+                      LiveTrips liveTrips, TransactionTemplate transactions, TripAccess access,
+                      PositionStore positions, Clock clock) {
         this.access = access;
+        this.positions = positions;
         this.trips = trips;
         this.members = members;
         this.store = store;
@@ -89,6 +96,27 @@ public class EtaService {
                 .toList();
         Map<UUID, Eta> found = store.getAll(tripId, ids);
         return ids.stream().filter(found::containsKey).map(id -> EtaView.of(found.get(id))).toList();
+    }
+
+    /**
+     * Records how the caller is travelling and, if they have a spot, works out their ETA again straight away
+     * so everyone sees the new route and time.
+     *
+     * @throws ApiException 400 {@code VALIDATION_FAILED} for anything but car, bike or walk
+     */
+    public void chooseMode(UUID tripId, Caller caller, String mode) {
+        TravelMode chosen;
+        try {
+            chosen = TravelMode.valueOf(mode == null ? "" : mode);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED, "Choose car, bike or walk.");
+        }
+        TripMember member = access.requireLiveMember(tripId, caller);
+        transactions.executeWithoutResult(status -> members.setTravelMode(member.getId(), chosen.name()));
+        Position spot = positions.get(tripId, member.getId());
+        if (spot != null) {
+            refresh(tripId, member.getId(), spot);
+        }
     }
 
     /** After a member's new spot is stored: checks for arrival, then refreshes their ETA if it's worth it. */
@@ -122,7 +150,7 @@ public class EtaService {
         }
         try {
             Eta previous = store.get(tripId, memberId);
-            TravelMode mode = EtaRules.modeOf(position, previous, now);
+            TravelMode mode = EtaRules.modeOf(member.getTravelMode(), previous, straight);
             if (!EtaRules.worthRedoing(previous, position, mode, now)) {
                 return;
             }

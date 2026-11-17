@@ -39,6 +39,7 @@ const guestOnTrip = {
   sharing: true,
   location: null,
   arrivedAt: null,
+  travelMode: null,
 };
 
 function serve(routes: Routes) {

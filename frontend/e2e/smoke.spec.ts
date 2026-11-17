@@ -1216,7 +1216,7 @@ async function asHostOnTheLiveMap(page: Page) {
           memberId: 'm-aman',
           distanceM: 1600,
           durationS: 240,
-          mode: 'driving',
+          mode: 'car',
           progress: 0.4,
           estimated: false,
           computedAt: new Date().toISOString(),
@@ -1299,7 +1299,7 @@ test.describe('live map', () => {
       const server = await asHostOnTheLiveMap(page);
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
       await page.goto('/trip/trip-1');
-      await expect(page.getByText('Next: Aman in 4 min')).toBeVisible();
+      await expect(page.getByText('Next: Aman in 4 min · by car')).toBeVisible();
       await expect.poll(server.connected).toBe(true);
 
       await page.getByRole('link', { name: 'Who’s on the way' }).click();
@@ -1330,12 +1330,12 @@ test.describe('live map', () => {
       memberId: 'm-aman',
       distanceM: 400,
       durationS: 70,
-      mode: 'walking',
+      mode: 'walk',
       progress: 0.9,
       estimated: false,
       computedAt: new Date(Date.now() + 1000).toISOString(),
     });
-    await expect(page.getByText('Next: Aman in 1 min')).toBeVisible();
+    await expect(page.getByText('Next: Aman in 1 min · on foot')).toBeVisible();
 
     server.send('/topic/trip.trip-1.events', {
       type: 'ARRIVED',

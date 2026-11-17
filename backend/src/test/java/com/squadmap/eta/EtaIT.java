@@ -97,15 +97,17 @@ class EtaIT extends IntegrationTest {
         assertThat(live.get("memberId").asText()).isEqualTo(guestMemberId);
         assertThat(live.get("distanceM").asLong()).isEqualTo(2400);
         assertThat(live.get("durationS").asLong()).isEqualTo(420);
-        assertThat(live.get("mode").asText()).isEqualTo("driving");
+        // 2.6 km away and nothing chosen yet: by car.
+        assertThat(live.get("mode").asText()).isEqualTo("car");
         assertThat(live.get("route").asText()).isEqualTo("route-from-aman");
         assertThat(live.get("estimated").asBoolean()).isFalse();
         assertThat(live.get("progress").asDouble()).isZero();
         // From the member to the destination, longitude first, as Mapbox wants.
         assertThat(FakeMapbox.get().directionsPaths())
-                .containsExactly("/directions/v5/mapbox/driving/73.900000,18.580000;73.916700,18.562200");
+                .containsExactly("/directions/v5/mapbox/driving-traffic/73.900000,18.580000;73.916700,18.562200");
+        // The whole line, so the route follows the roads.
         assertThat(FakeMapbox.get().requests().getFirst()).containsEntry("access_token", FakeMapbox.TOKEN)
-                .containsEntry("geometries", "polyline6");
+                .containsEntry("geometries", "polyline6").containsEntry("overview", "full");
     }
 
     @Test
@@ -129,13 +131,41 @@ class EtaIT extends IntegrationTest {
     }
 
     @Test
-    void slowMovementCountsAsWalking() {
-        publish(guest, reading(18.5800, 73.9000, 1.2));
+    void standingStillAtTheStartIsNotWalking() {
+        // Speed 0 while waiting to set off, 2.6 km away.
+        publish(guest, reading(18.5800, 73.9000, 0.0));
 
         await(() -> etas(host).size() == 1);
 
-        assertThat(etas(host).get(0).get("mode").asText()).isEqualTo("walking");
-        assertThat(FakeMapbox.get().directionsPaths().getFirst()).startsWith("/directions/v5/mapbox/walking/");
+        assertThat(etas(host).get(0).get("mode").asText()).isEqualTo("car");
+    }
+
+    @Test
+    void choosingHowYouTravelGivesThatRouteAtOnce() {
+        publish(guest, reading(18.5800, 73.9000, null));
+        await(() -> etas(host).size() == 1);
+        FakeMapbox.get().answerRoute(2100, 1500, "on-foot");
+
+        ResponseEntity<JsonNode> chosen = send(HttpMethod.PUT,
+                "/api/v1/trips/" + tripId + "/members/me/travel-mode", guest, Map.of("mode", "walk"));
+
+        assertThat(chosen.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        await(() -> "walk".equals(etas(host).get(0).get("mode").asText()));
+        assertThat(etas(host).get(0).get("durationS").asLong()).isEqualTo(1500);
+        assertThat(FakeMapbox.get().directionsPaths().getLast()).startsWith("/directions/v5/mapbox/walking/");
+        JsonNode aman = get("/api/v1/trips/" + tripId + "/members", host).getBody().get(1);
+        assertThat(aman.get("travelMode").asText()).isEqualTo("walk");
+    }
+
+    @Test
+    void onlyCarBikeOrWalkCanBeChosen() {
+        ResponseEntity<JsonNode> refused = send(HttpMethod.PUT,
+                "/api/v1/trips/" + tripId + "/members/me/travel-mode", guest, Map.of("mode", "rocket"));
+
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        String stranger = signUp("Rohan", "rohan@example.com");
+        assertThat(send(HttpMethod.PUT, "/api/v1/trips/" + tripId + "/members/me/travel-mode", stranger,
+                Map.of("mode", "car")).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test

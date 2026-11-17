@@ -22,7 +22,12 @@ export type LiveMember = {
   location: Position | null;
   /** When they reached the destination, or null. */
   arrivedAt: string | null;
+  /** How they said they are travelling, or null before they choose (the ETA's mode is then a guess). */
+  travelMode: TravelMode | null;
 };
+
+/** A bike is a motorbike or scooter: it takes the same roads as a car. */
+export type TravelMode = 'car' | 'bike' | 'walk';
 
 /** A member's way to the destination: GET /trips/:id/eta, then /topic/trip.{id}.eta. */
 export type Eta = {
@@ -31,7 +36,7 @@ export type Eta = {
   distanceM: number;
   /** Seconds left. */
   durationS: number;
-  mode: 'driving' | 'walking';
+  mode: TravelMode;
   /** The route still to go, polyline6; absent when estimated without one. */
   route?: string;
   /** Share of the way done, 0 to 1. */

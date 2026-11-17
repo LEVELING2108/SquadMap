@@ -46,6 +46,7 @@ describe('live spots', () => {
     sharing: true,
     location: ts ? { lat: 18.5, lng: 73.9, acc: 10, ts } : null,
     arrivedAt: null,
+    travelMode: null,
   });
 
   beforeEach(() => {

@@ -23,6 +23,7 @@ const priya: LiveMember = {
   sharing: true,
   location: null,
   arrivedAt: null,
+  travelMode: null,
 };
 const aman: LiveMember = {
   memberId: 'm-aman',
@@ -33,6 +34,7 @@ const aman: LiveMember = {
   sharing: true,
   location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date().toISOString() },
   arrivedAt: null,
+  travelMode: null,
 };
 const rohan: LiveMember = {
   ...aman,
@@ -312,7 +314,7 @@ describe('Live map, ETAs and arrivals', () => {
     memberId,
     distanceM: metres,
     durationS: minutes * 60,
-    mode: 'driving',
+    mode: 'car',
     progress: 0.2,
     estimated: false,
     computedAt: new Date().toISOString(),
@@ -326,12 +328,12 @@ describe('Live map, ETAs and arrivals', () => {
     });
     const client = await openLiveMap();
 
-    expect(await screen.findByText('Next: Aman in 4 min')).toBeInTheDocument();
-    expect(within(friendsList()).getByText('Aman, live on the map, 4 min away')).toBeInTheDocument();
+    expect(await screen.findByText('Next: Aman in 4 min · by car')).toBeInTheDocument();
+    expect(within(friendsList()).getByText('Aman, live on the map, 4 min away by car')).toBeInTheDocument();
 
     act(() => client.deliver(ETAS, etaFor('m-sara', 2, 700)));
 
-    expect(screen.getByText('Next: Sara in 2 min')).toBeInTheDocument();
+    expect(screen.getByText('Next: Sara in 2 min · by car')).toBeInTheDocument();
   });
 
   it('announces an arrival and marks it', async () => {
@@ -367,9 +369,9 @@ describe('Live map, ETAs and arrivals', () => {
     expect(screen.getByText('To Phoenix Marketcity')).toBeInTheDocument();
     const rows = within(screen.getByRole('list', { name: 'Everyone on this trip' })).getAllByRole('listitem');
     expect(rows.map((row) => row.textContent)).toEqual([
-      'SSara1.6 km · drivingArrives in 4 min',
-      'AAman6.2 km · drivingArrives in 14 min',
-      'PYou8.1 km · drivingArrives in 19 min',
+      'SSara1.6 km · by carArrives in 4 min',
+      'AAman6.2 km · by carArrives in 14 min',
+      'PYou8.1 km · by carArrives in 19 min',
       'RRohanAt destinationArrived',
     ]);
     expect(screen.getByRole('link', { name: 'Invite more friends' })).toHaveAttribute(
@@ -388,6 +390,54 @@ describe('Live map, ETAs and arrivals', () => {
 
     await user.click(screen.getByRole('link', { name: 'Back to the map' }));
     expect(await screen.findByRole('heading', { name: '2 friends on the way' })).toBeInTheDocument();
+  });
+});
+
+describe('Live map, how you travel', () => {
+  it('says what was guessed and lets you change it', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    serve([{ ...priya, travelMode: null }, aman], {
+      'GET /trips/trip-1/eta': () =>
+        jsonResponse(200, [
+          {
+            memberId: 'm-priya',
+            distanceM: 18000,
+            durationS: 2700,
+            mode: 'car',
+            progress: 0,
+            estimated: false,
+            computedAt: new Date().toISOString(),
+          },
+        ]),
+      'PUT /trips/trip-1/members/me/travel-mode': () => new Response(null, { status: 204 }),
+    });
+    await openLiveMap();
+
+    const group = await screen.findByRole('radiogroup', { name: 'How are you travelling?' });
+    expect(within(group).getByRole('radio', { name: 'Car' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('We guessed by car from the distance. Tap to change it.')).toBeInTheDocument();
+
+    await user.click(within(group).getByRole('radio', { name: 'Walk' }));
+
+    await waitFor(() => expect(calls('PUT /api/v1/trips/trip-1/members/me/travel-mode')).toHaveLength(1));
+    const [, init] = calls('PUT /api/v1/trips/trip-1/members/me/travel-mode')[0]!;
+    expect(JSON.parse(String(init?.body))).toEqual({ mode: 'walk' });
+  });
+
+  it('is not offered on a trip without a destination', async () => {
+    withLocation();
+    serve([priya], {
+      'GET /trips/trip-1': () =>
+        jsonResponse(200, {
+          ...sampleTrip,
+          destination: null,
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        }),
+    });
+    await openLiveMap();
+
+    expect(screen.queryByRole('radiogroup', { name: 'How are you travelling?' })).not.toBeInTheDocument();
   });
 });
 

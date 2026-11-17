@@ -44,6 +44,10 @@ public class TripMember {
     @Column(name = "arrived_at", insertable = false, updatable = false)
     private Instant arrivedAt;
 
+    /** How they said they are travelling; set by an UPDATE (see TripMemberRepository#setTravelMode). */
+    @Column(name = "travel_mode", insertable = false, updatable = false)
+    private String travelMode;
+
     protected TripMember() {
         // for JPA
     }
@@ -89,6 +93,11 @@ public class TripMember {
 
     public Instant getArrivedAt() {
         return arrivedAt;
+    }
+
+    /** "car", "bike" or "walk" as the member chose, or null before they choose. */
+    public String getTravelMode() {
+        return travelMode;
     }
 
     public boolean isActive() {

@@ -116,7 +116,7 @@ public class LocationService {
         return everyone.stream()
                 .map(member -> new LiveMemberResponse(member.getId(), member.getDisplayName(), member.getColor(),
                         member.getRole(), member.getId().equals(me.getId()), sharing.contains(member.getId()),
-                        spots.get(member.getId()), member.getArrivedAt()))
+                        spots.get(member.getId()), member.getArrivedAt(), member.getTravelMode()))
                 .toList();
     }
 

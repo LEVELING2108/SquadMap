@@ -51,7 +51,8 @@ public class MapboxDirections {
                     // variable the ';' between them would be encoded, which Mapbox doesn't read as a separator.
                     .uri(builder -> builder.path("/directions/v5/mapbox/" + mode.profile() + "/" + coordinates)
                             .queryParam("geometries", "polyline6")
-                            .queryParam("overview", "simplified")
+                            // The whole line: a simplified one cuts across blocks on longer trips.
+                            .queryParam("overview", "full")
                             .queryParam("access_token", "{token}")
                             .build(properties.token()))
                     .retrieve()

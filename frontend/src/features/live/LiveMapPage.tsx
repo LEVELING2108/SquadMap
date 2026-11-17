@@ -15,7 +15,8 @@ import { refreshSession, signOut, useSession } from '../auth/session';
 import { useSettings } from '../profile/settingsApi';
 import { shortPlace, tripKeys, useTrip } from '../trip/tripQueries';
 import { EtaList } from './EtaList';
-import { liveKeys, useLiveMembers, useStartSharing, useTripEtas } from './liveApi';
+import { liveKeys, useChooseTravelMode, useLiveMembers, useStartSharing, useTripEtas } from './liveApi';
+import { TravelModePicker } from './TravelModePicker';
 import { timeLeft, staleLabel } from './liveFormat';
 import {
   applyEta,
@@ -89,6 +90,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
   const now = useNow(15_000);
   const [toast, setToast] = useState<string | null>(null);
   const startSharing = useStartSharing(tripId);
+  const chooseMode = useChooseTravelMode(tripId);
   const { settings } = useSettings();
 
   useEffect(() => openTrip(tripId), [tripId]);
@@ -375,6 +377,14 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
               onShare={() => startSharing.mutate()}
               pending={startSharing.isPending}
               error={startSharing.error}
+            />
+          )}
+          {view === 'map' && me?.sharing && destination && !me.arrivedAt && (
+            <TravelModePicker
+              chosen={me.travelMode}
+              current={etas[me.memberId]?.mode ?? null}
+              onChoose={(mode) => chooseMode.mutate(mode)}
+              error={chooseMode.error}
             />
           )}
           {sharing.kind === 'denied' && (

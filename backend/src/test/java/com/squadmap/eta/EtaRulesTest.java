@@ -11,13 +11,13 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** How a member's travel mode is judged, and when a new route is worth asking Mapbox for. */
+/** How a member's travel mode is decided, and when a new route is worth asking Mapbox for. */
 class EtaRulesTest {
 
     private static final Instant NOW = Instant.parse("2026-11-18T10:00:00Z");
 
-    private static Position at(double lat, double lng, Double speed) {
-        return new Position(lat, lng, 8, speed, null, NOW);
+    private static Position at(double lat, double lng) {
+        return new Position(lat, lng, 8, 0.0, null, NOW);
     }
 
     private static Eta lastEta(TravelMode mode, double lat, double lng, Instant at) {
@@ -25,34 +25,46 @@ class EtaRulesTest {
     }
 
     @Test
-    void thePhonesSpeedDecidesTheMode() {
-        assertThat(EtaRules.modeOf(at(18.58, 73.90, 1.2), null, NOW)).isEqualTo(TravelMode.walking);
-        assertThat(EtaRules.modeOf(at(18.58, 73.90, 9.0), null, NOW)).isEqualTo(TravelMode.driving);
+    void theirOwnChoiceAlwaysWins() {
+        Eta guessed = lastEta(TravelMode.car, 18.58, 73.90, NOW);
+        assertThat(EtaRules.modeOf("walk", guessed, 18_000)).isEqualTo(TravelMode.walk);
+        assertThat(EtaRules.modeOf("bike", null, 500)).isEqualTo(TravelMode.bike);
     }
 
     @Test
-    void withoutASpeedTheAverageSinceTheLastEtaDecides() {
-        // About 110 m in 60 seconds: under 2 m/s.
-        Eta last = lastEta(TravelMode.driving, 18.5800, 73.9000, NOW.minusSeconds(60));
-        assertThat(EtaRules.modeOf(at(18.5810, 73.9000, null), last, NOW)).isEqualTo(TravelMode.walking);
+    void beforeTheyChooseItIsACarBeyondTwoKilometresAndWalkingNearer() {
+        // Standing still at the start (speed 0) no longer counts as walking.
+        assertThat(EtaRules.modeOf(null, null, 18_000)).isEqualTo(TravelMode.car);
+        assertThat(EtaRules.modeOf(null, null, 900)).isEqualTo(TravelMode.walk);
     }
 
     @Test
-    void withNothingToGoOnTheLastModeStays() {
-        Eta last = lastEta(TravelMode.walking, 18.58, 73.90, NOW.minusSeconds(3));
-        assertThat(EtaRules.modeOf(at(18.58, 73.90, null), last, NOW)).isEqualTo(TravelMode.walking);
-        assertThat(EtaRules.modeOf(at(18.58, 73.90, null), null, NOW)).isEqualTo(TravelMode.driving);
+    void theFirstGuessStaysForTheWholeTrip() {
+        // Set off by car from 18 km; now 1.5 km away, still by car.
+        Eta byCar = lastEta(TravelMode.car, 18.58, 73.90, NOW.minusSeconds(60));
+        assertThat(EtaRules.modeOf(null, byCar, 1_500)).isEqualTo(TravelMode.car);
+    }
+
+    @Test
+    void anUnknownChoiceFallsBackToTheGuess() {
+        assertThat(EtaRules.modeOf("rocket", null, 18_000)).isEqualTo(TravelMode.car);
+    }
+
+    @Test
+    void carsAndBikesTakeTrafficAwareRoadRoutes() {
+        assertThat(TravelMode.car.profile()).isEqualTo("driving-traffic");
+        assertThat(TravelMode.bike.profile()).isEqualTo("driving-traffic");
+        assertThat(TravelMode.walk.profile()).isEqualTo("walking");
     }
 
     @Test
     void aNewRouteIsWorthItAfter100MetresOrAMinuteOrAChangeOfMode() {
-        Eta last = lastEta(TravelMode.driving, 18.5800, 73.9000, NOW.minusSeconds(10));
+        Eta last = lastEta(TravelMode.car, 18.5800, 73.9000, NOW.minusSeconds(10));
 
-        assertThat(EtaRules.worthRedoing(null, at(18.58, 73.90, null), TravelMode.driving, NOW)).isTrue();
-        assertThat(EtaRules.worthRedoing(last, at(18.5802, 73.9000, null), TravelMode.driving, NOW)).isFalse();
-        assertThat(EtaRules.worthRedoing(last, at(18.5810, 73.9000, null), TravelMode.driving, NOW)).isTrue();
-        assertThat(EtaRules.worthRedoing(last, at(18.5802, 73.9000, null), TravelMode.walking, NOW)).isTrue();
-        assertThat(EtaRules.worthRedoing(last, at(18.5802, 73.9000, null), TravelMode.driving,
-                NOW.plusSeconds(50))).isTrue();
+        assertThat(EtaRules.worthRedoing(null, at(18.58, 73.90), TravelMode.car, NOW)).isTrue();
+        assertThat(EtaRules.worthRedoing(last, at(18.5802, 73.9000), TravelMode.car, NOW)).isFalse();
+        assertThat(EtaRules.worthRedoing(last, at(18.5810, 73.9000), TravelMode.car, NOW)).isTrue();
+        assertThat(EtaRules.worthRedoing(last, at(18.5802, 73.9000), TravelMode.walk, NOW)).isTrue();
+        assertThat(EtaRules.worthRedoing(last, at(18.5802, 73.9000), TravelMode.car, NOW.plusSeconds(50))).isTrue();
     }
 }

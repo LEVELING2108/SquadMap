@@ -31,6 +31,10 @@ public interface TripMemberRepository extends JpaRepository<TripMember, UUID> {
             """)
     int markArrived(@Param("memberId") UUID memberId, @Param("now") Instant now);
 
+    @Modifying
+    @Query(nativeQuery = true, value = "UPDATE trip_members SET travel_mode = :mode WHERE id = :memberId")
+    int setTravelMode(@Param("memberId") UUID memberId, @Param("mode") String mode);
+
     Optional<TripMember> findByIdAndTripIdAndLeftAtIsNull(UUID id, UUID tripId);
 
     /** Everyone who was ever on these trips, including people who left, in the order they joined. */

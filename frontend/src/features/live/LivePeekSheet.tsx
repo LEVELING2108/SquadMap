@@ -3,7 +3,7 @@ import { forwardRef } from 'react';
 import { Link } from 'react-router';
 import { ChevronUp } from 'lucide-react';
 import type { Eta, LiveMember, Position } from './liveTypes';
-import { formatDuration, names, staleLabel } from './liveFormat';
+import { formatDuration, modeWords, names, staleLabel } from './liveFormat';
 
 type LivePeekSheetProps = {
   friends: LiveMember[];
@@ -34,7 +34,7 @@ function describe(
   const stale = staleLabel(position.ts, now);
   const where = stale ? `last seen ${stale}` : 'live on the map';
   return eta
-    ? `${friend.displayName}, ${where}, ${formatDuration(eta.durationS)} away`
+    ? `${friend.displayName}, ${where}, ${formatDuration(eta.durationS)} away ${modeWords(eta.mode)}`
     : `${friend.displayName}, ${where}`;
 }
 
@@ -58,7 +58,7 @@ export const LivePeekSheet = forwardRef<HTMLElement, LivePeekSheetProps>(functio
     friends.length === 0
       ? `Share the code ${code} so they can join.`
       : next
-        ? `Next: ${next.friend.displayName} in ${formatDuration(next.eta.durationS)}`
+        ? `Next: ${next.friend.displayName} in ${formatDuration(next.eta.durationS)} · ${modeWords(next.eta.mode)}`
         : notSharing.length > 0
           ? `${names(notSharing)} ${notSharing.length === 1 ? 'hasn’t' : 'haven’t'} shared yet`
           : onTheWay.length === 0

@@ -29,6 +29,11 @@ export function formatDuration(seconds: number): string {
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
 
+/** "by car", "by bike", "on foot": how someone is travelling, in words. */
+export function modeWords(mode: 'car' | 'bike' | 'walk'): string {
+  return mode === 'walk' ? 'on foot' : `by ${mode}`;
+}
+
 /** "Aman", "Aman and Priya", "Aman, Priya and 2 more". */
 export function names(list: string[]): string {
   if (list.length <= 1) return list[0] ?? '';

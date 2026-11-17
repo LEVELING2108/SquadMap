@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api/client';
-import type { Eta, LiveMember } from './liveTypes';
+import type { Eta, LiveMember, TravelMode } from './liveTypes';
 
 export const liveKeys = {
   members: (tripId: string) => ['trips', tripId, 'members'] as const,
@@ -22,6 +22,19 @@ export function useLiveMembers(tripId: string, enabled = true) {
     queryKey: liveKeys.members(tripId),
     queryFn: () => api<LiveMember[]>(`/trips/${encodeURIComponent(tripId)}/members`),
     enabled: enabled && tripId !== '',
+  });
+}
+
+/** Says how this person is travelling; their new ETA then arrives on the live connection. */
+export function useChooseTravelMode(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (mode: TravelMode) =>
+      api<void>(`/trips/${encodeURIComponent(tripId)}/members/me/travel-mode`, {
+        method: 'PUT',
+        body: { mode },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: liveKeys.members(tripId) }),
   });
 }
 

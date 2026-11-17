@@ -12,8 +12,9 @@ import java.util.UUID;
  * @param you       true for the caller's own row
  * @param sharing   whether this person agreed to share their location on this trip
  * @param location  their last spot from the past few minutes, or null when there is none
- * @param arrivedAt when they reached the destination, or null
+ * @param arrivedAt  when they reached the destination, or null
+ * @param travelMode "car", "bike" or "walk" as they chose it, or null before they choose
  */
 public record LiveMemberResponse(UUID memberId, String displayName, String color, MemberRole role, boolean you,
-                                 boolean sharing, Position location, Instant arrivedAt) {
+                                 boolean sharing, Position location, Instant arrivedAt, String travelMode) {
 }
