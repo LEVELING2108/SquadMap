@@ -50,9 +50,56 @@ type MapViewProps = {
   fitTo?: LatLng[];
   /** Keep the centre in view when panels change size (a chosen place); otherwise the map stays put. */
   follow?: boolean;
+  /**
+   * When given, the map fits `fitTo` only when this changes (a "fit everyone" tap), not whenever the points
+   * move: on the live map they move every few seconds, and the person may be looking somewhere else.
+   */
+  fitKey?: string;
+  /** Changing this goes to `center` again even if it hasn't moved: a second "show where I am" tap. */
+  recenterKey?: number;
+  /** A destination pin at this point, separate from where the map looks. */
+  destination?: LatLng | null;
+  /** People on the live map: their dot, initial and name. For the eye only, like `spots`. */
+  people?: MapPerson[];
 };
 
 export type MapSpot = { id: string; lat: number; lng: number; kind: string; selected: boolean };
+
+export type MapPerson = {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  /** Their trip colour, from the server. */
+  color: string;
+  /** Shown under the name for a spot that hasn't been updated lately, such as "3 min ago". */
+  stale?: string;
+};
+
+/** A friend on the live map: their initial in their colour, with their name below, as in the design. */
+function PersonDot({ person }: { person: MapPerson }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`flex flex-col items-center ${person.stale ? 'opacity-55 grayscale' : ''}`}
+    >
+      <span
+        className="flex size-12 items-center justify-center rounded-pill border-[3px] border-screen text-lg font-extrabold text-on-person shadow-md"
+        style={{ backgroundColor: person.color }}
+      >
+        {person.name.charAt(0).toUpperCase()}
+      </span>
+      <span className="mt-1 max-w-[120px] truncate rounded-pill bg-screen px-2 py-0.5 text-xs font-bold text-ink shadow-sm">
+        {person.name}
+      </span>
+      {person.stale && (
+        <span className="mt-0.5 rounded-pill bg-screen px-1.5 text-[11px] font-semibold text-muted">
+          {person.stale}
+        </span>
+      )}
+    </div>
+  );
+}
 
 /** The person's own position: a blue dot in a soft halo, labelled "You" as in the design. */
 function YouDot() {
@@ -112,6 +159,10 @@ export function MapView({
   onSpotClick,
   fitTo,
   follow = false,
+  fitKey: fitKeyOverride,
+  recenterKey = 0,
+  destination = null,
+  people,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -120,6 +171,8 @@ export function MapView({
   const [pinElement, setPinElement] = useState<HTMLElement | null>(null);
   const [youElement, setYouElement] = useState<HTMLElement | null>(null);
   const youMarkerRef = useRef<Marker | null>(null);
+  const destinationMarkerRef = useRef<Marker | null>(null);
+  const [destinationElement, setDestinationElement] = useState<HTMLElement | null>(null);
   const style = useMapStyle();
   const onCenterChangeRef = useRef(onCenterChange);
   useEffect(() => {
@@ -154,6 +207,11 @@ export function MapView({
         youDot.setAttribute('aria-hidden', 'true');
         youMarkerRef.current = new mapboxgl.Marker({ element: youDot, anchor: 'center', offset: [0, 10] });
         setYouElement(youDot);
+        // Likewise the destination pin, for screens that show it apart from the centre.
+        const destinationPin = document.createElement('div');
+        destinationPin.setAttribute('aria-hidden', 'true');
+        destinationMarkerRef.current = new mapboxgl.Marker({ element: destinationPin, anchor: 'bottom' });
+        setDestinationElement(destinationPin);
         const start = initial.current;
         const firstStyle = styleRef.current ?? 'mapbox/streets-v12';
         appliedStyle.current = firstStyle;
@@ -191,10 +249,15 @@ export function MapView({
       .catch(() => !cancelled && setMode('fallback'));
 
     const markers = spotMarkers.current;
+    const personMarkerMap = personMarkers.current;
     return () => {
       cancelled = true;
       markers.forEach((marker) => marker.remove());
       markers.clear();
+      personMarkerMap.forEach((marker) => marker.remove());
+      personMarkerMap.clear();
+      destinationMarkerRef.current?.remove();
+      destinationMarkerRef.current = null;
       youMarkerRef.current?.remove();
       youMarkerRef.current = null;
       markerRef.current?.remove();
@@ -231,6 +294,54 @@ export function MapView({
     if (you) marker.setLngLat([you.lng, you.lat]).addTo(map);
     else marker.remove();
   }, [mode, you]);
+
+  // The destination pin, when it isn't the centre point.
+  useEffect(() => {
+    const map = mapRef.current;
+    const marker = destinationMarkerRef.current;
+    if (mode !== 'ready' || !map || !marker) return;
+    if (destination) marker.setLngLat([destination.lng, destination.lat]).addTo(map);
+    else marker.remove();
+  }, [mode, destination]);
+
+  // People as DOM markers keyed by id, drawn with React through portals; moved, not recreated, on updates.
+  const personMarkers = useRef(new Map<string, Marker>());
+  const [personElements, setPersonElements] = useState<ReadonlyMap<string, HTMLElement>>(new Map());
+  useEffect(() => {
+    const map = mapRef.current;
+    const MarkerClass = markerClass.current;
+    if (mode !== 'ready' || !map || !MarkerClass) return;
+    const wanted = new Map((people ?? []).map((person) => [person.id, person]));
+    let changed = false;
+    for (const [id, marker] of personMarkers.current) {
+      if (!wanted.has(id)) {
+        marker.remove();
+        personMarkers.current.delete(id);
+        changed = true;
+      }
+    }
+    for (const person of wanted.values()) {
+      const marker = personMarkers.current.get(person.id);
+      if (marker) {
+        marker.setLngLat([person.lng, person.lat]);
+      } else {
+        const element = document.createElement('div');
+        element.setAttribute('aria-hidden', 'true');
+        element.classList.add('map-person');
+        // The name sits below the dot; the dot itself is on the spot.
+        personMarkers.current.set(
+          person.id,
+          new MarkerClass({ element, anchor: 'top', offset: [0, -24] })
+            .setLngLat([person.lng, person.lat])
+            .addTo(map),
+        );
+        changed = true;
+      }
+    }
+    if (changed) {
+      setPersonElements(new Map([...personMarkers.current].map(([id, marker]) => [id, marker.getElement()])));
+    }
+  }, [mode, people]);
 
   // Nearby places as plain DOM markers, keyed by id; styled by .map-spot in index.css.
   const spotMarkers = useRef(new Map<string, Marker>());
@@ -270,7 +381,8 @@ export function MapView({
   const padTop = padding?.top ?? 0;
   const padBottom = padding?.bottom ?? 0;
   // A key for the points, so the map is refitted when they change, not on every render.
-  const fitKey = (fitTo ?? []).map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(';');
+  const fitKey =
+    fitKeyOverride ?? (fitTo ?? []).map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(';');
   const fitPoints = useRef(fitTo);
   useEffect(() => {
     fitPoints.current = fitTo;
@@ -288,7 +400,7 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (mode !== 'ready' || !map) return;
-    const centerKey = `${center.lat},${center.lng},${zoom}`;
+    const centerKey = `${center.lat},${center.lng},${zoom},${recenterKey}`;
     const before = camera.current;
     camera.current = { centerKey, fitKey, top: padTop, bottom: padBottom };
     // The point of the world under the middle of the box, before the visible area changes: used to keep
@@ -354,7 +466,7 @@ export function MapView({
       return;
     }
     stayPut();
-  }, [mode, center.lat, center.lng, zoom, fitKey, padTop, padBottom, follow]);
+  }, [mode, center.lat, center.lng, zoom, recenterKey, fitKey, padTop, padBottom, follow]);
 
   const fallback = mode === 'fallback';
 
@@ -387,6 +499,12 @@ export function MapView({
       )}
       {!fallback && pinElement && createPortal(<DestinationPin />, pinElement)}
       {!fallback && youElement && createPortal(<YouDot />, youElement)}
+      {!fallback && destination && destinationElement && createPortal(<DestinationPin />, destinationElement)}
+      {!fallback &&
+        (people ?? []).map((person) => {
+          const element = personElements.get(person.id);
+          return element ? createPortal(<PersonDot person={person} />, element, person.id) : null;
+        })}
     </div>
   );
 }

@@ -21,7 +21,7 @@ import { ChooseOnMapPage } from './features/newTrip/ChooseOnMapPage';
 import { DestinationPage } from './features/newTrip/DestinationPage';
 import { NewTripPage } from './features/newTrip/NewTripPage';
 import { InvitePage } from './features/trip/InvitePage';
-import { TripPlaceholderPage } from './features/trip/TripPlaceholderPage';
+import { LiveMapPage } from './features/live/LiveMapPage';
 import { WelcomePage } from './features/welcome/WelcomePage';
 
 export function AppRoutes() {
@@ -143,7 +143,7 @@ export function AppRoutes() {
         path="/trip/:tripId"
         element={
           <RequireAuth allowGuest>
-            <TripPlaceholderPage />
+            <LiveMapPage />
           </RequireAuth>
         }
       />

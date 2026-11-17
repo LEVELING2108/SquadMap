@@ -4,7 +4,8 @@ Get there together. One link, one live map, everyone's ETA.
 
 SquadMap is a real-time group location-sharing web app. A host starts a trip and shares a link, friends join as guests with just a name, and everyone sees each other live on one map with shared arrival times. Sharing stops automatically when the trip ends.
 
-> Status: early development. The project is being set up; features are not available yet.
+> Status: early development. Accounts, trips, invites and the live map work locally; ETAs, chat and
+> notifications are next. Not deployed yet.
 
 ## Planned stack
 
@@ -27,6 +28,20 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | 3. Install and run the web app (second terminal) | `make install` then `make frontend` | <http://localhost:5480> shows the SquadMap page |
 | 4. Run the tests | `make test` and `make e2e` | Both finish without failures |
 | 5. Run the full account journey (steps 1 and 2 running) | `make journey` | `1 passed`: sign up, log in, and a password reset through a real email |
+| 6. Try the live map (steps 1 to 3 running) | Start a trip, open its invite link in a private window and join as a guest, then open the trip in both | Each window shows the other person within a few seconds, and "Live · … left" in the top bar |
+
+The live map needs location permission in the browser. Opening the app on `localhost` counts as a secure
+page, so browsers allow it there; on another address (say, a phone on your Wi-Fi) they need HTTPS.
+
+Load test for the live connection (stack running; uses the [k6](https://k6.io) Docker image if k6 isn't
+installed):
+
+```sh
+docker run --rm -i -e BASE=http://host.docker.internal:8480 grafana/k6 run - < infra/k6/ws-load.js
+```
+
+Verify: the summary shows `location_round_trip` p(95) under 3 s and `location_refused` under 0.5%.
+Raise the load with `-e TRIPS=200 -e MEMBERS=10 -e DURATION=15m` against a staging stack.
 
 Place search (choosing a trip's destination) needs your own Mapbox tokens; everything else works
 without them. Create two public tokens in your [Mapbox account](https://account.mapbox.com/access-tokens/):

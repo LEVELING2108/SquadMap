@@ -117,7 +117,7 @@ export function refreshSession(): Promise<boolean> {
 }
 
 async function requestRefresh(): Promise<boolean> {
-  const status = useSession.getState().status;
+  const { status, accessToken: tokenBefore } = useSession.getState();
   if (status === 'guest') return requestGuestSession();
 
   const outcome = await post('/auth/refresh');
@@ -125,6 +125,10 @@ async function requestRefresh(): Promise<boolean> {
     setSignedIn((await outcome.response.json()) as AuthResponse);
     return true;
   }
+  // The person logged in (or joined) while this answer was on its way, as can happen right after the
+  // app opens: "no session" was about the old state, and must not undo the new one.
+  const now = useSession.getState();
+  if (now.accessToken !== null && now.accessToken !== tokenBefore) return true;
   if (outcome.kind === 'ended') {
     // On first load, someone without an account may still hold a guest pass.
     if (status === 'unknown' && hasGuestHint()) return requestGuestSession();
