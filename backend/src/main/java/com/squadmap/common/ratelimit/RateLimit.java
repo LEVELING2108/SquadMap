@@ -21,6 +21,8 @@ public enum RateLimit {
     JOIN_BAD_CODES_PER_IP("join-bad-codes-ip", 20, Duration.ofHours(1)),
     /** Each search is a paid Mapbox call; the screen also waits for typing to pause before searching. */
     PLACE_SEARCH_PER_USER("place-search-user", 30, Duration.ofMinutes(1)),
+    /** Each Home chip tap is a paid Mapbox call. */
+    NEARBY_PER_USER("nearby-user", 20, Duration.ofMinutes(1)),
     /**
      * Wrong current passwords when changing the password or email: after 5 in 15 minutes the account may
      * not try again until it refills, so a borrowed signed-in device can't be used to guess it.

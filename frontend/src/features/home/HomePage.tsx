@@ -8,10 +8,12 @@ import { MapView } from '../../lib/map/MapView';
 import { formatClock } from '../../lib/time';
 import { describeFailure } from '../auth/formErrors';
 import { useSession } from '../auth/session';
-import { useRecentPlaces } from '../newTrip/placesApi';
+import { useNearby, useRecentPlaces, type NearbyCategory } from '../newTrip/placesApi';
 import { useKnownLocation } from '../newTrip/useKnownLocation';
 import { useSettings } from '../profile/settingsApi';
 import { useActiveTrips } from '../trip/tripQueries';
+import { NearbyChips } from './NearbyChips';
+import { NearbyPanel } from './NearbyPanel';
 import type { Trip } from '../trip/types';
 
 /** Trips listed on the panel; more are a tap away in Trips. */
@@ -118,16 +120,32 @@ export function HomePage() {
   const known = useKnownLocation();
   const recent = useRecentPlaces(signedIn);
   const [located, setLocated] = useState<Located>({ kind: 'idle' });
+  // Nearby places: the chip that is on, where the search was made (fixed until a chip is pressed again,
+  // so panning doesn't search again), and the place picked from the results.
+  const [category, setCategory] = useState<NearbyCategory | null>(null);
+  const [searchAt, setSearchAt] = useState<LatLng | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const mapCenter = useRef<LatLng | null>(null);
   const [panelRef, panelHeight] = useHeight<HTMLElement>();
 
   const you = located.kind === 'found' ? located.at : known;
   // Where you are if known; otherwise the area of your last trip; otherwise most of India.
   const lastPlace = recent.data?.[0];
-  const view = you
-    ? { center: you, zoom: 15 }
-    : lastPlace
-      ? { center: { lat: lastPlace.lat, lng: lastPlace.lng }, zoom: 11 }
-      : DEFAULT_VIEW;
+  const nearby = useNearby(category, searchAt ?? DEFAULT_VIEW.center);
+  const picked = nearby.data?.find((place) => (place.id ?? place.name) === selectedId) ?? null;
+  const view = picked
+    ? { center: { lat: picked.lat, lng: picked.lng }, zoom: 16 }
+    : you
+      ? { center: you, zoom: 15 }
+      : lastPlace
+        ? { center: { lat: lastPlace.lat, lng: lastPlace.lng }, zoom: 11 }
+        : DEFAULT_VIEW;
+
+  function chooseCategory(next: NearbyCategory | null) {
+    setCategory(next);
+    setSelectedId(null);
+    setSearchAt(next ? (mapCenter.current ?? view.center) : null);
+  }
 
   async function recenter() {
     setLocated({ kind: 'locating' });
@@ -154,7 +172,21 @@ export function HomePage() {
         label={you ? 'Map around where you are' : 'Map'}
         bottomInset={panelHeight + navSpace + 8}
         // The top bar and the panel cover the map's edges; centre on what's left between them.
-        padding={{ top: 88, bottom: panelHeight + navSpace }}
+        padding={{ top: signedIn ? 140 : 88, bottom: panelHeight + navSpace }}
+        onCenterChange={(center) => {
+          mapCenter.current = center;
+        }}
+        spots={(nearby.data ?? []).map((place) => ({
+          id: place.id ?? place.name,
+          lat: place.lat,
+          lng: place.lng,
+          kind: category ?? 'cafes',
+          selected: (place.id ?? place.name) === selectedId,
+        }))}
+        onSpotClick={setSelectedId}
+        // New results: show them all. A chosen place is shown by moving the view to it instead.
+        fitTo={selectedId ? undefined : nearby.data?.map((place) => ({ lat: place.lat, lng: place.lng }))}
+        follow={picked !== null}
         className="absolute inset-0"
       />
 
@@ -188,6 +220,11 @@ export function HomePage() {
           )}
         </div>
       </div>
+      {signedIn && (
+        <div className="absolute inset-x-0 top-[84px] z-10">
+          <NearbyChips active={category} onChange={chooseCategory} />
+        </div>
+      )}
 
       <div
         className="absolute right-3 z-10 flex flex-col items-end gap-2"
@@ -219,12 +256,25 @@ export function HomePage() {
       <section
         ref={panelRef}
         aria-labelledby="home-title"
-        className="glass-strong absolute inset-x-3 z-10 flex max-h-[55dvh] flex-col gap-3 overflow-y-auto rounded-sheet px-5 pt-3 pb-4"
+        // Shorter while nearby places are listed, so the map above can show them.
+        className={`glass-strong absolute inset-x-3 z-10 flex flex-col gap-3 overflow-y-auto rounded-sheet px-5 pt-3 pb-4 ${
+          category ? 'max-h-[42dvh]' : 'max-h-[55dvh]'
+        }`}
         style={{ bottom: navSpace }}
       >
         <div aria-hidden="true" className="mx-auto h-1 w-10 flex-none rounded-[2px] bg-handle" />
 
-        {status === 'unknown' ? (
+        {signedIn && category ? (
+          <NearbyPanel
+            category={category}
+            places={nearby.data}
+            loading={nearby.isFetching}
+            error={nearby.error}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onClose={() => chooseCategory(null)}
+          />
+        ) : status === 'unknown' ? (
           <h1 id="home-title" className="text-[22px] leading-7 font-extrabold">
             Loading…
           </h1>

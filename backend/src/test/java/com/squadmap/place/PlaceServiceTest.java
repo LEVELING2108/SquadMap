@@ -3,6 +3,7 @@ package com.squadmap.place;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.place.domain.GeoPoint;
 import com.squadmap.place.domain.Place;
+import com.squadmap.place.service.MapboxCategorySearch;
 import com.squadmap.place.service.MapboxGeocoder;
 import com.squadmap.place.service.PlaceService;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,7 @@ class PlaceServiceTest {
     private static final GeoPoint PICKED = new GeoPoint(18.5622, 73.9167);
 
     private final MapboxGeocoder geocoder = mock(MapboxGeocoder.class);
-    private final PlaceService places = new PlaceService(geocoder);
+    private final PlaceService places = new PlaceService(geocoder, mock(MapboxCategorySearch.class));
 
     private void mapboxReturns(Place... results) {
         when(geocoder.search(anyString(), any(), anyInt(), eq(true))).thenReturn(List.of(results));

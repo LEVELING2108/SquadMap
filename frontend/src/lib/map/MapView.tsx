@@ -37,7 +37,22 @@ type MapViewProps = {
    * can see. Not for screens where a pin drawn in the middle of the box must match the map's centre.
    */
   padding?: { top: number; bottom: number };
+  /**
+   * Places to mark with a small dot, such as nearby cafes. The dots are for the eye only: the screen lists
+   * the same places as buttons for keyboards and screen readers.
+   */
+  spots?: MapSpot[];
+  onSpotClick?: (id: string) => void;
+  /**
+   * Points the map should show all at once, such as a list of results: when this changes (and isn't
+   * empty), the map zooms to fit them into the visible part.
+   */
+  fitTo?: LatLng[];
+  /** Keep the centre in view when panels change size (a chosen place); otherwise the map stays put. */
+  follow?: boolean;
 };
+
+export type MapSpot = { id: string; lat: number; lng: number; kind: string; selected: boolean };
 
 /** The person's own position: a blue dot in a soft halo, labelled "You" as in the design. */
 function YouDot() {
@@ -93,6 +108,10 @@ export function MapView({
   className,
   bottomInset = 0,
   padding,
+  spots,
+  onSpotClick,
+  fitTo,
+  follow = false,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -129,6 +148,7 @@ export function MapView({
     Promise.all([import('mapbox-gl'), import('mapbox-gl/dist/mapbox-gl.css')])
       .then(([{ default: mapboxgl }]) => {
         if (cancelled) return;
+        markerClass.current = mapboxgl.Marker;
         // The "You" marker exists from the start and is put on the map while `you` is known.
         const youDot = document.createElement('div');
         youDot.setAttribute('aria-hidden', 'true');
@@ -170,8 +190,11 @@ export function MapView({
       })
       .catch(() => !cancelled && setMode('fallback'));
 
+    const markers = spotMarkers.current;
     return () => {
       cancelled = true;
+      markers.forEach((marker) => marker.remove());
+      markers.clear();
       youMarkerRef.current?.remove();
       youMarkerRef.current = null;
       markerRef.current?.remove();
@@ -195,16 +218,10 @@ export function MapView({
     if (mode !== 'loading') onReadyRef.current?.(mode === 'ready');
   }, [mode]);
 
+  // The destination pin sits on the centre point.
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const target: [number, number] = [center.lng, center.lat];
-    markerRef.current?.setLngLat(target);
-    const here = map.getCenter();
-    if (Math.abs(here.lat - center.lat) < 1e-7 && Math.abs(here.lng - center.lng) < 1e-7) return;
-    if (prefersReducedMotion()) map.jumpTo({ center: target, zoom });
-    else map.flyTo({ center: target, zoom, duration: 600 });
-  }, [center.lat, center.lng, zoom]);
+    markerRef.current?.setLngLat([center.lng, center.lat]);
+  }, [center.lat, center.lng]);
 
   // The "You" dot follows `you`; on the fallback picture there is no map to place it on.
   useEffect(() => {
@@ -215,14 +232,129 @@ export function MapView({
     else marker.remove();
   }, [mode, you]);
 
+  // Nearby places as plain DOM markers, keyed by id; styled by .map-spot in index.css.
+  const spotMarkers = useRef(new Map<string, Marker>());
+  const markerClass = useRef<typeof import('mapbox-gl').Marker | null>(null);
+  const onSpotClickRef = useRef(onSpotClick);
+  useEffect(() => {
+    onSpotClickRef.current = onSpotClick;
+  }, [onSpotClick]);
+  useEffect(() => {
+    const map = mapRef.current;
+    const MarkerClass = markerClass.current;
+    if (mode !== 'ready' || !map || !MarkerClass) return;
+    const wanted = new Map((spots ?? []).map((spot) => [spot.id, spot]));
+    for (const [id, marker] of spotMarkers.current) {
+      if (!wanted.has(id)) {
+        marker.remove();
+        spotMarkers.current.delete(id);
+      }
+    }
+    for (const spot of wanted.values()) {
+      let marker = spotMarkers.current.get(spot.id);
+      if (!marker) {
+        const element = document.createElement('div');
+        element.setAttribute('aria-hidden', 'true');
+        element.addEventListener('click', () => onSpotClickRef.current?.(spot.id));
+        marker = new MarkerClass({ element, anchor: 'center' }).setLngLat([spot.lng, spot.lat]).addTo(map);
+        spotMarkers.current.set(spot.id, marker);
+      }
+      // Added to Mapbox's own classes, never in place of them: those position the marker on the map.
+      const element = marker.getElement();
+      element.classList.add('map-spot');
+      element.classList.toggle('map-spot-selected', spot.selected);
+      element.dataset.kind = spot.kind;
+    }
+  }, [mode, spots]);
+
   const padTop = padding?.top ?? 0;
   const padBottom = padding?.bottom ?? 0;
+  // A key for the points, so the map is refitted when they change, not on every render.
+  const fitKey = (fitTo ?? []).map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(';');
+  const fitPoints = useRef(fitTo);
+  useEffect(() => {
+    fitPoints.current = fitTo;
+  }, [fitTo]);
+  const camera = useRef<{ centerKey: string; fitKey: string; top: number; bottom: number } | null>(null);
+
+  /*
+   * Where the map looks, decided in one place so moves never fight each other:
+   * - new points to fit (results): show them all in the visible part;
+   * - a new centre (a chosen place, or where you are): go there;
+   * - the panels change size: keep a followed centre or the fitted points in view; otherwise, when the
+   *   person is browsing freely, keep the map exactly where they left it.
+   * The visible part is what the panels leave uncovered, given to Mapbox as padding.
+   */
   useEffect(() => {
     const map = mapRef.current;
     if (mode !== 'ready' || !map) return;
+    const centerKey = `${center.lat},${center.lng},${zoom}`;
+    const before = camera.current;
+    camera.current = { centerKey, fitKey, top: padTop, bottom: padBottom };
+    // The point of the world under the middle of the box, before the visible area changes: used to keep
+    // the map still. Mapbox can reset padding itself (dragging does), so nothing remembered is trusted.
+    const { clientWidth: width, clientHeight: height } = map.getContainer();
+    const anchor = map.unproject([width / 2, height / 2]);
     map.setPadding({ top: padTop, bottom: padBottom, left: 0, right: 0 });
-    map.jumpTo({ center: [view.current.center.lng, view.current.center.lat], zoom: view.current.zoom });
-  }, [mode, padTop, padBottom]);
+
+    const animate = !prefersReducedMotion();
+    const points = fitPoints.current ?? [];
+    const fit = (smooth: boolean) => {
+      const lngs = points.map((p) => p.lng);
+      const lats = points.map((p) => p.lat);
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        // fitBounds doesn't add the map's own padding, so the panels are included here, plus a margin so
+        // no point sits on the very edge.
+        {
+          padding: { top: padTop + 32, bottom: padBottom + 32, left: 40, right: 40 },
+          maxZoom: 16,
+          animate: smooth,
+        },
+      );
+    };
+    const goToCenter = (smooth: boolean) => {
+      const target: [number, number] = [center.lng, center.lat];
+      if (smooth) map.flyTo({ center: target, zoom, duration: 600 });
+      else map.jumpTo({ center: target, zoom });
+    };
+
+    // Puts the same point back under the middle of the box: re-applying the visible area must never
+    // move the map by itself (Mapbox drops its padding when the person drags, so applying it again would).
+    const stayPut = () => {
+      const now = map.project(anchor);
+      const dx = now.x - width / 2;
+      const dy = now.y - height / 2;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) map.panBy([dx, dy], { animate: false });
+    };
+
+    if (!before) {
+      if (points.length > 0) fit(false);
+      else goToCenter(false);
+      return;
+    }
+    if (fitKey !== before.fitKey && points.length > 0) {
+      fit(animate);
+      return;
+    }
+    if (centerKey !== before.centerKey) {
+      goToCenter(animate);
+      return;
+    }
+    const resized = padTop !== before.top || padBottom !== before.bottom;
+    if (resized && follow) {
+      goToCenter(animate);
+      return;
+    }
+    if (resized && points.length > 0) {
+      fit(animate);
+      return;
+    }
+    stayPut();
+  }, [mode, center.lat, center.lng, zoom, fitKey, padTop, padBottom, follow]);
 
   const fallback = mode === 'fallback';
 

@@ -25,6 +25,28 @@ export function usePlaceSearch(query: string, near: LatLng | null) {
   });
 }
 
+export type NearbyCategory = 'cafes' | 'stays' | 'sights';
+
+/**
+ * Up to 10 places of one kind near a point, for the Home chips. Kept two minutes in memory, so tapping the
+ * same chip again in the same area (to about 100 m) doesn't search again. Never stored.
+ */
+export function useNearby(category: NearbyCategory | null, near: LatLng) {
+  const lat = Number(near.lat.toFixed(3));
+  const lng = Number(near.lng.toFixed(3));
+  return useQuery({
+    queryKey: ['places', 'nearby', category, lat, lng] as const,
+    queryFn: () =>
+      api<PlaceResult[]>(
+        `/places/nearby?category=${category}&near=${near.lat.toFixed(5)},${near.lng.toFixed(5)}`,
+      ),
+    enabled: category !== null,
+    staleTime: 2 * 60_000,
+    gcTime: 2 * 60_000,
+    retry: false,
+  });
+}
+
 export function useRecentPlaces(enabled = true) {
   return useQuery({
     queryKey: placeKeys.recent,

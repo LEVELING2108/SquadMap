@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatClock } from '../../lib/time';
 import { jsonResponse, renderApp, sampleTrip, testUser } from '../../test/renderApp';
 import { useSession } from '../auth/session';
+import { resetTripDraft, useTripDraft } from '../newTrip/tripDraft';
 import type { Trip } from '../trip/types';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -112,6 +113,124 @@ describe('Home, signed in', () => {
     await user.click(screen.getByRole('button', { name: 'Show where I am' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Location is blocked for this site.');
+  });
+});
+
+describe('Home, nearby chips', () => {
+  const cafes = [
+    {
+      id: 'c1',
+      name: 'Cafe Chopped Leaf',
+      address: 'Rose Garden Society, Pune',
+      lat: 18.5684,
+      lng: 73.9145,
+      kind: 'cafes',
+      distanceMeters: 60,
+    },
+    {
+      id: 'c2',
+      name: 'Alag Aasmaan',
+      address: 'Bhakti Apartments, Pune',
+      lat: 18.569,
+      lng: 73.915,
+      kind: 'cafes',
+      distanceMeters: 1200,
+    },
+  ];
+
+  function serveNearby(answer: () => Response) {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.startsWith('/api/v1/places/nearby')) return answer();
+      if (url.startsWith('/api/v1/trips')) return jsonResponse(200, []);
+      if (url === '/api/v1/places/recent') return jsonResponse(200, []);
+      throw new Error(`Unexpected call: ${url}`);
+    });
+  }
+
+  beforeEach(() => {
+    useSession.setState({ status: 'signedIn', user: testUser, guest: null, accessToken: 't' });
+    resetTripDraft();
+  });
+
+  it('shows nearby cafes, nearest first, and searches only when a chip is pressed', async () => {
+    const user = userEvent.setup();
+    serveNearby(() => jsonResponse(200, cafes));
+    renderApp('/home');
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/places/nearby'))).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: 'Cafes' }));
+
+    const list = await screen.findByRole('list', { name: 'Cafes nearby' });
+    expect(
+      within(list)
+        .getAllByRole('button')
+        .map((row) => row.textContent),
+    ).toEqual([
+      'Cafe Chopped LeafRose Garden Society, Pune60 m',
+      'Alag AasmaanBhakti Apartments, Pune1.2 km',
+    ]);
+    expect(screen.getByRole('button', { name: 'Cafes' })).toHaveAttribute('aria-pressed', 'true');
+    const call = fetchMock.mock.calls.find(([url]) => String(url).includes('/places/nearby'))!;
+    expect(String(call[0])).toMatch(
+      /^\/api\/v1\/places\/nearby\?category=cafes&near=-?\d+\.\d{5},-?\d+\.\d{5}$/,
+    );
+  });
+
+  it('plans a trip at a chosen place, starting from a pin there', async () => {
+    const user = userEvent.setup();
+    serveNearby(() => jsonResponse(200, cafes));
+    renderApp('/home');
+
+    await user.click(screen.getByRole('button', { name: 'Cafes' }));
+    await user.click(await screen.findByRole('button', { name: /Cafe Chopped Leaf/ }));
+    await user.click(screen.getByRole('button', { name: 'Plan a trip here' }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/trip/new/map'));
+    expect(useTripDraft.getState().destination).toEqual({
+      name: 'Cafe Chopped Leaf',
+      address: 'Rose Garden Society, Pune',
+      lat: 18.5684,
+      lng: 73.9145,
+      fromSearch: false,
+    });
+  });
+
+  it('pressing the chip again, or closing, brings the trips back', async () => {
+    const user = userEvent.setup();
+    serveNearby(() => jsonResponse(200, cafes));
+    renderApp('/home');
+
+    await user.click(screen.getByRole('button', { name: 'Stays' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Stays nearby' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stays' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Ready for a trip?' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Sights' }));
+    await user.click(await screen.findByRole('button', { name: 'Close sights' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Ready for a trip?' })).toBeInTheDocument();
+  });
+
+  it('explains when nothing is found, or when it cannot look', async () => {
+    const user = userEvent.setup();
+    serveNearby(() => jsonResponse(200, []));
+    renderApp('/home');
+    await user.click(screen.getByRole('button', { name: 'Sights' }));
+    expect(
+      await screen.findByText('No sights found around here. Move the map and try again.'),
+    ).toBeInTheDocument();
+
+    serveNearby(() => jsonResponse(503, { code: 'PLACES_UNAVAILABLE', detail: 'Down.' }));
+    await user.click(screen.getByRole('button', { name: 'Cafes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Can’t look around just now.');
+  });
+
+  it('has an Alerts shortcut', () => {
+    serve();
+    renderApp('/home');
+
+    const chips = screen.getByRole('group', { name: 'Show nearby' });
+    expect(within(chips).getByRole('link', { name: 'Alerts' })).toHaveAttribute('href', '/me/alerts');
   });
 });
 
