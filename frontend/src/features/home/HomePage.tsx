@@ -184,6 +184,9 @@ export function HomePage() {
           selected: (place.id ?? place.name) === selectedId,
         }))}
         onSpotClick={setSelectedId}
+        // New results: show them all. A chosen place is shown by moving the view to it instead.
+        fitTo={selectedId ? undefined : nearby.data?.map((place) => ({ lat: place.lat, lng: place.lng }))}
+        follow={picked !== null}
         className="absolute inset-0"
       />
 
@@ -253,7 +256,10 @@ export function HomePage() {
       <section
         ref={panelRef}
         aria-labelledby="home-title"
-        className="glass-strong absolute inset-x-3 z-10 flex max-h-[55dvh] flex-col gap-3 overflow-y-auto rounded-sheet px-5 pt-3 pb-4"
+        // Shorter while nearby places are listed, so the map above can show them.
+        className={`glass-strong absolute inset-x-3 z-10 flex flex-col gap-3 overflow-y-auto rounded-sheet px-5 pt-3 pb-4 ${
+          category ? 'max-h-[42dvh]' : 'max-h-[55dvh]'
+        }`}
         style={{ bottom: navSpace }}
       >
         <div aria-hidden="true" className="mx-auto h-1 w-10 flex-none rounded-[2px] bg-handle" />
