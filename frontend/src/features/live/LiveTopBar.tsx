@@ -7,8 +7,10 @@ type LiveTopBarProps = {
   /** "Live · 3 h left", "Ended", or "Connecting…". */
   status: string;
   live: boolean;
-  /** Signed-in people go back to Home; guests have no Home to go to. */
-  showBack: boolean;
+  /** Where the back arrow goes, or null for none (a guest on the map has no Home to go to). */
+  back: { to: string; label: string } | null;
+  /** Signed-in people get "Back to home" in the menu. */
+  showHome: boolean;
   isHost: boolean;
   tripId: string;
   /** Members and guests can leave; the host ends the trip instead (coming with the trip menu). */
@@ -21,7 +23,8 @@ export function LiveTopBar({
   code,
   status,
   live,
-  showBack,
+  back,
+  showHome,
   isHost,
   tripId,
   onLeave,
@@ -49,10 +52,10 @@ export function LiveTopBar({
   return (
     <div className="absolute inset-x-0 top-0 z-20 px-3 pt-3">
       <div className="glass-strong flex h-16 items-center gap-1 rounded-pill px-1">
-        {showBack ? (
+        {back ? (
           <Link
-            to="/home"
-            aria-label="Back to home"
+            to={back.to}
+            aria-label={back.label}
             className="flex size-12 flex-none items-center justify-center rounded-pill text-ink"
           >
             <ChevronLeft aria-hidden="true" className="size-6" />
@@ -90,7 +93,7 @@ export function LiveTopBar({
               Show the invite
             </Link>
           )}
-          {showBack && (
+          {showHome && (
             <Link to="/home" className={item}>
               <Home aria-hidden="true" className="size-5 text-muted" />
               Back to home

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Client, ReconnectionTimeMode } from '@stomp/stompjs';
 import { getAccessToken, refreshSession } from '../auth/session';
-import type { LiveError, LocationReading, MemberLocation, TripEvent } from './liveTypes';
+import type { Eta, LiveError, LocationReading, MemberLocation, TripEvent } from './liveTypes';
 
 export type Connection = 'connecting' | 'live' | 'offline';
 
@@ -14,6 +14,7 @@ export const OFFLINE_AFTER_MS = 3_000;
 type Handlers = {
   onLocation: (location: MemberLocation) => void;
   onEvent: (event: TripEvent) => void;
+  onEta: (eta: Eta) => void;
   /** One of this phone's own updates was refused. */
   onError: (error: LiveError) => void;
   /** Connected again after a drop: the snapshot should be reloaded, as messages were missed. */
@@ -86,6 +87,10 @@ export function useTripSocket(tripId: string, enabled: boolean, handlers: Handle
         client.subscribe(`/topic/trip.${tripId}.events`, (message) => {
           const event = parse<TripEvent>(message.body);
           if (event) handlersRef.current.onEvent(event);
+        });
+        client.subscribe(`/topic/trip.${tripId}.eta`, (message) => {
+          const eta = parse<Eta>(message.body);
+          if (eta) handlersRef.current.onEta(eta);
         });
         client.subscribe('/user/queue/errors', (message) => {
           const error = parse<LiveError>(message.body);

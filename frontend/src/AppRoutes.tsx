@@ -147,6 +147,15 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* The same page in the same place, so the map and its live connection carry on. */}
+      <Route
+        path="/trip/:tripId/eta"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="eta" />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
