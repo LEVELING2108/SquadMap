@@ -24,6 +24,13 @@ public enum RateLimit {
     /** Each Home chip tap is a paid Mapbox call. */
     NEARBY_PER_USER("nearby-user", 20, Duration.ofMinutes(1)),
     /**
+     * Live location: one update per 2 seconds per trip member on average. Two may arrive close together,
+     * since network delay can bunch updates the phone sent 2 seconds apart.
+     */
+    LOCATION_PER_MEMBER("location-member", 2, Duration.ofSeconds(4)),
+    /** Starting to share records consent; no one needs to do that more than a few times. */
+    SHARING_PER_MEMBER("sharing-member", 10, Duration.ofHours(1)),
+    /**
      * Wrong current passwords when changing the password or email: after 5 in 15 minutes the account may
      * not try again until it refills, so a borrowed signed-in device can't be used to guess it.
      */

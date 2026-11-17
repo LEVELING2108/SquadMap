@@ -3,6 +3,7 @@ package com.squadmap.trip.service;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.security.Caller;
+import com.squadmap.location.service.LiveTrips;
 import com.squadmap.notify.alert.AlertService;
 import com.squadmap.trip.domain.MemberRole;
 import com.squadmap.trip.domain.Trip;
@@ -42,10 +43,12 @@ public class TripLifecycleService {
     private final TripMemberRepository members;
     private final TripService tripService;
     private final AlertService alerts;
+    private final LiveTrips live;
     private final Clock clock;
 
     public TripLifecycleService(TripRepository trips, TripMemberRepository members, TripService tripService,
-                                AlertService alerts, Clock clock) {
+                                AlertService alerts, LiveTrips live, Clock clock) {
+        this.live = live;
         this.trips = trips;
         this.members = members;
         this.tripService = tripService;
@@ -73,6 +76,7 @@ public class TripLifecycleService {
                     .with("maxExtraMinutes", left.toMinutes());
         }
         trip.extendBy(extra);
+        live.extended(tripId, trip.getExpiresAt());
         return tripService.get(tripId, Caller.user(userId));
     }
 
@@ -84,6 +88,7 @@ public class TripLifecycleService {
         trip.end(now);
         trips.flush();
         trips.withdrawConsentForFinishedTrips(now);
+        live.ended(tripId, memberIdsOn(tripId));
         // Everyone else with an account hears it; the host ended it, so needs no telling.
         alerts.tripEnded(accountsOn(tripId).stream().filter(id -> !id.equals(trip.getHostId())).toList(),
                 tripId, trip.getName());
@@ -111,6 +116,7 @@ public class TripLifecycleService {
         Instant now = clock.instant();
         member.leave(now);
         trips.withdrawConsentOf(member.getId(), now);
+        live.memberLeft(member);
         trips.findById(tripId).ifPresent(trip -> alerts.memberLeft(trip.getHostId(), tripId, trip.getName(),
                 member.getDisplayName(), member.getColor()));
     }
@@ -127,6 +133,7 @@ public class TripLifecycleService {
         int withdrawn = trips.withdrawConsentForFinishedTrips(now);
         // Only this run's own trips: the update hands each expired trip to exactly one run.
         for (Trip trip : trips.findAllById(expired)) {
+            live.ended(trip.getId(), memberIdsOn(trip.getId()));
             alerts.tripEnded(accountsOn(trip.getId()), trip.getId(), trip.getName());
         }
         if (!expired.isEmpty()) {
@@ -156,6 +163,11 @@ public class TripLifecycleService {
                 .map(TripMember::getUserId)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /** Everyone on the trip now, guests included: whose live spots to delete when it ends. */
+    private List<UUID> memberIdsOn(UUID tripId) {
+        return members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId).stream().map(TripMember::getId).toList();
     }
 
     private Trip hostedLiveTrip(UUID tripId, UUID userId, String action) {

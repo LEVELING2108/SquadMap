@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+                    // The live connection signs in with its first STOMP frame, checked by StompAuthInterceptor.
+                    auth.requestMatchers("/ws", "/ws/**").permitAll();
                     if (apiDocsEnabled) {
                         auth.requestMatchers(API_DOCS).permitAll();
                     }
@@ -76,6 +78,11 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.DELETE, "/api/v1/trips/*/members/me")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    // The live map is for everyone on the trip, guests included; the service checks membership.
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*/members")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/locations", "/api/v1/trips/*/sharing")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/guest-pass")
                             .hasAuthority(TokenKind.GUEST.authority());

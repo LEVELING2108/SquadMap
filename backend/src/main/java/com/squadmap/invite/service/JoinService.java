@@ -7,6 +7,7 @@ import com.squadmap.common.id.UuidV7;
 import com.squadmap.common.security.Caller;
 import com.squadmap.common.text.Text;
 import com.squadmap.invite.config.InviteProperties;
+import com.squadmap.location.service.LiveTrips;
 import com.squadmap.notify.alert.AlertService;
 import com.squadmap.invite.domain.LocationConsent;
 import com.squadmap.invite.dto.JoinPreviewResponse;
@@ -52,12 +53,14 @@ public class JoinService {
     private final InviteProperties properties;
     private final JwtDecoder jwtDecoder;
     private final AlertService alerts;
+    private final LiveTrips live;
     private final Clock clock;
 
     public JoinService(TripRepository trips, TripMemberRepository members, LocationConsentRepository consents,
                        UserService users, AccessTokenService accessTokens, InviteProperties properties,
-                       JwtDecoder jwtDecoder, AlertService alerts, Clock clock) {
+                       JwtDecoder jwtDecoder, AlertService alerts, LiveTrips live, Clock clock) {
         this.alerts = alerts;
+        this.live = live;
         this.trips = trips;
         this.members = members;
         this.consents = consents;
@@ -114,6 +117,7 @@ public class JoinService {
                     properties.locationPolicyVersion(), now));
         }
 
+        live.memberJoined(member);
         alerts.memberJoined(trip.getHostId(), trip.getId(), trip.getName(), member.getDisplayName(),
                 member.getColor());
 

@@ -36,5 +36,9 @@ public enum ErrorCode {
 
     // Places
     PLACES_UNAVAILABLE,
-    PLACE_NOT_CONFIRMED
+    PLACE_NOT_CONFIRMED,
+
+    // Live location
+    NOT_SHARING,
+    LOCATION_REJECTED
 }
