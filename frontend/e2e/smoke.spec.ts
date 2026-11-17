@@ -1207,6 +1207,23 @@ async function asHostOnTheLiveMap(page: Page) {
       ]),
     }),
   );
+  await page.route('**/api/v1/trips/trip-1/eta', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          memberId: 'm-aman',
+          distanceM: 1600,
+          durationS: 240,
+          mode: 'driving',
+          progress: 0.4,
+          estimated: false,
+          computedAt: new Date().toISOString(),
+        },
+      ]),
+    }),
+  );
   return fakeLiveServer(page);
 }
 
@@ -1275,6 +1292,58 @@ test.describe('live map', () => {
     await page.getByRole('button', { name: 'Retry' }).click();
     await expect.poll(server.connected).toBe(true);
     await expect(page.getByText('No connection, showing last known spots')).toBeHidden();
+  });
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`"Who’s on the way" has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      const server = await asHostOnTheLiveMap(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1');
+      await expect(page.getByText('Next: Aman in 4 min')).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+
+      await page.getByRole('link', { name: 'Who’s on the way' }).click();
+      await expect(page.getByRole('heading', { name: 'Who’s on the way' })).toBeVisible();
+      await expect(page).toHaveURL(/\/trip\/trip-1\/eta$/);
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+      for (const control of await page.locator('a:visible, button:visible').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  test('shows a new ETA and an arrival as they happen', async ({ page }) => {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+
+    server.send('/topic/trip.trip-1.eta', {
+      memberId: 'm-aman',
+      distanceM: 400,
+      durationS: 70,
+      mode: 'walking',
+      progress: 0.9,
+      estimated: false,
+      computedAt: new Date(Date.now() + 1000).toISOString(),
+    });
+    await expect(page.getByText('Next: Aman in 1 min')).toBeVisible();
+
+    server.send('/topic/trip.trip-1.events', {
+      type: 'ARRIVED',
+      memberId: 'm-aman',
+      displayName: 'Aman',
+      at: '',
+    });
+    await expect(page.getByText('Aman arrived at Phoenix Marketcity')).toBeVisible();
   });
 
   test('ends for everyone when the host ends the trip', async ({ page }) => {
