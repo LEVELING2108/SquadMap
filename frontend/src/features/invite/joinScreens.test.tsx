@@ -29,6 +29,17 @@ const joined = {
 type Routes = Record<string, () => Response>;
 
 /** Answers each API call by "METHOD path"; anything unexpected fails loudly. */
+/** The guest, as the live map's snapshot lists them. */
+const guestOnTrip = {
+  memberId: 'm1',
+  displayName: 'Sourav',
+  color: '#185FA5',
+  role: 'member',
+  you: true,
+  sharing: true,
+  location: null,
+};
+
 function serve(routes: Routes) {
   fetchMock.mockImplementation(async (input, init) => {
     const path = String(input).replace('/api/v1', '');
@@ -188,6 +199,7 @@ describe('Join screen', () => {
     serve({
       'GET /join/K7QX2P9T/preview': () => jsonResponse(200, preview),
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
     });
     renderApp('/join/K7QX2P9T');
 
@@ -267,7 +279,12 @@ describe('Consent screen', () => {
       if (answer === 'granted') ok({} as GeolocationPosition);
       else fail({ code: 1, PERMISSION_DENIED: 1 } as GeolocationPositionError);
     });
-    Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition }, configurable: true });
+    // The live map, opened after joining, watches the location; it never answers in these tests.
+    const watchPosition = vi.fn(() => 1);
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition, watchPosition, clearWatch: vi.fn() },
+      configurable: true,
+    });
     return getCurrentPosition;
   }
 
@@ -296,12 +313,13 @@ describe('Consent screen', () => {
     serve({
       'POST /join/K7QX2P9T': () => jsonResponse(201, joined),
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
     });
     atConsent();
 
     await user.click(screen.getByRole('button', { name: 'Share my location' }));
 
-    expect(await screen.findByText('You joined as Sourav.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Waiting for friends' })).toBeInTheDocument();
     expect(ask).toHaveBeenCalled();
     const [join] = calls('POST /api/v1/join/K7QX2P9T');
     expect(bodyOf(join!)).toEqual({ displayName: 'Sourav', shareLocation: true });
@@ -315,12 +333,13 @@ describe('Consent screen', () => {
     serve({
       'POST /join/K7QX2P9T': () => jsonResponse(201, { ...joined, sharingLocation: false }),
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
     });
     atConsent();
 
     await user.click(screen.getByRole('button', { name: 'Not now' }));
 
-    await screen.findByText('You joined as Sourav.');
+    await screen.findByRole('heading', { name: 'Waiting for friends' });
     expect(ask).not.toHaveBeenCalled();
     expect(bodyOf(calls('POST /api/v1/join/K7QX2P9T')[0]!)).toEqual({
       displayName: 'Sourav',
@@ -334,6 +353,7 @@ describe('Consent screen', () => {
     serve({
       'POST /join/K7QX2P9T': () => jsonResponse(201, { ...joined, sharingLocation: false }),
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
     });
     atConsent();
 
@@ -342,7 +362,7 @@ describe('Consent screen', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/Location is blocked for this site/);
     expect(fetchMock).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Join without sharing' }));
-    await screen.findByText('You joined as Sourav.');
+    await screen.findByRole('heading', { name: 'Waiting for friends' });
     expect(bodyOf(calls('POST /api/v1/join/K7QX2P9T')[0]!)).toMatchObject({ shareLocation: false });
   });
 
@@ -356,12 +376,13 @@ describe('Consent screen', () => {
     serve({
       'POST /join/K7QX2P9T': () => jsonResponse(201, joined),
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
     });
     atConsent();
 
     await user.click(screen.getByRole('button', { name: 'Not now' }));
 
-    await screen.findByText('You joined as Sourav.');
+    await screen.findByRole('heading', { name: 'Waiting for friends' });
     expect(authorizationOf(calls('POST /api/v1/join/K7QX2P9T')[0]!)).toBeUndefined();
   });
 
@@ -371,6 +392,7 @@ describe('Consent screen', () => {
     serve({
       'POST /join/K7QX2P9T': () => jsonResponse(201, { ...joined, accessToken: null, expiresIn: null }),
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
     });
     atConsent(null);
 
@@ -427,10 +449,14 @@ describe('a guest on the trip', () => {
 
   it('can open their own trip', async () => {
     asGuest();
-    serve({ 'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }) });
+    serve({
+      'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
+    });
     renderApp('/trip/trip-1');
 
-    expect(await screen.findByRole('heading', { name: 'Saturday at Phoenix' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Waiting for friends' })).toBeInTheDocument();
+    expect(await screen.findByText('K7QX2P9T')).toBeInTheDocument();
   });
 
   it('is sent back to it from pages for accounts', async () => {
@@ -453,11 +479,13 @@ describe('a guest on the trip', () => {
     asGuest();
     serve({
       'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, role: 'member' }),
+      'GET /trips/trip-1/members': () => jsonResponse(200, [guestOnTrip]),
       'DELETE /trips/trip-1/members/me': () => new Response(null, { status: 204 }),
       'POST /guest/logout': () => new Response(null, { status: 204 }),
     });
     renderApp('/trip/trip-1');
 
+    await user.click(await screen.findByRole('button', { name: 'Trip menu' }));
     await user.click(await screen.findByRole('button', { name: 'Leave trip' }));
 
     await waitFor(() => expect(useSession.getState().status).toBe('signedOut'));
