@@ -13,6 +13,10 @@ async function withNoSession(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  // Calls a test doesn't answer fail as if no backend were running, even when one is running locally;
+  // otherwise its real answers (say, rejecting a test's made-up token) would change what the test sees.
+  // Routes added later take precedence, so every test's own answers still apply.
+  await page.route('**/api/v1/**', (route) => route.abort());
   await withNoSession(page);
   // No test depends on Mapbox: maps show their picture, and nothing reaches the network.
   await page.route(/https:\/\/([a-z]+\.)?mapbox\.com\//, (route) => route.abort());
@@ -1102,6 +1106,199 @@ test.describe('theme', () => {
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
+});
+
+/**
+ * Plays the server's side of the live connection: answers CONNECT, remembers subscriptions, and lets a
+ * test push messages to the page or drop the connection.
+ */
+async function fakeLiveServer(page: Page) {
+  const subscriptions = new Map<string, string>();
+  let socket: import('@playwright/test').WebSocketRoute | null = null;
+  let messages = 0;
+  const frame = (command: string, headers: Record<string, string>, body = '') =>
+    `${command}\n${Object.entries(headers)
+      .map(([key, value]) => `${key}:${value}`)
+      .join('\n')}\n\n${body}\0`;
+  let down = false;
+  await page.routeWebSocket('**/ws/websocket', (ws) => {
+    // While the server is down, every attempt to connect fails straight away.
+    if (down) {
+      void ws.close();
+      return;
+    }
+    socket = ws;
+    ws.onMessage((data) => {
+      for (const raw of String(data).split('\0')) {
+        const text = raw.replace(/^\n+/, '');
+        if (!text) continue;
+        const [head = ''] = text.split('\n\n');
+        const [command, ...lines] = head.split('\n');
+        const headers = Object.fromEntries(
+          lines.map((line) => [line.slice(0, line.indexOf(':')), line.slice(line.indexOf(':') + 1)]),
+        );
+        if (command === 'CONNECT' || command === 'STOMP')
+          ws.send(frame('CONNECTED', { version: '1.2', 'heart-beat': '0,0' }));
+        if (command === 'SUBSCRIBE') subscriptions.set(headers.destination!, headers.id!);
+      }
+    });
+  });
+  return {
+    connected: () => subscriptions.size >= 3,
+    send(destination: string, payload: unknown) {
+      const id = subscriptions.get(destination);
+      if (!socket || !id) throw new Error(`Not subscribed to ${destination}`);
+      messages += 1;
+      socket.send(
+        frame(
+          'MESSAGE',
+          { destination, subscription: id, 'message-id': `m${messages}`, 'content-type': 'application/json' },
+          JSON.stringify(payload),
+        ),
+      );
+    },
+    /** The connection drops and no new one can be made until comeBack(). */
+    async goDown() {
+      down = true;
+      subscriptions.clear();
+      await socket?.close();
+    },
+    comeBack() {
+      down = false;
+    },
+  };
+}
+
+/** The host on their trip with Aman (sharing, with a spot) and Rohan (not sharing yet). */
+async function asHostOnTheLiveMap(page: Page) {
+  await asHostWithATrip(page);
+  await page.route('**/api/v1/trips/trip-1/members', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          memberId: 'm-priya',
+          displayName: 'Priya',
+          color: '#0F6E56',
+          role: 'host',
+          you: true,
+          sharing: false,
+          location: null,
+        },
+        {
+          memberId: 'm-aman',
+          displayName: 'Aman',
+          color: '#993C1D',
+          role: 'member',
+          you: false,
+          sharing: true,
+          location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date().toISOString() },
+        },
+        {
+          memberId: 'm-rohan',
+          displayName: 'Rohan',
+          color: '#534AB7',
+          role: 'member',
+          you: false,
+          sharing: false,
+          location: null,
+        },
+      ]),
+    }),
+  );
+  return fakeLiveServer(page);
+}
+
+test.describe('live map', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      const server = await asHostOnTheLiveMap(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1');
+      await expect(page.getByRole('heading', { name: '2 friends on the way' })).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      await expect(page.getByText(/^Live · /)).toBeVisible();
+      await page.getByRole('button', { name: 'Trip menu' }).click();
+      await expect(page.getByRole('link', { name: 'Show the invite' }).first()).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+      for (const control of await page.locator('a:visible, button:visible').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  test('shows a friend’s move and who joined, as they happen', async ({ page }) => {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+    const friends = page.getByRole('list', { name: 'Friends on this trip' });
+    const old = new Date(Date.now() - 5 * 60_000).toISOString();
+
+    server.send('/topic/trip.trip-1.locations', {
+      memberId: 'm-aman',
+      lat: 18.561,
+      lng: 73.911,
+      acc: 9,
+      ts: old,
+    });
+    // A reading older than the one shown is ignored: Aman stays live.
+    await expect(friends.getByText('Aman, live on the map')).toBeAttached();
+    server.send('/topic/trip.trip-1.events', {
+      type: 'MEMBER_JOINED',
+      memberId: 'm-sara',
+      displayName: 'Sara',
+      at: '',
+    });
+
+    await expect(page.getByText('Sara joined the trip')).toBeVisible();
+  });
+
+  test('says when the connection is lost, and Retry brings it back', async ({ page }) => {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+
+    await server.goDown();
+
+    await expect(page.getByText('No connection, showing last known spots')).toBeVisible({ timeout: 10_000 });
+    server.comeBack();
+    await page.getByRole('button', { name: 'Retry' }).click();
+    await expect.poll(server.connected).toBe(true);
+    await expect(page.getByText('No connection, showing last known spots')).toBeHidden();
+  });
+
+  test('ends for everyone when the host ends the trip', async ({ page }) => {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+
+    server.send('/topic/trip.trip-1.events', { type: 'TRIP_ENDED', at: '' });
+
+    await expect(page.getByRole('heading', { name: 'This trip has ended' })).toBeVisible();
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`fits ${width} px without sideways scroll`, async ({ page }) => {
+      await asHostOnTheLiveMap(page);
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/trip/trip-1');
+      await expect(page.getByRole('heading', { name: '2 friends on the way' })).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+    });
+  }
 });
 
 test.describe('layout', () => {
