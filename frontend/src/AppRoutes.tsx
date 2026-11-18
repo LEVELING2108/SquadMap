@@ -156,6 +156,14 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/trip/:tripId/friend/:memberId"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="friend" />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

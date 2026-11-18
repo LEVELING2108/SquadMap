@@ -12,9 +12,11 @@ import { Banner } from '../../components/ui/Banner';
 import { ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
 import { refreshSession, signOut, useSession } from '../auth/session';
-import { useSettings } from '../profile/settingsApi';
+import { useSettings, useUpdateSettings, type MapStyle } from '../profile/settingsApi';
 import { shortPlace, tripKeys, useTrip } from '../trip/tripQueries';
 import { EtaList } from './EtaList';
+import { FriendDetails } from './FriendDetails';
+import { LayersControl } from './LayersControl';
 import { liveKeys, useChooseTravelMode, useLiveMembers, useStartSharing, useTripEtas } from './liveApi';
 import { TravelModePicker } from './TravelModePicker';
 import { timeLeft, staleLabel } from './liveFormat';
@@ -75,8 +77,8 @@ function themeColor(name: string, fallback: string): string {
  * keeps a live connection for their moves, and shares this phone's location once the person has agreed.
  * With `view="eta"` (D3) the sheet lists who's on the way; the map and connection stay the same.
  */
-export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
-  const { tripId = '' } = useParams();
+export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' }) {
+  const { tripId = '', memberId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const status = useSession((state) => state.status);
@@ -184,6 +186,21 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
   const [fitCount, setFitCount] = useState(0);
   const [focus, setFocus] = useState<{ at: LatLng; times: number } | null>(null);
 
+  // A friend's details: the map goes to them once when opened, and keeps them in the middle while followed.
+  const friend =
+    view === 'friend'
+      ? members.data?.find((member) => member.memberId === memberId && !member.you)
+      : undefined;
+  const friendSpot = friend ? positions[friend.memberId] : undefined;
+  const [framedFriend, setFramedFriend] = useState<string | null>(null);
+  if (friend && friendSpot && framedFriend !== friend.memberId) {
+    setFramedFriend(friend.memberId);
+    setFocus((last) => ({ at: { lat: friendSpot.lat, lng: friendSpot.lng }, times: (last?.times ?? 0) + 1 }));
+  }
+  if (view !== 'friend' && framedFriend !== null) setFramedFriend(null);
+  const [followId, setFollowId] = useState<string | null>(null);
+  const following = friend !== undefined && friendSpot !== undefined && followId === friend.memberId;
+
   const people: MapPerson[] = tripOver
     ? []
     : friends.flatMap((friend) => {
@@ -198,6 +215,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
             color: friend.color,
             stale: staleLabel(spot.ts, now) ?? undefined,
             arrived: friend.arrivedAt !== null,
+            selected: view === 'friend' && friend.memberId === memberId,
           },
         ];
       });
@@ -225,8 +243,18 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
   ].join('|');
 
   const [sheetRef, sheetHeight] = useElementHeight<HTMLElement>();
-  const center = focus?.at ?? destination ?? DEFAULT_VIEW.center;
-  const zoom = focus ? 16 : destination ? 13 : DEFAULT_VIEW.zoom;
+  const center = following && friendSpot ? friendSpot : (focus?.at ?? destination ?? DEFAULT_VIEW.center);
+  const zoom = following || focus ? 16 : destination ? 13 : DEFAULT_VIEW.zoom;
+
+  // Layers: an account's choice is its map-style setting; a guest's lasts while they are on this page.
+  const updateSettings = useUpdateSettings();
+  const [guestStyle, setGuestStyle] = useState<MapStyle | undefined>(undefined);
+  const mapStyle = status === 'signedIn' ? settings.mapStyle : (guestStyle ?? settings.mapStyle);
+  const chooseStyle = (style: MapStyle) => {
+    if (status === 'signedIn') updateSettings.mutate({ mapStyle: style });
+    else setGuestStyle(style);
+  };
+  const myMode = (me && (me.travelMode ?? etas[me.memberId]?.mode)) ?? 'car';
 
   const notFound = trip.error instanceof ApiError && trip.error.status === 404;
   useEffect(() => {
@@ -258,6 +286,10 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
         you={tripOver ? null : youSpot}
         people={people}
         routes={routes}
+        onPersonClick={(id) => navigate(`/trip/${tripId}/friend/${id}`)}
+        onUserMove={() => setFollowId(null)}
+        mapStyle={status === 'signedIn' ? undefined : guestStyle}
+        follow={view === 'friend'}
         fitTo={everyone}
         fitKey={fitKey}
         bottomInset={sheetHeight + 20}
@@ -270,7 +302,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
         status={statusText}
         live={!tripOver && socket.connection === 'live'}
         back={
-          view === 'eta'
+          view !== 'map'
             ? { to: `/trip/${tripId}`, label: 'Back to the map' }
             : status === 'signedIn'
               ? { to: '/home', label: 'Back to home' }
@@ -292,6 +324,19 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
             </p>
           )}
         </div>
+        {following && friend && (
+          <p className="glass-strong flex items-center gap-2 rounded-pill py-1 pr-1 pl-4 text-[15px] font-bold text-ink">
+            <LocateFixed aria-hidden="true" className="size-4 text-blue" />
+            Following {friend.displayName}
+            <button
+              type="button"
+              onClick={() => setFollowId(null)}
+              className="min-h-11 rounded-pill px-3 text-[15px] font-extrabold text-blue-d"
+            >
+              Stop
+            </button>
+          </p>
+        )}
         {!tripOver && socket.connection === 'offline' && (
           <div
             role="status"
@@ -317,6 +362,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
           // Above Mapbox's credits button, which sits in the map's bottom-right corner.
           style={{ bottom: sheetHeight + 56 }}
         >
+          <LayersControl value={mapStyle} onChange={chooseStyle} />
           <button
             type="button"
             aria-label="Show where I am"
@@ -367,12 +413,38 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' }) {
                 destination={destinationName}
                 unit={settings.distanceUnit}
                 inviteHref={trip.data?.role === 'host' ? `/trip/${tripId}/invite` : null}
+                friendHref={(id) => `/trip/${tripId}/friend/${id}`}
               />
+            ) : view === 'friend' && members.data ? (
+              friend ? (
+                <FriendDetails
+                  friend={friend}
+                  position={friendSpot}
+                  eta={etas[friend.memberId]}
+                  now={now}
+                  unit={settings.distanceUnit}
+                  destination={destinationName}
+                  following={following}
+                  onFollow={() => setFollowId(friend.memberId)}
+                  onStopFollowing={() => setFollowId(null)}
+                  myMode={myMode}
+                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <h1 id="live-title" className="text-[20px] leading-[26px] font-extrabold">
+                    Not on this trip
+                  </h1>
+                  <p className="text-sm leading-5 text-muted">They may have left the trip.</p>
+                  <ButtonLink to={`/trip/${tripId}`} variant="glass">
+                    Back to the map
+                  </ButtonLink>
+                </div>
+              )
             ) : undefined
           }
         >
           {members.isError && <Banner tone="error">{describeFailure(members.error)}</Banner>}
-          {me && !me.sharing && (
+          {view === 'map' && me && !me.sharing && (
             <ShareLocationCard
               onShare={() => startSharing.mutate()}
               pending={startSharing.isPending}

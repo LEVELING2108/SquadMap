@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { ArrowDownAZ, Check, ListFilter, Plus } from 'lucide-react';
 import { ButtonLink } from '../../components/ui/Button';
 import { formatDistance } from '../../lib/map/geo';
@@ -15,6 +16,8 @@ type EtaListProps = {
   unit: DistanceUnit;
   /** The host may invite more people. */
   inviteHref: string | null;
+  /** Where a friend's details open. */
+  friendHref: (memberId: string) => string;
 };
 
 type Row = { member: LiveMember; eta: Eta | undefined; rank: number };
@@ -33,7 +36,7 @@ function rankOf(member: LiveMember, eta: Eta | undefined): number {
 }
 
 /** D3, "Who's on the way": everyone with their distance, how they travel, and when they'll arrive. */
-export function EtaList({ members, etas, destination, unit, inviteHref }: EtaListProps) {
+export function EtaList({ members, etas, destination, unit, inviteHref, friendHref }: EtaListProps) {
   const [sort, setSort] = useState<'arrival' | 'name'>('arrival');
   const rows: Row[] = members.map((member) => {
     const eta = etas[member.memberId];
@@ -87,11 +90,8 @@ export function EtaList({ members, etas, destination, unit, inviteHref }: EtaLis
                 : destination
                   ? 'Working out the route…'
                   : 'Sharing live';
-          return (
-            <li
-              key={member.memberId}
-              className="flex items-center gap-3 border-b border-line py-3 last:border-0"
-            >
+          const content = (
+            <>
               <span
                 aria-hidden="true"
                 className="flex size-12 flex-none items-center justify-center rounded-pill text-lg font-extrabold text-on-person"
@@ -123,6 +123,19 @@ export function EtaList({ members, etas, destination, unit, inviteHref }: EtaLis
                   {formatDuration(eta.durationS)}
                 </span>
               ) : null}
+            </>
+          );
+          const row = 'flex items-center gap-3 py-3';
+          return (
+            <li key={member.memberId} className="border-b border-line last:border-0">
+              {member.you ? (
+                <div className={row}>{content}</div>
+              ) : (
+                // Each friend opens their details, like tapping their dot on the map.
+                <Link to={friendHref(member.memberId)} className={`${row} rounded-control`}>
+                  {content}
+                </Link>
+              )}
             </li>
           );
         })}

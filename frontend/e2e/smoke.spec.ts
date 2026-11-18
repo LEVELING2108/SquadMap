@@ -1321,6 +1321,54 @@ test.describe('live map', () => {
     });
   }
 
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`a friend’s details and the map style menu have no accessibility violations in ${colorScheme} mode`, async ({
+      page,
+    }) => {
+      const server = await asHostOnTheLiveMap(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/friend/m-aman');
+      await expect(page.getByRole('heading', { name: 'Aman' })).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      await page.getByRole('button', { name: 'Map style' }).click();
+      await expect(page.getByRole('group', { name: 'Map style' })).toBeVisible();
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+      for (const control of await page.locator('a:visible, button:visible').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  test('a friend’s details open from the list with the keyboard, and Follow works', async ({ page }) => {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1/eta');
+    await expect.poll(server.connected).toBe(true);
+
+    await page.getByRole('link', { name: /Aman/ }).focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/trip\/trip-1\/friend\/m-aman$/);
+    await expect(page.getByRole('heading', { name: 'Aman' })).toBeVisible();
+    await page.getByRole('button', { name: 'Follow' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Following Aman')).toBeVisible();
+    await page.getByRole('button', { name: 'Stop' }).click();
+    await expect(page.getByText('Following Aman')).toBeHidden();
+    await expect(page.getByRole('link', { name: 'Directions to Aman' })).toHaveAttribute(
+      'href',
+      /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=18\.56,73\.91&travelmode=driving$/,
+    );
+  });
+
   test('shows a new ETA and an arrival as they happen', async ({ page }) => {
     const server = await asHostOnTheLiveMap(page);
     await page.goto('/trip/trip-1');
