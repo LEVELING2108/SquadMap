@@ -91,13 +91,16 @@ export function useUpdateSettings() {
  * The Mapbox style every map uses, as "owner/style". Streets follows the app's theme, or is always dark
  * with the Dark map setting; Outdoors and Satellite look the same day and night. Null while a signed-in
  * account's settings are still loading, so a map isn't drawn in one style and then again in another.
+ *
+ * @param override a style chosen on this screen only (a guest's choice from the Layers button)
  */
-export function useMapStyle(): string | null {
+export function useMapStyle(override?: MapStyle): string | null {
   const theme = useResolvedTheme();
   const { settings, isLoading } = useSettings();
   if (isLoading) return null;
-  if (settings.mapStyle === 'outdoors') return 'mapbox/outdoors-v12';
-  if (settings.mapStyle === 'satellite') return 'mapbox/satellite-streets-v12';
+  const mapStyle = override ?? settings.mapStyle;
+  if (mapStyle === 'outdoors') return 'mapbox/outdoors-v12';
+  if (mapStyle === 'satellite') return 'mapbox/satellite-streets-v12';
   return settings.darkMap || theme === 'dark' ? 'mapbox/dark-v11' : 'mapbox/streets-v12';
 }
 

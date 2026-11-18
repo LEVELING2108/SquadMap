@@ -4,7 +4,7 @@ import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapboxMap, Marke
 import { Check } from 'lucide-react';
 import mapLight from '../../assets/illustrations/map.svg';
 import mapDark from '../../assets/illustrations/map-dark.svg';
-import { useMapStyle } from '../../features/profile/settingsApi';
+import { useMapStyle, type MapStyle } from '../../features/profile/settingsApi';
 import type { LatLng } from './geo';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '';
@@ -62,6 +62,12 @@ type MapViewProps = {
   destination?: LatLng | null;
   /** People on the live map: their dot, initial and name. For the eye only, like `spots`. */
   people?: MapPerson[];
+  /** A person's dot was tapped. */
+  onPersonClick?: (id: string) => void;
+  /** The person dragged the map themselves (so a screen following someone can stop). */
+  onUserMove?: () => void;
+  /** A map style for this map only, in place of the account's setting (a guest's Layers choice). */
+  mapStyle?: MapStyle;
   /** Routes to the destination, under the people. For the eye only: ETAs are also given in words. */
   routes?: MapRoute[];
 };
@@ -79,7 +85,12 @@ export type MapPerson = {
   stale?: string;
   /** Reached the destination: a green check on the dot, as in the design. */
   arrived?: boolean;
+  /** The friend whose details are open: a soft ring around the dot, as in the design. */
+  selected?: boolean;
 };
+
+/** How long a dot takes to glide to a new spot. Updates come every 2 to 15 seconds. */
+const GLIDE_MS = 1_000;
 
 /** A route to the destination, drawn as a dotted line in the person's colour. */
 export type MapRoute = { id: string; color: string; points: [number, number][] };
@@ -122,10 +133,12 @@ function PersonDot({ person }: { person: MapPerson }) {
   return (
     <div
       aria-hidden="true"
-      className={`flex flex-col items-center ${person.stale ? 'opacity-55 grayscale' : ''}`}
+      className={`flex cursor-pointer flex-col items-center ${person.stale ? 'opacity-55 grayscale' : ''}`}
     >
       <span
-        className="relative flex size-12 items-center justify-center rounded-pill border-[3px] border-screen text-lg font-extrabold text-on-person shadow-md"
+        className={`relative flex size-12 items-center justify-center rounded-pill border-[3px] border-screen text-lg font-extrabold text-on-person shadow-md ${
+          person.selected ? 'ring-[10px] ring-you/25' : ''
+        }`}
         style={{ backgroundColor: person.color }}
       >
         {person.name.charAt(0).toUpperCase()}
@@ -210,6 +223,9 @@ export function MapView({
   destination = null,
   people,
   routes,
+  onPersonClick,
+  onUserMove,
+  mapStyle,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -220,7 +236,13 @@ export function MapView({
   const youMarkerRef = useRef<Marker | null>(null);
   const destinationMarkerRef = useRef<Marker | null>(null);
   const [destinationElement, setDestinationElement] = useState<HTMLElement | null>(null);
-  const style = useMapStyle();
+  const style = useMapStyle(mapStyle);
+  const onPersonClickRef = useRef(onPersonClick);
+  const onUserMoveRef = useRef(onUserMove);
+  useEffect(() => {
+    onPersonClickRef.current = onPersonClick;
+    onUserMoveRef.current = onUserMove;
+  });
   const onCenterChangeRef = useRef(onCenterChange);
   useEffect(() => {
     onCenterChangeRef.current = onCenterChange;
@@ -280,6 +302,8 @@ export function MapView({
         map.on('error', () => {
           if (!cancelled && !map.loaded()) setMode('fallback');
         });
+        // Only a drag by the person: moves made by the app itself (fitting, centring) don't count.
+        map.on('dragstart', () => onUserMoveRef.current?.());
         map.on('moveend', () => {
           const c = map.getCenter();
           onCenterChangeRef.current?.({ lat: c.lat, lng: c.lng });
@@ -375,6 +399,45 @@ export function MapView({
     };
   }, [mode, routes]);
 
+  /*
+   * Gliding: a person's dot moves to a new spot over about a second instead of jumping there. One
+   * animation-frame loop moves every gliding dot, and stops when none is moving. A new spot while gliding
+   * starts from wherever the dot is, so updates never jerk. With reduced motion, dots jump as before.
+   */
+  const glides = useRef(
+    new Map<string, { marker: Marker; from: [number, number]; to: [number, number]; start: number }>(),
+  );
+  const glideFrame = useRef<number | null>(null);
+  const stepGlides = useRef((now: number) => {
+    for (const [id, glide] of glides.current) {
+      const t = Math.min(1, (now - glide.start) / GLIDE_MS);
+      const eased = 1 - (1 - t) ** 3;
+      glide.marker.setLngLat([
+        glide.from[0] + (glide.to[0] - glide.from[0]) * eased,
+        glide.from[1] + (glide.to[1] - glide.from[1]) * eased,
+      ]);
+      if (t >= 1) glides.current.delete(id);
+    }
+    glideFrame.current = glides.current.size > 0 ? requestAnimationFrame(stepGlides.current) : null;
+  });
+  function glideTo(id: string, marker: Marker, to: [number, number]) {
+    const at = marker.getLngLat();
+    if (at.lng === to[0] && at.lat === to[1]) return;
+    if (prefersReducedMotion()) {
+      glides.current.delete(id);
+      marker.setLngLat(to);
+      return;
+    }
+    glides.current.set(id, { marker, from: [at.lng, at.lat], to, start: performance.now() });
+    glideFrame.current ??= requestAnimationFrame(stepGlides.current);
+  }
+  useEffect(
+    () => () => {
+      if (glideFrame.current !== null) cancelAnimationFrame(glideFrame.current);
+    },
+    [],
+  );
+
   // People as DOM markers keyed by id, drawn with React through portals; moved, not recreated, on updates.
   const personMarkers = useRef(new Map<string, Marker>());
   const [personElements, setPersonElements] = useState<ReadonlyMap<string, HTMLElement>>(new Map());
@@ -388,17 +451,20 @@ export function MapView({
       if (!wanted.has(id)) {
         marker.remove();
         personMarkers.current.delete(id);
+        glides.current.delete(id);
         changed = true;
       }
     }
     for (const person of wanted.values()) {
       const marker = personMarkers.current.get(person.id);
       if (marker) {
-        marker.setLngLat([person.lng, person.lat]);
+        glideTo(person.id, marker, [person.lng, person.lat]);
       } else {
         const element = document.createElement('div');
         element.setAttribute('aria-hidden', 'true');
         element.classList.add('map-person');
+        // For the eye and the finger; keyboards and screen readers open the same screen from the list.
+        element.addEventListener('click', () => onPersonClickRef.current?.(person.id));
         // The name sits below the dot; the dot itself is on the spot.
         personMarkers.current.set(
           person.id,

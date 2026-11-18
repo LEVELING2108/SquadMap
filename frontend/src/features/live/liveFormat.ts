@@ -34,6 +34,15 @@ export function modeWords(mode: 'car' | 'bike' | 'walk'): string {
   return mode === 'walk' ? 'on foot' : `by ${mode}`;
 }
 
+/**
+ * Opens the phone's maps app with a route to where a friend is now, driving or walking to match how the
+ * person travels. Their position goes to Google only when the person taps it.
+ */
+export function directionsUrl(to: { lat: number; lng: number }, mode: 'car' | 'bike' | 'walk'): string {
+  const travel = mode === 'walk' ? 'walking' : 'driving';
+  return `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lng}&travelmode=${travel}`;
+}
+
 /** "Aman", "Aman and Priya", "Aman, Priya and 2 more". */
 export function names(list: string[]): string {
   if (list.length <= 1) return list[0] ?? '';

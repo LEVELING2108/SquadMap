@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FakeClient, lastClient } from '../../test/fakeStomp';
 import { jsonResponse, renderApp, sampleTrip, testUser } from '../../test/renderApp';
 import { useSession } from '../auth/session';
+import { DEFAULT_SETTINGS } from '../profile/settingsApi';
 import type { Eta, LiveMember } from './liveTypes';
 import { useLiveStore } from './liveStore';
 
@@ -390,6 +391,134 @@ describe('Live map, ETAs and arrivals', () => {
 
     await user.click(screen.getByRole('link', { name: 'Back to the map' }));
     expect(await screen.findByRole('heading', { name: '2 friends on the way' })).toBeInTheDocument();
+  });
+});
+
+describe('Live map, a friend’s details', () => {
+  const moving: LiveMember = {
+    ...aman,
+    location: { lat: 18.56, lng: 73.91, acc: 10, speed: 10, ts: new Date().toISOString() },
+  };
+  const amanEta: Eta = {
+    memberId: 'm-aman',
+    distanceM: 1600,
+    durationS: 240,
+    mode: 'car',
+    progress: 0.82,
+    estimated: false,
+    computedAt: new Date().toISOString(),
+  };
+
+  it('opens from “Who’s on the way” with status, numbers, progress and directions', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    serve([priya, moving], { 'GET /trips/trip-1/eta': () => jsonResponse(200, [amanEta]) });
+    await openLiveMap();
+    await user.click(await screen.findByRole('link', { name: 'Who’s on the way' }));
+
+    await user.click(await screen.findByRole('link', { name: /Aman/ }));
+
+    expect(await screen.findByRole('heading', { name: 'Aman' })).toBeInTheDocument();
+    expect(screen.getByText('Moving · updated just now')).toBeInTheDocument();
+    const numbers = screen.getByLabelText('Aman’s numbers');
+    expect(within(numbers).getByText('1.6 km')).toBeInTheDocument();
+    expect(within(numbers).getByText('36 km/h')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Aman’s progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '82',
+    );
+    expect(screen.getByText('Progress to Phoenix Marketcity')).toBeInTheDocument();
+    expect(within(numbers).getByText('ETA by car')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Directions to Aman' })).toHaveAttribute(
+      'href',
+      'https://www.google.com/maps/dir/?api=1&destination=18.56,73.91&travelmode=driving',
+    );
+    expect(screen.getByRole('link', { name: 'Back to the map' })).toHaveAttribute('href', '/trip/trip-1');
+    expect(FakeClient.instances).toHaveLength(1);
+  });
+
+  it('follows the friend until stopped', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    serve([priya, moving]);
+    renderApp('/trip/trip-1/friend/m-aman');
+
+    await user.click(await screen.findByRole('button', { name: 'Follow' }));
+
+    expect(screen.getByRole('button', { name: 'Following' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Following Aman')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(screen.queryByText('Following Aman')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Follow' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('says when a friend has stopped, arrived, or isn’t sharing', async () => {
+    withLocation();
+    serve([priya, { ...aman, location: { ...moving.location!, speed: 0 } }]);
+    const view = renderApp('/trip/trip-1/friend/m-aman');
+    expect(await screen.findByText('Stopped · updated just now')).toBeInTheDocument();
+    view.unmount();
+
+    serve([priya, { ...aman, arrivedAt: new Date().toISOString() }]);
+    const arrived = renderApp('/trip/trip-1/friend/m-aman');
+    expect(await screen.findByText('Arrived at Phoenix Marketcity')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Follow' })).not.toBeInTheDocument();
+    arrived.unmount();
+
+    serve([priya, rohan]);
+    renderApp('/trip/trip-1/friend/m-rohan');
+    expect(await screen.findByText('Not sharing their location yet')).toBeInTheDocument();
+  });
+
+  it('explains when the person isn’t on the trip', async () => {
+    withLocation();
+    serve([priya]);
+    renderApp('/trip/trip-1/friend/m-gone');
+
+    expect(await screen.findByRole('heading', { name: 'Not on this trip' })).toBeInTheDocument();
+  });
+});
+
+describe('Live map, layers', () => {
+  it('saves an account’s choice as its map style setting', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    serve([priya], {
+      'PATCH /me/settings': () => jsonResponse(200, { ...DEFAULT_SETTINGS, mapStyle: 'satellite' }),
+    });
+    await openLiveMap();
+
+    await user.click(screen.getByRole('button', { name: 'Map style' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Map style' })).getByRole('button', { name: 'Satellite' }),
+    );
+
+    await waitFor(() => expect(calls('PATCH /api/v1/me/settings')).toHaveLength(1));
+    expect(JSON.parse(String(calls('PATCH /api/v1/me/settings')[0]![1]?.body))).toEqual({
+      mapStyle: 'satellite',
+    });
+    await user.click(screen.getByRole('button', { name: 'Map style' }));
+    expect(screen.getByRole('button', { name: 'Satellite' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps a guest’s choice on this page without saving anything', async () => {
+    const user = userEvent.setup();
+    withLocation();
+    useSession.setState({
+      status: 'guest',
+      user: null,
+      guest: { tripId: 'trip-1', memberId: 'm-priya', displayName: 'Priya', color: '#0F6E56' },
+      accessToken: 'g',
+    });
+    serve([priya]);
+    await openLiveMap();
+
+    await user.click(screen.getByRole('button', { name: 'Map style' }));
+    await user.click(screen.getByRole('button', { name: 'Outdoors' }));
+    await user.click(screen.getByRole('button', { name: 'Map style' }));
+
+    expect(screen.getByRole('button', { name: 'Outdoors' })).toHaveAttribute('aria-pressed', 'true');
+    expect(calls('PATCH /api/v1/me/settings')).toHaveLength(0);
   });
 });
 
