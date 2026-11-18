@@ -13,6 +13,7 @@ const fetchMock = vi.fn<typeof fetch>();
 const LOCATIONS = '/topic/trip.trip-1.locations';
 const EVENTS = '/topic/trip.trip-1.events';
 const ETAS = '/topic/trip.trip-1.eta';
+const CHAT = '/topic/trip.trip-1.chat';
 const ERRORS = '/user/queue/errors';
 
 const priya: LiveMember = {
@@ -53,6 +54,8 @@ function serve(members: LiveMember[], extra: Routes = {}) {
       jsonResponse(200, { ...sampleTrip, expiresAt: new Date(Date.now() + 3 * 3_600_000).toISOString() }),
     'GET /trips/trip-1/members': () => jsonResponse(200, members),
     'GET /trips/trip-1/eta': () => jsonResponse(200, []),
+    'GET /trips/trip-1/messages?limit=50': () =>
+      jsonResponse(200, { items: [], nextBefore: null, unread: 0, memberId: 'm-priya' }),
     ...extra,
   };
   fetchMock.mockImplementation(async (input, init) => {
@@ -132,12 +135,12 @@ describe('Live map', () => {
     expect(within(friendsList()).getByText('Rohan, not sharing their location yet')).toBeInTheDocument();
   });
 
-  it('subscribes to the trip, its events and its own error queue', async () => {
+  it('subscribes to the trip, its events, its chat and its own error queue', async () => {
     withLocation();
     serve([priya]);
     const client = await openLiveMap();
 
-    expect([...client.listeners.keys()]).toEqual([LOCATIONS, EVENTS, ETAS, ERRORS]);
+    expect([...client.listeners.keys()]).toEqual([LOCATIONS, EVENTS, ETAS, CHAT, ERRORS]);
     expect(client.connectHeaders).toEqual({ Authorization: 'Bearer t' });
   });
 

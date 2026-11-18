@@ -4,8 +4,8 @@ Get there together. One link, one live map, everyone's ETA.
 
 SquadMap is a real-time group location-sharing web app. A host starts a trip and shares a link, friends join as guests with just a name, and everyone sees each other live on one map with shared arrival times. Sharing stops automatically when the trip ends.
 
-> Status: early development. Accounts, trips, invites and the live map work locally; ETAs, chat and
-> notifications are next. Not deployed yet.
+> Status: early development. Accounts, trips, invites, the live map with ETAs, and trip chat work
+> locally; notifications are next. Not deployed yet.
 
 ## Planned stack
 
@@ -29,6 +29,7 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | 4. Run the tests | `make test` and `make e2e` | Both finish without failures |
 | 5. Run the full account journey (steps 1 and 2 running) | `make journey` | `1 passed`: sign up, log in, and a password reset through a real email |
 | 6. Try the live map (steps 1 to 3 running) | Start a trip, open its invite link in a private window and join as a guest, then open the trip in both | Each window shows the other person within a few seconds, and "Live · … left" in the top bar |
+| 7. Try the chat (as in step 6, with "Friends can chat" on) | Open the chat button on the map in one window and send a message | The other window's chat button shows "1" at once; opening it shows the message, and typing in one window shows dots in the other |
 
 The live map needs location permission in the browser. Opening the app on `localhost` counts as a secure
 page, so browsers allow it there; on another address (say, a phone on your Wi-Fi) they need HTTPS.
@@ -64,6 +65,7 @@ Without `make`, the commands are in the [Makefile](Makefile).
 - Location is shared only with people who hold the trip link.
 - Live positions expire on their own and are deleted when the trip ends.
 - Only a trip summary is kept, never a raw location track.
+- Trip chat is deleted 7 days after the trip ends.
 
 ## Branches
 

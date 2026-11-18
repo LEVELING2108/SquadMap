@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Client, ReconnectionTimeMode } from '@stomp/stompjs';
 import { getAccessToken, refreshSession } from '../auth/session';
+import type { ChatEvent } from '../chat/chatTypes';
 import type { Eta, LiveError, LocationReading, MemberLocation, TripEvent } from './liveTypes';
 
 export type Connection = 'connecting' | 'live' | 'offline';
@@ -15,6 +16,8 @@ type Handlers = {
   onLocation: (location: MemberLocation) => void;
   onEvent: (event: TripEvent) => void;
   onEta: (eta: Eta) => void;
+  /** A chat message, or someone typing. */
+  onChat?: (event: ChatEvent) => void;
   /** One of this phone's own updates was refused. */
   onError: (error: LiveError) => void;
   /** Connected again after a drop: the snapshot should be reloaded, as messages were missed. */
@@ -31,7 +34,7 @@ export function liveSocketUrl(): string {
 }
 
 /**
- * Keeps a live connection to one trip while `enabled`: subscribes to its locations and events, reconnects
+ * Keeps a live connection to one trip while `enabled`: subscribes to its locations, events, ETAs and chat, reconnects
  * after 1, 2, 4, 8 and then every 15 seconds, signs in again when the access token has run out, and stops
  * for good when the trip is over.
  */
@@ -91,6 +94,10 @@ export function useTripSocket(tripId: string, enabled: boolean, handlers: Handle
         client.subscribe(`/topic/trip.${tripId}.eta`, (message) => {
           const eta = parse<Eta>(message.body);
           if (eta) handlersRef.current.onEta(eta);
+        });
+        client.subscribe(`/topic/trip.${tripId}.chat`, (message) => {
+          const event = parse<ChatEvent>(message.body);
+          if (event) handlersRef.current.onChat?.(event);
         });
         client.subscribe('/user/queue/errors', (message) => {
           const error = parse<LiveError>(message.body);
@@ -157,6 +164,17 @@ export function useTripSocket(tripId: string, enabled: boolean, handlers: Handle
     [tripId],
   );
 
+  /** Tells the others this person is writing; the caller sends it at most every 2 seconds. */
+  const sendTyping = useCallback(() => {
+    const client = clientRef.current;
+    if (!client?.connected) return;
+    client.publish({
+      destination: `/app/trip.${tripId}.typing`,
+      body: '{}',
+      headers: { 'content-type': 'application/json' },
+    });
+  }, [tripId]);
+
   /** The Retry button: reconnect now. */
   const retry = useCallback(() => {
     const client = clientRef.current;
@@ -165,5 +183,5 @@ export function useTripSocket(tripId: string, enabled: boolean, handlers: Handle
     void client.deactivate().then(() => client.activate());
   }, []);
 
-  return { connection, send, retry };
+  return { connection, send, sendTyping, retry };
 }

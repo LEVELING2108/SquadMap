@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 /**
  * Guards the live connection, deny by default. CONNECT must carry a valid access token (an account's or a
  * guest's). A client may only subscribe to the topics of a running trip it is on, plus its own error queue,
- * and may only send location updates; anything else closes the connection.
+ * and may only send location updates and "typing" signals; anything else closes the connection.
  *
  * <p>Refusals become a STOMP ERROR frame whose message is a stable code, such as {@code UNAUTHENTICATED},
  * which the web app reads to decide whether to sign in again or stop.
@@ -38,8 +38,8 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     public static final String ERRORS_QUEUE = "/user/queue/errors";
 
     private static final String UUID_PATTERN = "([0-9a-fA-F-]{36})";
-    private static final Pattern TRIP_TOPIC = Pattern.compile("^/topic/trip\\." + UUID_PATTERN + "\\.(locations|events|eta)$");
-    private static final Pattern LOCATION_SEND = Pattern.compile("^/app/trip\\." + UUID_PATTERN + "\\.loc$");
+    private static final Pattern TRIP_TOPIC = Pattern.compile("^/topic/trip\\." + UUID_PATTERN + "\\.(locations|events|eta|chat)$");
+    private static final Pattern TRIP_SEND = Pattern.compile("^/app/trip\\." + UUID_PATTERN + "\\.(loc|typing)$");
 
     private final JwtDecoder tokens;
     private final TripAccess access;
@@ -111,9 +111,9 @@ public class StompAuthInterceptor implements ChannelInterceptor {
         requireLiveMember(topic.group(1), principal.caller());
     }
 
-    /** Membership is checked again by the location service, which needs the member anyway. */
+    /** Membership is checked by the service that handles the message, which needs the member anyway. */
     private void checkSend(LivePrincipal principal, String destination) {
-        Matcher send = destination == null ? null : LOCATION_SEND.matcher(destination);
+        Matcher send = destination == null ? null : TRIP_SEND.matcher(destination);
         if (send == null || !send.matches()) {
             throw refuse("FORBIDDEN");
         }

@@ -42,16 +42,17 @@ DELETE /trips/{id}/members/me
 GET    /join/{code}/preview POST  /join/{code}
 POST   /trips/{id}/locations   (fallback to WS)
 GET    /trips/{id}/eta
-GET    /trips/{id}/messages POST  /trips/{id}/messages
+GET    /trips/{id}/messages POST  /trips/{id}/messages   POST /trips/{id}/messages/read
 GET    /places/search?q=    GET   /places/recent
 ```
 Conventions: JSON, ISO-8601 UTC timestamps, ids are UUIDv7 (time-ordered), pagination by cursor, idempotency key header on create endpoints, problem+json errors with `code` such as `TRIP_EXPIRED`, `INVALID_CODE`, `RATE_LIMITED`.
 
 ## WebSocket protocol (STOMP over SockJS)
 - Connect `/ws` (plain WebSocket at `/ws/websocket`, SockJS for clients that can't use one) with the STOMP CONNECT header `Authorization: Bearer <token>` (user token or trip-scoped guest token). The connection must sign in again once that token runs out.
-- Subscribe: `/topic/trip.{id}.locations`, `/topic/trip.{id}.events`, `/topic/trip.{id}.eta` (ETA changes, `{memberId, distanceM, durationS, mode, route (polyline6), progress, estimated, computedAt}`), `/topic/trip.{id}.chat`, and `/user/queue/errors` for the client's own refused updates. An interceptor checks membership of a running trip on every SUBSCRIBE; any other destination, and any SEND other than a location, is refused.
+- Subscribe: `/topic/trip.{id}.locations`, `/topic/trip.{id}.events`, `/topic/trip.{id}.eta` (ETA changes, `{memberId, distanceM, durationS, mode, route (polyline6), progress, estimated, computedAt}`), `/topic/trip.{id}.chat`, and `/user/queue/errors` for the client's own refused updates. An interceptor checks membership of a running trip on every SUBSCRIBE; any other destination, and any SEND other than a location or a "typing" signal, is refused.
 - Refusals close the connection with an ERROR frame whose message is a stable code: `UNAUTHENTICATED` (sign in again and reconnect), `TRIP_NOT_FOUND`, `TRIP_EXPIRED`, `FORBIDDEN` (stop).
 - Send: `/app/trip.{id}.loc` payload `{lat, lng, acc, speed, heading, ts}` (`ts` ISO-8601). Only from a member who agreed to share (`POST /trips/{id}/sharing` records it for the host and for people who chose "Not now"). Server allows 1 update per 2 s on average, rejects accuracy over 200 m, readings over 5 min old or in the future, and impossible jumps (over 70 m/s once accuracy is allowed for), ignores readings older than the one kept, stores to Redis `trip:{id}:loc:{memberId}` TTL 600 s, and broadcasts `{memberId, lat, lng, acc, speed, heading, ts}`. Refusals go to the sender's error queue as `{code, message, retryAfter}`.
+- Chat: messages are sent with `POST /trips/{id}/messages` `{text, clientId}` (plain text, 1 to 280 characters after control characters are stripped; the same `clientId` again returns the first message instead of posting twice; 20 a minute per member; 410 `TRIP_EXPIRED` after the trip ends; 403 `CHAT_OFF` when the host turned chat off). Each new message is broadcast on `/topic/trip.{id}.chat` as `{type: "MESSAGE", message: {id, memberId, displayName, color, text, sentAt, clientId}}`. Send `/app/trip.{id}.typing` (empty body) while writing, at most every 2 s (more are dropped quietly); others receive `{type: "TYPING", memberId, at}` and show dots for 5 s. `GET /trips/{id}/messages?before=&limit=` pages newest first and includes `unread` (messages from others after the member's `chat_read_upto`) and the caller's own `memberId`; `POST /trips/{id}/messages/read {lastSeenId}` moves `chat_read_upto` forward only. The chat stays readable after the trip ends and is deleted 7 days later.
 - Fan-out: every instance publishes to the Redis channel `squadmap:live` and relays what it hears to its own clients, so several instances serve the same trip.
 - Events: `MEMBER_JOINED`, `MEMBER_LEFT`, `SHARING_STARTED`, `ARRIVED`, `TRIP_EXTENDED`, `TRIP_ENDED` so far; `TRIP_ENDING_SOON`, `PAUSED`, `RESUMED` come with the trip menu. Leaving deletes that member's spot and ETA; ending or expiry deletes every spot and ETA on the trip.
 - ETAs and arrival: after each stored spot, in the background, if the trip has a destination. Within 60 m of it for 20 s sets `trip_members.arrived_at` once and sends `ARRIVED`; leaving the 60 m circle restarts the 20 s. Otherwise a new route (the full line) is asked of Mapbox Directions only after 100 m moved, 60 s passed or a change of mode. The mode is what the member chose (`PUT /trips/{id}/members/me/travel-mode`: car or bike use `driving-traffic`, walk uses `walking`); before they choose, car beyond 2 km and walk nearer, kept for the trip; routes are shared for 20 s by everyone starting from the same ~50 m square; at most 300 Directions calls per trip per hour. Without a fresh route (over budget, Mapbox down, no token) the ETA is scaled from the last route, or estimated from the straight line, and marked `estimated`. ETAs live in Redis `eta:{tripId}:{memberId}` (TTL 10 min). `GET /trips/{id}/eta` is the snapshot.
@@ -60,8 +61,8 @@ Conventions: JSON, ISO-8601 UTC timestamps, ids are UUIDv7 (time-ordered), pagin
 ## Data model (summary)
 `users(id, email, password_hash, name, color, settings jsonb, created_at, deleted_at)`
 `trips(id, host_id, name, code, dest_name, dest_lat, dest_lng, chat_enabled, starts_at, expires_at, ended_at, status)`
-`trip_members(id, trip_id, user_id null, display_name, color, role, joined_at, left_at, arrived_at, paused)`
-`messages(id, trip_id, member_id, body, created_at)`
+`trip_members(id, trip_id, user_id null, display_name, color, role, joined_at, left_at, arrived_at, travel_mode, chat_read_upto, paused)`
+`chat_messages(id, trip_id, member_id, client_id, body, created_at)`
 `trip_summaries(trip_id, distance_m, duration_s, member_count, route_polyline_simplified)`
 `refresh_tokens(id, user_id, hash, expires_at, revoked_at)`
 `push_subscriptions(id, user_id, endpoint, p256dh, auth)`
@@ -70,7 +71,7 @@ Redis: `trip:{id}:loc:{memberId}` (TTL 600 s), `trip:{id}:members` (set), `rl:{k
 
 ## Scheduling jobs
 - Every 30 s: find trips expiring within 10 min (send warning once), expiring now (end, close sockets, write summary, purge Redis).
-- Hourly: purge expired refresh tokens and reset tokens. Daily: hard-delete accounts past the 30 day grace period.
+- Hourly: purge expired refresh tokens and reset tokens. Nightly: delete alerts over 30 days old and the chat of trips that ended over 7 days ago. Daily: hard-delete accounts past the 30 day grace period.
 Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 
 ## Security
@@ -79,7 +80,7 @@ Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 - Guest token: signed, scoped to one trip and one member, expires at trip end.
 - Authorization on every REST endpoint and every STOMP destination (membership + role).
 - CORS allow-list, CSP (`default-src 'self'`; allow Mapbox hosts), HSTS, no wildcard origins on WebSocket.
-- Rate limits (Bucket4j + Redis): login 5/min/IP, join 10/min/IP, location 1 per 2 s/member, chat 20/min/member, forgot 3/hour/email.
+- Rate limits (Bucket4j + Redis): login 5/min/IP, join 10/min/IP, location 1 per 2 s/member, chat 20/min/member, typing 1 per 2 s/member, forgot 3/hour/email.
 - Input: validate lengths, strip control characters, escape on render. Invite codes: 8 chars from a 31-letter alphabet (no 0, O, 1, I, L), 31^8 combinations, lock out an IP after 20 bad codes.
 - Secrets in env or a secret manager, never in the repo. Dependabot + `mvn dependency-check` + `npm audit` in CI.
 

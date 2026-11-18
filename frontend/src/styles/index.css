@@ -209,3 +209,12 @@
 .map-canvas .mapboxgl-ctrl-bottom-right {
   bottom: var(--map-inset-bottom, 0px);
 }
+
+/* Chat bubbles (docs/02): a friend's has its square corner top left, by their initial; yours top right. */
+@utility bubble-friend {
+  border-radius: 4px 18px 18px 18px;
+}
+
+@utility bubble-mine {
+  border-radius: 18px 4px 18px 18px;
+}
