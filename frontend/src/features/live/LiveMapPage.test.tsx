@@ -26,6 +26,7 @@ const priya: LiveMember = {
   location: null,
   arrivedAt: null,
   travelMode: null,
+  pausedAt: null,
 };
 const aman: LiveMember = {
   memberId: 'm-aman',
@@ -37,6 +38,7 @@ const aman: LiveMember = {
   location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date().toISOString() },
   arrivedAt: null,
   travelMode: null,
+  pausedAt: null,
 };
 const rohan: LiveMember = {
   ...aman,

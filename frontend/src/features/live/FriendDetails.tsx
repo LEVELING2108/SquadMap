@@ -46,6 +46,7 @@ function statusOf(
   if (friend.arrivedAt) return destination ? `Arrived at ${destination}` : 'Arrived';
   if (!friend.sharing) return 'Not sharing their location yet';
   if (!position) return 'Waiting for their location';
+  if (friend.pausedAt) return `Paused · last seen ${staleLabel(position.ts, now) ?? 'just now'}`;
   const moving = (position.speed ?? 0) > MOVING_MPS;
   return `${moving ? 'Moving' : 'Stopped'} · updated ${staleLabel(position.ts, now) ?? 'just now'}`;
 }

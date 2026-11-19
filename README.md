@@ -31,6 +31,7 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | 6. Try the live map (steps 1 to 3 running) | Start a trip, open its invite link in a private window and join as a guest, then open the trip in both | Each window shows the other person within a few seconds, and "Live · … left" in the top bar |
 | 7. Try the chat (as in step 6, with "Friends can chat" on) | Open the chat button on the map in one window and send a message | The other window's chat button shows "1" at once; opening it shows the message, and typing in one window shows dots in the other |
 | 8. Try the trip menu (as in step 6) | As the host, open the menu (top right on the map), extend sharing by 30 minutes, then end the trip | The guest's window says "The host added more time", and after ending both windows show "This trip has ended" |
+| 9. Try pausing (as in step 6, with both windows sharing) | In the guest's window, open the menu and turn on Pause my location | The host's window says "Aman paused their location" and shows the dot dimmed with "Paused"; Resume in the guest's window brings it back |
 
 The live map needs location permission in the browser. Opening the app on `localhost` counts as a secure
 page, so browsers allow it there; on another address (say, a phone on your Wi-Fi) they need HTTPS.

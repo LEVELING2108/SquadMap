@@ -24,6 +24,8 @@ export type LiveMember = {
   arrivedAt: string | null;
   /** How they said they are travelling, or null before they choose (the ETA's mode is then a guess). */
   travelMode: TravelMode | null;
+  /** When they paused sharing, or null while they share. Their location is then where they paused. */
+  pausedAt: string | null;
 };
 
 /** A bike is a motorbike or scooter: it takes the same roads as a car. */
@@ -50,7 +52,14 @@ export type Eta = {
 export type MemberLocation = Position & { memberId: string };
 
 export type TripEventType =
-  'MEMBER_JOINED' | 'MEMBER_LEFT' | 'SHARING_STARTED' | 'ARRIVED' | 'TRIP_EXTENDED' | 'TRIP_ENDED';
+  | 'MEMBER_JOINED'
+  | 'MEMBER_LEFT'
+  | 'SHARING_STARTED'
+  | 'ARRIVED'
+  | 'PAUSED'
+  | 'RESUMED'
+  | 'TRIP_EXTENDED'
+  | 'TRIP_ENDED';
 
 /** Something happened on the trip: what arrives on /topic/trip.{id}.events. */
 export type TripEvent = {
