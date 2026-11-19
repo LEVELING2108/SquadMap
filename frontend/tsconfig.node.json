@@ -18,6 +18,7 @@
   },
   "include": [
     "vite.config.ts",
+    "pwa-assets.config.ts",
     "playwright.config.ts",
     "playwright.journey.config.ts",
     "eslint.config.js",

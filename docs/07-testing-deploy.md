@@ -48,7 +48,7 @@ Frontend (build time): `VITE_API_URL`, `VITE_WS_URL`, `VITE_MAPBOX_PUBLIC_TOKEN`
 
 ## Containers
 - `backend/Dockerfile`: multi-stage (Maven build on JDK 21, run on a slim JRE 21), non-root user, `HEALTHCHECK` on `/actuator/health/readiness`, `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70`.
-- `frontend/Dockerfile`: build with Node 20, serve static files from Nginx with long-cache for hashed assets and `no-cache` for `index.html` and the service worker.
+- `frontend/Dockerfile`: build with Node 20, serve static files from Nginx with long-cache for hashed assets and `no-cache` for `index.html`, `sw.js` and `manifest.webmanifest`, so a new version is found on the next visit. Serve `manifest.webmanifest` as `application/manifest+json`.
 - `infra/docker-compose.prod.yml`: nginx, app (2 replicas), postgres, redis, optional prometheus + grafana. Volumes for postgres and redis. Restart policy `unless-stopped`.
 
 ## Nginx essentials
@@ -87,7 +87,8 @@ Nightly `pg_dump` to object storage, 14 day retention, weekly restore test into 
 - [ ] Mapbox tokens restricted by URL, billing alerts on.
 - [ ] Backups restore tested. Runbook reviewed. On-call plan (even if it is only you).
 - [ ] Sentry receiving events from both sides. Dashboards and alerts live.
-- [ ] Store listing assets if installing as PWA: icons 192/512/maskable, screenshots from `design/screens`, short description.
+- [x] PWA icons 192/512/maskable and the Apple touch icon, generated from `frontend/public/favicon.svg` with `npm run icons`. `npm run check:pwa` (also in CI) checks the built app has them, the manifest and a service worker that caches only the app's own files.
+- [ ] Store listing assets if listing the PWA anywhere: screenshots from `design/screens`, short description.
 - [ ] Feature flags for risky features (push, Google sign-in) with a kill switch.
 - [ ] Beta with 10 to 20 users for a week; collect feedback and crash reports.
 
