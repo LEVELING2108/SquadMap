@@ -9,6 +9,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -43,6 +44,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(error -> Map.of(
                         "field", error.getField(),
                         "message", error.getDefaultMessage() == null ? "is invalid" : error.getDefaultMessage()))
+                .toList();
+        ProblemDetail problem = Problems.of(status, ErrorCode.VALIDATION_FAILED, "One or more fields are invalid.");
+        problem.setProperty("errors", errors);
+        return super.handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    /** A query or path parameter that breaks its rule, reported like an invalid body field. */
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        List<Map<String, String>> errors = ex.getAllValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream().map(error -> Map.of(
+                        "field", String.valueOf(result.getMethodParameter().getParameterName()),
+                        "message", error.getDefaultMessage() == null ? "is invalid" : error.getDefaultMessage())))
                 .toList();
         ProblemDetail problem = Problems.of(status, ErrorCode.VALIDATION_FAILED, "One or more fields are invalid.");
         problem.setProperty("errors", errors);

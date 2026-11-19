@@ -2,12 +2,16 @@ import { getAccessToken, refreshSession } from '../../features/auth/session';
 import { ApiError } from './ApiError';
 import { API_BASE } from './config';
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 type RequestOptions = {
   method?: Method;
   body?: unknown;
   signal?: AbortSignal;
+  /** False sends the call without the access token, as someone with no session. */
+  withToken?: boolean;
+  /** Extra headers, such as an Idempotency-Key. */
+  headers?: Record<string, string>;
 };
 
 /**
@@ -18,9 +22,10 @@ type RequestOptions = {
  * @throws ApiError for any non-2xx answer, or with code NETWORK when the server can't be reached
  */
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  let response = await send(path, options, getAccessToken());
+  const withToken = options.withToken ?? true;
+  let response = await send(path, options, withToken ? getAccessToken() : null);
 
-  if (response.status === 401 && getAccessToken() !== null) {
+  if (response.status === 401 && withToken && getAccessToken() !== null) {
     const failure = await ApiError.fromResponse(response.clone());
     // Only an expired or rejected token is worth a refresh; a wrong password is not.
     if (failure.code === 'UNAUTHENTICATED' && (await refreshSession())) {
@@ -36,7 +41,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 }
 
 async function send(path: string, options: RequestOptions, token: string | null): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { ...options.headers, Accept: 'application/json' };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 

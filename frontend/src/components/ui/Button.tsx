@@ -1,8 +1,9 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { Link, type LinkProps } from 'react-router';
 import { buttonClasses, type ButtonVariant } from './buttonStyles';
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant };
+// React 19 passes `ref` as an ordinary prop, so it reaches the <button> with the rest.
+type ButtonProps = ComponentPropsWithRef<'button'> & { variant?: ButtonVariant };
 
 export function Button({ variant = 'primary', type = 'button', className = '', ...rest }: ButtonProps) {
   return <button type={type} className={buttonClasses(variant, className)} {...rest} />;

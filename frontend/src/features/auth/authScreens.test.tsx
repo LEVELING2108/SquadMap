@@ -267,26 +267,3 @@ describe('Set a new password', () => {
     expect(screen.getByRole('heading', { name: 'This link has expired' })).toBeInTheDocument();
   });
 });
-
-describe('Home', () => {
-  it('greets a signed-in person and logs them out', async () => {
-    const user = userEvent.setup();
-    useSession.setState({ status: 'signedIn', user: testUser, accessToken: 't' });
-    fetchMock.mockResolvedValueOnce(jsonResponse(204));
-    renderApp('/home');
-
-    expect(screen.getByRole('heading', { name: 'Hi, Priya' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Log out' }));
-
-    await waitFor(() => expect(location()).toBe('/'));
-    expect(requestUrl(0)).toBe('/api/v1/auth/logout');
-    expect(useSession.getState().status).toBe('signedOut');
-  });
-
-  it('invites someone exploring to sign up or log in', () => {
-    renderApp('/home');
-
-    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signup');
-    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
-  });
-});

@@ -28,7 +28,10 @@ squadmap:
     allowed-origins: ${ALLOWED_ORIGINS}
   mail:
     from: ${MAIL_FROM}
-    web-base-url: ${WEB_BASE_URL}
+  web:
+    base-url: ${WEB_BASE_URL}
+  mapbox:
+    token: ${MAPBOX_SERVER_TOKEN}
 
 # The interactive API docs are a development aid and stay off in production.
 springdoc:

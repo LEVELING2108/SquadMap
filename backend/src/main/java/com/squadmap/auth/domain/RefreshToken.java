@@ -61,6 +61,16 @@ public class RefreshToken {
         return !expiresAt.isAfter(now);
     }
 
+    /** Its session has ended: log out, a password change, or reuse detected. */
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    /** When it was exchanged for a newer token, or null if it hasn't been. */
+    public Instant getUsedAt() {
+        return usedAt;
+    }
+
     /** Already exchanged for a newer token, or its session has ended. */
     public boolean isSpent() {
         return usedAt != null || revokedAt != null;

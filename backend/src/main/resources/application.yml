@@ -34,6 +34,12 @@ management:
         enabled: true
       show-details: never
 
+logging:
+  level:
+    # Logs every refused live-connection frame (a stranger subscribing, an expired token) as an ERROR.
+    # Those are routine; StompAuthInterceptor logs real faults itself.
+    org.springframework.web.socket.messaging.StompSubProtocolHandler: off
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

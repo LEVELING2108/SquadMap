@@ -17,6 +17,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.util.Map;
 
@@ -31,7 +33,10 @@ import java.util.Map;
                 // Tests call scheduled jobs directly instead of racing the timer.
                 "squadmap.scheduling.enabled=false",
                 // Makes Spring create the mail sender; the Mailpit container replaces this host.
-                "spring.mail.host=placeholder"
+                "spring.mail.host=placeholder",
+                // Place search talks to FakeMapbox, and gives up quickly so the timeout test stays short.
+                "squadmap.mapbox.token=" + FakeMapbox.TOKEN,
+                "squadmap.mapbox.timeout=1s"
         })
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {
@@ -49,6 +54,11 @@ public abstract class IntegrationTest {
 
     protected Mailpit mailpit;
 
+    @DynamicPropertySource
+    static void mapbox(DynamicPropertyRegistry properties) {
+        properties.add("squadmap.mapbox.base-url", () -> FakeMapbox.get().baseUrl());
+    }
+
     @BeforeEach
     void cleanState(@Value("${" + Mailpit.API_URL_PROPERTY + "}") String mailpitUrl) {
         // The HTTP client otherwise waits out a 429's Retry-After and silently retries,
@@ -60,6 +70,7 @@ public abstract class IntegrationTest {
         try (RedisConnection connection = redis.getConnection()) {
             connection.serverCommands().flushAll();
         }
+        FakeMapbox.get().reset();
         mailpit = new Mailpit(mailpitUrl);
         mailpit.deleteAll();
     }

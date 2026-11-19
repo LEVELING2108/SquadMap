@@ -1,6 +1,7 @@
 package com.squadmap.auth.service;
 
 import com.squadmap.auth.config.AuthProperties;
+import com.squadmap.common.security.Caller;
 import com.squadmap.common.security.TokenKind;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -40,6 +41,25 @@ public class AccessTokenService {
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         String value = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
         return new IssuedToken(value, properties.accessTokenTtl().toSeconds());
+    }
+
+    /**
+     * A guest's pass: it names one trip member on one trip, and stops working when the trip is
+     * due to end. It grants nothing outside that trip.
+     */
+    public IssuedToken issueForGuest(UUID memberId, UUID tripId, Instant tripExpiresAt) {
+        Instant now = clock.instant();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(properties.issuer())
+                .subject(memberId.toString())
+                .issuedAt(now)
+                .expiresAt(tripExpiresAt)
+                .claim(TokenKind.CLAIM, TokenKind.GUEST.claimValue())
+                .claim(Caller.TRIP_CLAIM, tripId.toString())
+                .build();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        String value = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        return new IssuedToken(value, Math.max(0, tripExpiresAt.getEpochSecond() - now.getEpochSecond()));
     }
 
     /**

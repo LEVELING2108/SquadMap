@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+                    // The live connection signs in with its first STOMP frame, checked by StompAuthInterceptor.
+                    auth.requestMatchers("/ws", "/ws/**").permitAll();
                     if (apiDocsEnabled) {
                         auth.requestMatchers(API_DOCS).permitAll();
                     }
@@ -65,6 +67,33 @@ public class SecurityConfig {
                             "/api/v1/auth/forgot", "/api/v1/auth/reset").permitAll();
                     // Account routes are for signed-in accounts only; a guest token is refused.
                     auth.requestMatchers("/api/v1/me", "/api/v1/me/**").hasAuthority(TokenKind.USER.authority());
+                    // Account security changes live under /auth so they receive the refresh cookie.
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/password", "/api/v1/auth/logout-others")
+                            .hasAuthority(TokenKind.USER.authority());
+                    // Joining works from an invite link, with or without an account.
+                    auth.requestMatchers("/api/v1/join/**").permitAll();
+                    // A guest's session comes from their cookie, checked by the guest session routes.
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/guest/session", "/api/v1/guest/logout").permitAll();
+                    // A guest may read the one trip their pass is for; the service checks which trip.
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/v1/trips/*/members/me")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    // The live map is for everyone on the trip, guests included; the service checks membership.
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*/members", "/api/v1/trips/*/eta")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/locations", "/api/v1/trips/*/sharing")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers("/api/v1/trips/*/messages", "/api/v1/trips/*/messages/read")
+                            .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
+                    auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/guest-pass")
+                            .hasAuthority(TokenKind.GUEST.authority());
+                    // Everything else about trips is for signed-in accounts.
+                    auth.requestMatchers("/api/v1/trips", "/api/v1/trips/**").hasAuthority(TokenKind.USER.authority());
+                    // Choosing a destination is part of starting a trip, which needs an account.
+                    auth.requestMatchers("/api/v1/places/**").hasAuthority(TokenKind.USER.authority());
                     auth.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(oauth -> oauth
@@ -91,7 +120,8 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(properties.allowedOrigins());
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        // Every method an API route uses must be here, or the browser's call is refused with a 403.
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"));
         // The refresh cookie must be sent on cross-origin calls from the web app.
         config.setAllowCredentials(true);

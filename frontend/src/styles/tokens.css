@@ -65,6 +65,13 @@
   --input-placeholder: #5f7184;
   --track: rgba(18, 38, 58, 0.1);
 
+  /* Boarding pass and the dimmed backdrop behind it */
+  --ticket-bg: #ffffff;
+  --ticket-shadow: rgba(14, 42, 71, 0.22);
+  --perforation: rgba(18, 38, 58, 0.2);
+  --scrim: rgba(14, 42, 71, 0.4);
+  --on-scrim: #ffffff;
+
   /* Welcome illustration: clouds and the paper plane stay the same in both themes. */
   --hero-cloud: #ffffff;
   --hero-plane: #ffffff;
@@ -135,4 +142,8 @@
   --input-border: rgba(255, 255, 255, 0.2);
   --input-placeholder: #8fa1b3;
   --track: rgba(255, 255, 255, 0.14);
+
+  --ticket-bg: #16263a;
+  --perforation: rgba(255, 255, 255, 0.25);
+  --scrim: rgba(3, 8, 16, 0.6);
 }

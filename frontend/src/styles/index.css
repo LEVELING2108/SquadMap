@@ -31,6 +31,10 @@
   --color-input-border: var(--input-border);
   --color-input-placeholder: var(--input-placeholder);
   --color-track: var(--track);
+  --color-ticket: var(--ticket-bg);
+  --color-perforation: var(--perforation);
+  --color-scrim: var(--scrim);
+  --color-on-scrim: var(--on-scrim);
   --color-hero-cloud: var(--hero-cloud);
   --color-hero-plane: var(--hero-plane);
   --color-hero-plane-outline: var(--hero-plane-outline);
@@ -107,6 +111,16 @@
       scroll-behavior: auto !important;
     }
   }
+
+  /* The same, when the account's "Reduce animations" setting is on (see AccountPreferences). */
+  html[data-reduce-motion] *,
+  html[data-reduce-motion] *::before,
+  html[data-reduce-motion] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Frosted panel floating over the map. Use glass-strong under body text to keep 4.5:1 contrast. */
@@ -120,6 +134,25 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background: var(--glass-fallback);
   }
+}
+
+/*
+ * Boarding-pass ticket: two half-circle notches cut out of the sides at --cut from the top, where the
+ * dashed perforation runs. The notches are a mask, so the backdrop shows through them.
+ */
+@utility ticket {
+  background: var(--ticket-bg);
+  border-radius: 22px;
+  -webkit-mask:
+    radial-gradient(circle at 0 var(--cut, 150px), #0000 11px, #000 11.5px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% var(--cut, 150px), #0000 11px, #000 11.5px) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle at 0 var(--cut, 150px), #0000 11px, #000 11.5px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% var(--cut, 150px), #0000 11px, #000 11.5px) right / 51% 100% no-repeat;
+}
+
+@utility ticket-shadow {
+  filter: drop-shadow(0 12px 20px var(--ticket-shadow));
 }
 
 /* Secondary button on glass: lighter frosting than panels, so it reads as a control. */
@@ -141,4 +174,47 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background: var(--glass-fallback);
   }
+}
+
+/* Nearby places on the Home map (see MapView spots): a dot in the colour of their kind. */
+.map-spot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 3px solid var(--screen);
+  background: var(--coral);
+  box-shadow: var(--glass-shadow);
+  cursor: pointer;
+}
+.map-spot[data-kind='stays'] {
+  background: var(--friend-2);
+}
+.map-spot[data-kind='sights'] {
+  background: var(--sea);
+}
+.map-spot-selected {
+  width: 26px;
+  height: 26px;
+  border-width: 4px;
+}
+
+/* Mapbox's credits button is smaller than the 24 px minimum target; give it room to be tapped. */
+.map-canvas .mapboxgl-ctrl-attrib-button {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* Mapbox's logo and credits stay above any panel covering the map's bottom edge (see MapView). */
+.map-canvas .mapboxgl-ctrl-bottom-left,
+.map-canvas .mapboxgl-ctrl-bottom-right {
+  bottom: var(--map-inset-bottom, 0px);
+}
+
+/* Chat bubbles (docs/02): a friend's has its square corner top left, by their initial; yours top right. */
+@utility bubble-friend {
+  border-radius: 4px 18px 18px 18px;
+}
+
+@utility bubble-mine {
+  border-radius: 18px 4px 18px 18px;
 }

@@ -55,6 +55,19 @@ public class Mailpit {
         throw new AssertionError("No email arrived for " + address);
     }
 
+    /**
+     * Waits until at least {@code expected} emails have arrived for the address (they are sent after the
+     * request is answered, so a busy machine can take a while), then a moment more so any extra one would
+     * show up too. Returns all of them.
+     */
+    public List<Email> awaitMessagesTo(String address, int expected) {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(10));
+        while (Instant.now().isBefore(deadline) && messagesTo(address).size() < expected) {
+            sleep();
+        }
+        return settledMessagesTo(address);
+    }
+
     /** Waits long enough that an email which was going to be sent would have arrived. */
     public List<Email> settledMessagesTo(String address) {
         sleep();

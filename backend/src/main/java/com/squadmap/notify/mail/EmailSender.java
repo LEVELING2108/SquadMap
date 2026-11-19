@@ -35,8 +35,4 @@ public class EmailSender {
             throw new IllegalStateException("Could not build the email", e);
         }
     }
-
-    public String webBaseUrl() {
-        return properties.webBaseUrl();
-    }
 }

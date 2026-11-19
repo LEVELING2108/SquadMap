@@ -3,6 +3,8 @@ package com.squadmap.common.ratelimit;
 import com.squadmap.common.security.SecureTokens;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.ConsumptionProbe;
+import io.github.bucket4j.EstimationProbe;
+import io.github.bucket4j.distributed.BucketProxy;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,8 +45,7 @@ public class RateLimiter {
     public void check(RateLimit limit, String key) {
         ConsumptionProbe probe;
         try {
-            probe = buckets.getProxy(PREFIX + limit.id() + ":" + SecureTokens.hash(key), () -> configurations.get(limit))
-                    .tryConsumeAndReturnRemaining(1);
+            probe = bucket(limit, key).tryConsumeAndReturnRemaining(1);
         } catch (RuntimeException e) {
             // If Redis is unreachable, let the request through rather than lock everyone out.
             // An outage is visible in health checks and alerts; a silent lockout would not be.
@@ -52,8 +53,43 @@ public class RateLimiter {
             return;
         }
         if (!probe.isConsumed()) {
-            long seconds = Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1);
-            throw new RateLimitedException(seconds);
+            throw new RateLimitedException(seconds(probe.getNanosToWaitForRefill()));
         }
+    }
+
+    /**
+     * Refuses the request if the limit is already used up, without using any of it.
+     * Paired with {@link #record} for limits that count failures, such as wrong trip codes.
+     *
+     * @throws RateLimitedException when the limit is used up
+     */
+    public void checkNotLockedOut(RateLimit limit, String key) {
+        EstimationProbe probe;
+        try {
+            probe = bucket(limit, key).estimateAbilityToConsume(1);
+        } catch (RuntimeException e) {
+            log.error("Rate limit check skipped, Redis unavailable: {}", e.getClass().getName());
+            return;
+        }
+        if (!probe.canBeConsumed()) {
+            throw new RateLimitedException(seconds(probe.getNanosToWaitForRefill()));
+        }
+    }
+
+    /** Counts one occurrence (for example a wrong code) against the limit, without refusing anything now. */
+    public void record(RateLimit limit, String key) {
+        try {
+            bucket(limit, key).tryConsume(1);
+        } catch (RuntimeException e) {
+            log.error("Rate limit not recorded, Redis unavailable: {}", e.getClass().getName());
+        }
+    }
+
+    private BucketProxy bucket(RateLimit limit, String key) {
+        return buckets.getProxy(PREFIX + limit.id() + ":" + SecureTokens.hash(key), () -> configurations.get(limit));
+    }
+
+    private static long seconds(long nanos) {
+        return Math.max(1, TimeUnit.NANOSECONDS.toSeconds(nanos) + 1);
     }
 }
