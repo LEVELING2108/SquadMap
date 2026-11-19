@@ -16,6 +16,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { useUnreadAlerts } from '../alerts/alertsApi';
 import { signOut, useSession } from '../auth/session';
+import { InstallRow } from '../../pwa/InstallRow';
 import { LogOutOthers } from './LogOutOthers';
 import { useStats } from './settingsApi';
 
@@ -139,6 +140,7 @@ export function ProfilePage() {
               count={unreadAlerts}
             />
             <Row to="/me/settings" label="Settings" Icon={SettingsIcon} tile="bg-track text-ink" />
+            <InstallRow />
           </ul>
         </nav>
 

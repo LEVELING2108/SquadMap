@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "e2e:journey": "playwright test --config playwright.journey.config.ts"
+    "e2e:journey": "playwright test --config playwright.journey.config.ts",
+    "icons": "pwa-assets-generator",
+    "check:pwa": "node scripts/check-pwa.mjs"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
@@ -44,6 +46,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vite-pwa/assets-generator": "^2.0.0",
     "@vitejs/plugin-react": "^6.3.0",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
@@ -56,9 +59,17 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.0",
+    "workbox-core": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-window": "^7.4.1"
   },
   "overrides": {
-    "minimatch": "^11.0.8"
+    "minimatch": "^11.0.8",
+    "workbox-build": {
+      "glob": "^14.0.6"
+    }
   }
 }

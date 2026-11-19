@@ -32,8 +32,15 @@ export function resolveTheme(choice: ThemeChoice): ResolvedTheme {
   return choice;
 }
 
+/** The phone's status bar matches the app's background, light or dark (index.html has both). */
+const STATUS_BAR: Record<ResolvedTheme, string> = { light: '#F3EFE6', dark: '#0B1524' };
+
 function apply(choice: ThemeChoice): void {
-  document.documentElement.setAttribute('data-theme', resolveTheme(choice));
+  const theme = resolveTheme(choice);
+  document.documentElement.setAttribute('data-theme', theme);
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute('content', STATUS_BAR[theme]);
+  });
 }
 
 export function setThemeChoice(choice: ThemeChoice): void {

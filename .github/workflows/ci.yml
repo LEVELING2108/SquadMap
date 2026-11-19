@@ -60,6 +60,8 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: PWA check
+        run: npm run check:pwa
 
   e2e:
     name: e2e

@@ -11,4 +11,6 @@
     choice === 'dark' ||
     (choice !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var metas = document.querySelectorAll('meta[name="theme-color"]');
+  for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', dark ? '#0B1524' : '#F3EFE6');
 })();

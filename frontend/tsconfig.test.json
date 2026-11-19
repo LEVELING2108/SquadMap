@@ -11,13 +11,13 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "skipLibCheck": true,
-    "types": ["vite/client", "node"],
-
+    "types": ["vite/client", "node", "vite-plugin-pwa/react"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/sw"]
 }
