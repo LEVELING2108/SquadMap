@@ -35,6 +35,10 @@ public enum RateLimit {
     DIRECTIONS_PER_TRIP("directions-trip", 300, Duration.ofHours(1)),
     /** Starting to share records consent; no one needs to do that more than a few times. */
     SHARING_PER_MEMBER("sharing-member", 10, Duration.ofHours(1)),
+    /** Chat messages per trip member. */
+    CHAT_PER_MEMBER("chat-member", 20, Duration.ofMinutes(1)),
+    /** "Typing" signals per trip member: the app sends one every 2 seconds at most; extra ones are dropped. */
+    TYPING_PER_MEMBER("typing-member", 1, Duration.ofSeconds(2)),
     /**
      * Wrong current passwords when changing the password or email: after 5 in 15 minutes the account may
      * not try again until it refills, so a borrowed signed-in device can't be used to guess it.

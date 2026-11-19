@@ -131,11 +131,38 @@
   pointer-events: none;
 }
 
+/* "Typing": three dots that bob one after the other. Reduced motion leaves them still. */
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+.motion-typing > * {
+  animation: typing-dot 1.2s infinite;
+}
+
+.motion-typing > :nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.motion-typing > :nth-child(3) {
+  animation-delay: 0.3s;
+}
+
 html[data-page-hidden] .motion-bob,
 html[data-page-hidden] .motion-drift,
 html[data-page-hidden] .motion-fly,
 html[data-page-hidden] .motion-spin,
 html[data-page-hidden] .motion-pulse,
+html[data-page-hidden] .motion-typing > *,
 html[data-page-hidden] .motion-shine::after {
   animation-play-state: paused;
 }

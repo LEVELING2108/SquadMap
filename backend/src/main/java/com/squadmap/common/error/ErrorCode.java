@@ -40,5 +40,8 @@ public enum ErrorCode {
 
     // Live location
     NOT_SHARING,
-    LOCATION_REJECTED
+    LOCATION_REJECTED,
+
+    // Chat
+    CHAT_OFF
 }

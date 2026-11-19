@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { LocateFixed, Navigation } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { LocateFixed, MessageSquare, Navigation } from 'lucide-react';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { buttonClasses } from '../../components/ui/buttonStyles';
 import { formatDistance } from '../../lib/map/geo';
 import type { DistanceUnit } from '../profile/settingsApi';
@@ -22,6 +22,8 @@ type FriendDetailsProps = {
   onStopFollowing: () => void;
   /** How this person travels, so directions to the friend open in the same mode. */
   myMode: TravelMode;
+  /** The trip chat, when chat is on. */
+  messageHref?: string;
 };
 
 /** One stat, as on the profile: a large value over a small label. */
@@ -68,8 +70,11 @@ export function FriendDetails({
   onFollow,
   onStopFollowing,
   myMode,
+  messageHref,
 }: FriendDetailsProps) {
   const progress = eta ? Math.round(eta.progress * 100) : null;
+  // Following and directions need a live spot; there is nothing to follow once they have arrived.
+  const canFollow = position !== undefined && friend.sharing && !friend.arrivedAt;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
@@ -132,20 +137,33 @@ export function FriendDetails({
         </div>
       )}
 
-      {position && friend.sharing && !friend.arrivedAt && (
+      {(messageHref || canFollow) && (
+        <div className="flex gap-3">
+          {messageHref && (
+            <ButtonLink to={messageHref} variant="glass" className="flex-1">
+              <MessageSquare aria-hidden="true" className="size-5" />
+              Message
+            </ButtonLink>
+          )}
+          {canFollow && (
+            <Button
+              variant="glass"
+              aria-pressed={following}
+              onClick={following ? onStopFollowing : onFollow}
+              // On, it looks selected, like the chosen option in the app's other controls.
+              className="flex-1 aria-pressed:bg-tint"
+            >
+              <LocateFixed aria-hidden="true" className="size-5" />
+              {following ? 'Following' : 'Follow'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {canFollow && (
         <div className="flex flex-col gap-3">
-          <Button
-            variant="glass"
-            aria-pressed={following}
-            onClick={following ? onStopFollowing : onFollow}
-            // On, it looks selected, like the chosen option in the app's other controls.
-            className="aria-pressed:bg-tint"
-          >
-            <LocateFixed aria-hidden="true" className="size-5" />
-            {following ? 'Following' : 'Follow'}
-          </Button>
           <a
-            href={directionsUrl(position, myMode)}
+            href={directionsUrl(position!, myMode)}
             target="_blank"
             rel="noopener noreferrer"
             className={buttonClasses('primary')}

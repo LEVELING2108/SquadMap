@@ -164,6 +164,14 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/trip/:tripId/chat"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="chat" />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

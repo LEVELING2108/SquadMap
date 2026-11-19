@@ -1418,6 +1418,136 @@ test.describe('live map', () => {
   }
 });
 
+/** The live map with a chat: two messages, one of them unread, and a server that takes new ones. */
+async function asHostWithAChat(page: Page) {
+  const server = await asHostOnTheLiveMap(page);
+  const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+  const sent: { text: string; clientId: string }[] = [];
+  await page.route(/\/api\/v1\/trips\/trip-1\/messages(\/read)?(\?.*)?$/, async (route) => {
+    const request = route.request();
+    if (request.url().endsWith('/read')) return route.fulfill({ status: 204 });
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON() as { text: string; clientId: string };
+      sent.push(body);
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: `c-${sent.length + 10}`,
+          memberId: 'm-priya',
+          displayName: 'Priya',
+          color: '#0F6E56',
+          sentAt: new Date().toISOString(),
+          ...body,
+        }),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            id: 'c-2',
+            memberId: 'm-aman',
+            displayName: 'Aman',
+            color: '#993C1D',
+            text: 'Stuck at the signal, 10 min',
+            sentAt: minutesAgo(2),
+          },
+          {
+            id: 'c-1',
+            memberId: 'm-priya',
+            displayName: 'Priya',
+            color: '#0F6E56',
+            text: 'Save me a seat please',
+            sentAt: minutesAgo(5),
+          },
+        ],
+        nextBefore: null,
+        unread: 1,
+        memberId: 'm-priya',
+      }),
+    });
+  });
+  return { server, sent };
+}
+
+test.describe('trip chat', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      const { server } = await asHostWithAChat(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/chat');
+      await expect(page.getByText('Stuck at the signal, 10 min')).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      server.send('/topic/trip.trip-1.chat', { type: 'TYPING', memberId: 'm-aman', at: '' });
+      await expect(page.getByText('Aman is typing')).toBeAttached();
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+        .analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual(
+        [],
+      );
+      for (const control of await page.locator('a:visible, button:visible').all()) {
+        const box = await control.boundingBox();
+        const label =
+          (await control.getAttribute('aria-label')) ?? (await control.textContent()) ?? 'control';
+        expect(box?.height, label).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+
+  test('opens from the map, where it shows what is unread, and works with the keyboard', async ({ page }) => {
+    const { server, sent } = await asHostWithAChat(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+
+    await page.getByRole('link', { name: 'Trip chat, 1 unread' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/trip\/trip-1\/chat$/);
+    await expect(page.getByText('3 friends')).toBeVisible();
+
+    await page.getByRole('textbox', { name: 'Message' }).focus();
+    await page.keyboard.type('On my way');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('log').getByText('On my way')).toBeVisible();
+    expect(sent.map((message) => message.text)).toEqual(['On my way']);
+
+    server.send('/topic/trip.trip-1.chat', {
+      type: 'MESSAGE',
+      message: {
+        id: 'c-30',
+        memberId: 'm-aman',
+        displayName: 'Aman',
+        color: '#993C1D',
+        text: 'Reached. Table near the entrance',
+        sentAt: new Date().toISOString(),
+      },
+      at: '',
+    });
+    await expect(page.getByText('Reached. Table near the entrance')).toBeVisible();
+
+    await page.getByRole('link', { name: 'Back to the map' }).click();
+    await expect(page.getByRole('link', { name: 'Trip chat', exact: true })).toBeVisible();
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`fits ${width} px without sideways scroll`, async ({ page }) => {
+      await asHostWithAChat(page);
+      await page.setViewportSize({ width, height: 700 });
+      await page.goto('/trip/trip-1/chat');
+      await expect(page.getByText('Stuck at the signal, 10 min')).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+      await expect(page.getByRole('button', { name: 'Send' })).toBeInViewport();
+    });
+  }
+});
+
 test.describe('layout', () => {
   for (const width of [320, 360, 390, 430, 768, 1024, 1440]) {
     test(`no sideways scroll at ${width} px`, async ({ page }) => {

@@ -48,6 +48,10 @@ public class LiveChannel implements MessageListener {
         return "/topic/trip." + tripId + ".eta";
     }
 
+    public static String chatTopic(UUID tripId) {
+        return "/topic/trip." + tripId + ".chat";
+    }
+
     /**
      * Publishes the message. Inside a transaction it waits for the commit, so nobody hears about a change
      * (a join, a trip ending) that was then rolled back.

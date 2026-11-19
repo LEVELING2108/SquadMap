@@ -16,6 +16,8 @@ type LiveTopBarProps = {
   /** Members and guests can leave; the host ends the trip instead (coming with the trip menu). */
   onLeave?: () => void;
   leaving: boolean;
+  /** Shown in place of the code and status, as on the chat: "Trip chat", "4 friends". */
+  heading?: { title: string; caption: string };
 };
 
 /** The floating bar from the design: back, the trip code with its status, and a menu. */
@@ -29,6 +31,7 @@ export function LiveTopBar({
   tripId,
   onLeave,
   leaving,
+  heading,
 }: LiveTopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
@@ -63,16 +66,23 @@ export function LiveTopBar({
         ) : (
           <span className="size-12 flex-none" />
         )}
-        <div className="flex min-w-0 flex-1 flex-col items-center">
-          <p className="font-mono text-[18px] leading-6 tracking-[3px] text-blue-d">
-            <span className="sr-only">Trip code </span>
-            {code}
-          </p>
-          <p className="flex items-center gap-1.5 text-[13px] leading-[18px] text-muted">
-            <span aria-hidden="true" className={`size-2 rounded-pill ${live ? 'bg-green' : 'bg-muted'}`} />
-            {status}
-          </p>
-        </div>
+        {heading ? (
+          <div className="flex min-w-0 flex-1 flex-col items-center">
+            <p className="truncate text-[17px] leading-6 font-extrabold text-ink">{heading.title}</p>
+            <p className="text-[13px] leading-[18px] text-muted">{heading.caption}</p>
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-1 flex-col items-center">
+            <p className="font-mono text-[18px] leading-6 tracking-[3px] text-blue-d">
+              <span className="sr-only">Trip code </span>
+              {code}
+            </p>
+            <p className="flex items-center gap-1.5 text-[13px] leading-[18px] text-muted">
+              <span aria-hidden="true" className={`size-2 rounded-pill ${live ? 'bg-green' : 'bg-muted'}`} />
+              {status}
+            </p>
+          </div>
+        )}
         <button
           ref={menuButton}
           type="button"

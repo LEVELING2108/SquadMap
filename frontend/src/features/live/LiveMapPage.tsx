@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LocateFixed, Maximize, WifiOff } from 'lucide-react';
+import { LocateFixed, Maximize, MessageSquare, WifiOff } from 'lucide-react';
 import { api } from '../../lib/api/client';
 import { ApiError } from '../../lib/api/ApiError';
 import { DEFAULT_VIEW, type LatLng } from '../../lib/map/geo';
@@ -11,6 +11,9 @@ import { useElementHeight } from '../../lib/useElementHeight';
 import { Banner } from '../../components/ui/Banner';
 import { ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
+import { addMessage, chatKeys, unreadOf, useChatMessages } from '../chat/chatApi';
+import { TripChat } from '../chat/TripChat';
+import { useTyping } from '../chat/useTyping';
 import { refreshSession, signOut, useSession } from '../auth/session';
 import { useSettings, useUpdateSettings, type MapStyle } from '../profile/settingsApi';
 import { shortPlace, tripKeys, useTrip } from '../trip/tripQueries';
@@ -75,9 +78,10 @@ function themeColor(name: string, fallback: string): string {
 /**
  * The live map (D1): everyone on the trip moving on one map, in real time. It loads who is on the trip,
  * keeps a live connection for their moves, and shares this phone's location once the person has agreed.
- * With `view="eta"` (D3) the sheet lists who's on the way; the map and connection stay the same.
+ * With `view="eta"` (D3) the sheet lists who's on the way, with `view="friend"` (D2) one friend's details,
+ * and with `view="chat"` (D4) the trip chat; the map and connection stay the same.
  */
-export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' }) {
+export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' | 'chat' }) {
   const { tripId = '', memberId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -94,6 +98,10 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   const startSharing = useStartSharing(tripId);
   const chooseMode = useChooseTravelMode(tripId);
   const { settings } = useSettings();
+  const chatOn = trip.data?.chatEnabled === true;
+  const chat = useChatMessages(tripId, chatOn);
+  const unread = view === 'chat' ? 0 : unreadOf(chat.data);
+  const { typingIds, noteTyping, stopTyping } = useTyping();
 
   useEffect(() => openTrip(tripId), [tripId]);
   useEffect(() => {
@@ -120,6 +128,16 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   const socket = useTripSocket(tripId, trip.data?.status === 'active' && !ended, {
     onLocation: applyLocation,
     onEta: applyEta,
+    onChat: (event) => {
+      const myId = members.data?.find((member) => member.you)?.memberId;
+      if (event.type === 'TYPING') {
+        if (event.memberId !== myId) noteTyping(event.memberId);
+        return;
+      }
+      stopTyping(event.message.memberId);
+      // Unread when it's someone else's and the chat isn't open.
+      addMessage(queryClient, tripId, event.message, event.message.memberId !== myId && view !== 'chat');
+    },
     onEvent: (event) => {
       if (event.type === 'TRIP_ENDED') {
         endTrip();
@@ -152,6 +170,8 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
     onReconnected: () => {
       refreshMembers();
       void queryClient.invalidateQueries({ queryKey: liveKeys.etas(tripId) });
+      // Messages sent while the connection was down.
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(tripId) });
     },
     onRefused: (code) => {
       if (code === 'TRIP_EXPIRED') endTrip();
@@ -313,6 +333,16 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         tripId={tripId}
         onLeave={trip.data && trip.data.role !== 'host' && !tripOver ? () => leave.mutate() : undefined}
         leaving={leave.isPending}
+        heading={
+          view === 'chat'
+            ? {
+                title: 'Trip chat',
+                caption: members.data
+                  ? `${members.data.length} ${members.data.length === 1 ? 'friend' : 'friends'}`
+                  : '',
+              }
+            : undefined
+        }
       />
 
       <div className="absolute inset-x-0 top-[88px] z-10 flex flex-col items-center gap-2 px-3">
@@ -356,7 +386,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         {leave.isError && <Banner tone="error">{describeFailure(leave.error)}</Banner>}
       </div>
 
-      {!tripOver && (
+      {!tripOver && view !== 'chat' && (
         <div
           className="absolute right-3 z-10 flex flex-col gap-2"
           // Above Mapbox's credits button, which sits in the map's bottom-right corner.
@@ -381,10 +411,54 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
           >
             <Maximize aria-hidden="true" className="size-6" />
           </button>
+          {chatOn && (
+            <Link
+              to={`/trip/${tripId}/chat`}
+              aria-label={unread > 0 ? `Trip chat, ${unread} unread` : 'Trip chat'}
+              className="glass-strong relative mt-3 flex size-14 items-center justify-center rounded-pill text-ink"
+            >
+              <MessageSquare aria-hidden="true" className="size-6" />
+              {unread > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-pill border-2 border-screen bg-red px-1 text-[11px] leading-none font-extrabold text-on-primary"
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
       )}
 
-      {tripOver ? (
+      {view === 'chat' && trip.data ? (
+        chatOn ? (
+          <TripChat
+            ref={sheetRef}
+            tripId={tripId}
+            members={members.data ?? []}
+            typingIds={typingIds}
+            onTyping={socket.sendTyping}
+            readOnly={tripOver}
+            timeFormat={settings.timeFormat}
+            now={now}
+          />
+        ) : (
+          <section
+            ref={sheetRef}
+            aria-labelledby="live-title"
+            className="glass-strong absolute inset-x-3 bottom-3 z-10 flex flex-col gap-3 rounded-sheet px-5 pt-5 pb-4"
+          >
+            <h1 id="live-title" className="text-[20px] leading-[26px] font-extrabold">
+              Chat is off for this trip
+            </h1>
+            <p className="text-sm leading-5 text-muted">The host turned chat off when starting the trip.</p>
+            <ButtonLink to={`/trip/${tripId}`} variant="glass">
+              Back to the map
+            </ButtonLink>
+          </section>
+        )
+      ) : tripOver ? (
         <section
           ref={sheetRef}
           aria-labelledby="live-title"
@@ -393,6 +467,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
           <TripEndedCard
             guest={status === 'guest'}
             onDone={() => void signOut().then(() => navigate('/', { replace: true }))}
+            chatHref={chatOn ? `/trip/${tripId}/chat` : undefined}
           />
         </section>
       ) : (
@@ -428,6 +503,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
                   onFollow={() => setFollowId(friend.memberId)}
                   onStopFollowing={() => setFollowId(null)}
                   myMode={myMode}
+                  messageHref={chatOn ? `/trip/${tripId}/chat` : undefined}
                 />
               ) : (
                 <div className="flex flex-col gap-3">
