@@ -11,12 +11,20 @@ import { useElementHeight } from '../../lib/useElementHeight';
 import { Banner } from '../../components/ui/Banner';
 import { ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
+import { formatClock } from '../../lib/time';
 import { addMessage, chatKeys, unreadOf, useChatMessages } from '../chat/chatApi';
 import { TripChat } from '../chat/TripChat';
 import { useTyping } from '../chat/useTyping';
 import { refreshSession, signOut, useSession } from '../auth/session';
 import { useSettings, useUpdateSettings, type MapStyle } from '../profile/settingsApi';
 import { shortPlace, tripKeys, useTrip } from '../trip/tripQueries';
+import type { Trip } from '../trip/types';
+import { EndTripDialog } from './EndTripDialog';
+import { ExpiryWarning } from './ExpiryWarning';
+import { ExtendDialog } from './ExtendDialog';
+import { LeaveTripDialog } from './LeaveTripDialog';
+import { TripMenu } from './TripMenu';
+import { WARN_BEFORE_MS } from './tripActions';
 import { EtaList } from './EtaList';
 import { FriendDetails } from './FriendDetails';
 import { LayersControl } from './LayersControl';
@@ -52,6 +60,25 @@ function useNow(everyMs: number): number {
   return now;
 }
 
+/** Remembers on this device that the warning for this end time was dismissed, so a reload doesn't repeat it. */
+const DISMISSED_KEY = 'squadmap.expiryWarningDismissed';
+
+function readDismissed(): string | null {
+  try {
+    return sessionStorage.getItem(DISMISSED_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveDismissed(key: string) {
+  try {
+    sessionStorage.setItem(DISMISSED_KEY, key);
+  } catch {
+    // Without storage the warning may show again after a reload, which is harmless.
+  }
+}
+
 /** What a trip event says to everyone, in a short toast. */
 function announce(event: TripEvent): string | null {
   const who = event.displayName ?? 'Someone';
@@ -79,9 +106,10 @@ function themeColor(name: string, fallback: string): string {
  * The live map (D1): everyone on the trip moving on one map, in real time. It loads who is on the trip,
  * keeps a live connection for their moves, and shares this phone's location once the person has agreed.
  * With `view="eta"` (D3) the sheet lists who's on the way, with `view="friend"` (D2) one friend's details,
- * and with `view="chat"` (D4) the trip chat; the map and connection stay the same.
+ * with `view="chat"` (D4) the trip chat, and with `view="menu"` (D5) the trip menu; the map and connection
+ * stay the same.
  */
-export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' | 'chat' }) {
+export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' | 'chat' | 'menu' }) {
   const { tripId = '', memberId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -102,6 +130,9 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   const chat = useChatMessages(tripId, chatOn);
   const unread = view === 'chat' ? 0 : unreadOf(chat.data);
   const { typingIds, noteTyping, stopTyping } = useTyping();
+  const isHost = trip.data?.role === 'host';
+  const [dialog, setDialog] = useState<'extend' | 'end' | 'leave' | null>(null);
+  const [dismissedWarning, setDismissedWarning] = useState<string | null>(readDismissed);
 
   useEffect(() => openTrip(tripId), [tripId]);
   useEffect(() => {
@@ -151,6 +182,9 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         setToast(isMe ? `You arrived${where}` : `${event.displayName ?? 'Someone'} arrived${where}`);
         return;
       }
+      const isMe = members.data?.some((member) => member.you && member.memberId === event.memberId);
+      // Hearing that you left: this page is on its way out, and the trip is no longer yours to read.
+      if (event.type === 'MEMBER_LEFT' && isMe) return;
       if (event.type === 'MEMBER_LEFT' && event.memberId) forgetMember(event.memberId);
       if (event.type === 'TRIP_EXTENDED') {
         void queryClient.invalidateQueries({ queryKey: tripKeys.one(tripId) });
@@ -159,8 +193,8 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
       } else {
         refreshMembers();
       }
-      const isMe = members.data?.some((member) => member.you && member.memberId === event.memberId);
-      const words = isMe ? null : announce(event);
+      // The host who added time has already been told.
+      const words = isMe || (event.type === 'TRIP_EXTENDED' && isHost) ? null : announce(event);
       if (words) setToast(words);
     },
     onError: (error: LiveError) => {
@@ -276,6 +310,31 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   };
   const myMode = (me && (me.travelMode ?? etas[me.memberId]?.mode)) ?? 'car';
 
+  // Ten minutes before sharing ends, everyone is warned once for that end time; an extension moves it.
+  const warningKey = trip.data ? `${tripId}|${trip.data.expiresAt}` : null;
+  const msLeft = trip.data ? Date.parse(trip.data.expiresAt) - now : Infinity;
+  const warningOpen =
+    !tripOver &&
+    warningKey !== null &&
+    dismissedWarning !== warningKey &&
+    dialog === null &&
+    msLeft > 0 &&
+    msLeft <= WARN_BEFORE_MS;
+  function dismissWarning() {
+    if (!warningKey) return;
+    setDismissedWarning(warningKey);
+    saveDismissed(warningKey);
+  }
+  function extended(next: Trip) {
+    setDialog(null);
+    setToast(`Sharing now ends at ${formatClock(next.expiresAt, settings.timeFormat)}`);
+  }
+
+  // An ended trip has no menu: whoever ended it, or wherever they heard it, sees the ended card on the map.
+  useEffect(() => {
+    if (tripOver && view === 'menu') navigate(`/trip/${tripId}`, { replace: true });
+  }, [tripOver, view, tripId, navigate]);
+
   const notFound = trip.error instanceof ApiError && trip.error.status === 404;
   useEffect(() => {
     if (notFound) navigate('/', { replace: true });
@@ -328,11 +387,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
               ? { to: '/home', label: 'Back to home' }
               : null
         }
-        showHome={status === 'signedIn'}
-        isHost={trip.data?.role === 'host'}
-        tripId={tripId}
-        onLeave={trip.data && trip.data.role !== 'host' && !tripOver ? () => leave.mutate() : undefined}
-        leaving={leave.isPending}
+        menuHref={view !== 'menu' && trip.data && !tripOver ? `/trip/${tripId}/menu` : null}
         heading={
           view === 'chat'
             ? {
@@ -383,10 +438,9 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
             </button>
           </div>
         )}
-        {leave.isError && <Banner tone="error">{describeFailure(leave.error)}</Banner>}
       </div>
 
-      {!tripOver && view !== 'chat' && (
+      {!tripOver && view !== 'chat' && view !== 'menu' && (
         <div
           className="absolute right-3 z-10 flex flex-col gap-2"
           // Above Mapbox's credits button, which sits in the map's bottom-right corner.
@@ -470,6 +524,22 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
             chatHref={chatOn ? `/trip/${tripId}/chat` : undefined}
           />
         </section>
+      ) : view === 'menu' && trip.data ? (
+        <TripMenu
+          ref={sheetRef}
+          tripId={tripId}
+          name={trip.data.name}
+          code={trip.data.code}
+          left={timeLeft(trip.data.expiresAt, now)}
+          isHost={isHost}
+          hasSettings={status === 'signedIn'}
+          onExtend={() => setDialog('extend')}
+          onEnd={() => setDialog('end')}
+          onLeave={() => {
+            leave.reset();
+            setDialog('leave');
+          }}
+        />
       ) : (
         <LivePeekSheet
           ref={sheetRef}
@@ -487,7 +557,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
                 etas={etas}
                 destination={destinationName}
                 unit={settings.distanceUnit}
-                inviteHref={trip.data?.role === 'host' ? `/trip/${tripId}/invite` : null}
+                inviteHref={`/trip/${tripId}/invite`}
                 friendHref={(id) => `/trip/${tripId}/friend/${id}`}
               />
             ) : view === 'friend' && members.data ? (
@@ -550,6 +620,56 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
             </ButtonLink>
           )}
         </LivePeekSheet>
+      )}
+
+      {trip.data && !tripOver && (
+        <>
+          <ExpiryWarning
+            open={warningOpen}
+            trip={trip.data}
+            isHost={isHost}
+            sharing={me?.sharing === true}
+            now={now}
+            timeFormat={settings.timeFormat}
+            onDismiss={dismissWarning}
+            onEndNow={() => {
+              dismissWarning();
+              setDialog('end');
+            }}
+            onExtended={extended}
+          />
+          {isHost && (
+            <>
+              <ExtendDialog
+                open={dialog === 'extend'}
+                trip={trip.data}
+                left={timeLeft(trip.data.expiresAt, now)}
+                timeFormat={settings.timeFormat}
+                onClose={() => setDialog(null)}
+                onExtended={extended}
+              />
+              <EndTripDialog
+                open={dialog === 'end'}
+                tripId={tripId}
+                friends={friends.length}
+                onClose={() => setDialog(null)}
+                onEnded={() => {
+                  setDialog(null);
+                  endTrip();
+                }}
+              />
+            </>
+          )}
+          {!isHost && (
+            <LeaveTripDialog
+              open={dialog === 'leave'}
+              pending={leave.isPending}
+              error={leave.error}
+              onLeave={() => leave.mutate()}
+              onClose={() => setDialog(null)}
+            />
+          )}
+        </>
       )}
     </main>
   );

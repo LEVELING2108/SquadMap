@@ -487,8 +487,10 @@ describe('a guest on the trip', () => {
     });
     renderApp('/trip/trip-1');
 
-    await user.click(await screen.findByRole('button', { name: 'Trip menu' }));
+    await user.click(await screen.findByRole('link', { name: 'Trip menu' }));
     await user.click(await screen.findByRole('button', { name: 'Leave trip' }));
+    const confirm = screen.getByRole('dialog', { name: 'Leave this trip?' });
+    await user.click(within(confirm).getByRole('button', { name: 'Leave trip' }));
 
     await waitFor(() => expect(useSession.getState().status).toBe('signedOut'));
     expect(calls('POST /api/v1/guest/logout')).toHaveLength(1);

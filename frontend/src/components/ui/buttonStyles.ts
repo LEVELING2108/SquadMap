@@ -1,4 +1,4 @@
-export type ButtonVariant = 'primary' | 'glass' | 'text';
+export type ButtonVariant = 'primary' | 'glass' | 'text' | 'danger' | 'dangerSoft';
 
 const base =
   'flex w-full items-center justify-center gap-2 rounded-button px-5 text-[15px] font-bold leading-none ' +
@@ -10,6 +10,10 @@ const variants: Record<ButtonVariant, string> = {
   glass: 'glass-button text-blue-d',
   // A quieter action: a 44 px tall text button.
   text: 'text-blue-d',
+  // Something that can't be undone, such as ending a trip for everyone.
+  danger: 'bg-red text-on-primary',
+  // The way into a danger action, before it is confirmed.
+  dangerSoft: 'bg-red-bg text-red',
 };
 
 export function buttonClasses(variant: ButtonVariant = 'primary', extra = ''): string {

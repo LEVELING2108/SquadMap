@@ -9,6 +9,8 @@ type SegmentedProps<T extends string | number> = {
   format: (option: T) => string;
   /** How each option is announced, for example 4 -> "4 hours". */
   describe?: (option: T) => string;
+  /** Options that can't be chosen right now; the arrow keys skip them. */
+  isDisabled?: (option: T) => boolean;
 };
 
 /**
@@ -22,6 +24,7 @@ export function Segmented<T extends string | number>({
   onChange,
   format,
   describe,
+  isDisabled = () => false,
 }: SegmentedProps<T>) {
   const id = useId();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
@@ -35,7 +38,11 @@ export function Segmented<T extends string | number>({
           : 0;
     if (!step) return;
     event.preventDefault();
-    const next = (index + step + options.length) % options.length;
+    let next = index;
+    do {
+      next = (next + step + options.length) % options.length;
+    } while (next !== index && isDisabled(options[next]!));
+    if (next === index) return;
     onChange(options[next]!);
     buttons.current[next]?.focus();
   }
@@ -63,11 +70,12 @@ export function Segmented<T extends string | number>({
               aria-checked={selected}
               aria-label={describe?.(option)}
               tabIndex={selected ? 0 : -1}
+              disabled={isDisabled(option)}
               onClick={() => onChange(option)}
               onKeyDown={(event) => move(event, index)}
               className={`h-11 flex-1 rounded-[calc(var(--r-control)-4px)] text-[15px] font-bold transition-colors duration-(--dur-fast) ${
                 selected ? 'bg-screen text-blue-d shadow-sm' : 'text-ink'
-              }`}
+              } disabled:opacity-40`}
             >
               {format(option)}
             </button>
