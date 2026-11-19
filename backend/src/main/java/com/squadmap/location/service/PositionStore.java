@@ -14,8 +14,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Last known spots, in Redis only. Each one disappears {@link #TTL} after the member's last update, and all
- * of a trip's spots are deleted when it ends, so no location history is ever kept.
+ * Last known spots, in Redis only. Each one disappears {@link #TTL} after the member's last update, except
+ * while the member has paused, and all of a trip's spots are deleted when it ends or they leave, so no
+ * location history is ever kept.
  */
 @Component
 public class PositionStore {
@@ -58,6 +59,16 @@ public class PositionStore {
             }
         }
         return found;
+    }
+
+    /** Keeps the member's spot until it is deleted: they paused, and friends see where they were. */
+    public void keep(UUID tripId, UUID memberId) {
+        redis.persist(key(tripId, memberId));
+    }
+
+    /** Lets the member's spot run out {@link #TTL} from now again, as for anyone sharing: they resumed. */
+    public void expireAgain(UUID tripId, UUID memberId) {
+        redis.expire(key(tripId, memberId), TTL);
     }
 
     public void delete(UUID tripId, Collection<UUID> memberIds) {

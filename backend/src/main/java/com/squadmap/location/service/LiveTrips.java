@@ -45,6 +45,19 @@ public class LiveTrips {
         publish(member.getTripId(), TripEvent.Type.SHARING_STARTED, member, null);
     }
 
+    /** The member paused: their spot stays where it was, and their ETA goes, since it would only grow wrong. */
+    public void paused(TripMember member) {
+        positions.keep(member.getTripId(), member.getId());
+        etas.delete(member.getTripId(), List.of(member.getId()));
+        publish(member.getTripId(), TripEvent.Type.PAUSED, member, null);
+    }
+
+    /** The member is sharing again: their old spot ages out as usual until a new one arrives. */
+    public void resumed(TripMember member) {
+        positions.expireAgain(member.getTripId(), member.getId());
+        publish(member.getTripId(), TripEvent.Type.RESUMED, member, null);
+    }
+
     /** The member reached the destination; their ETA is no longer needed. */
     public void arrived(TripMember member) {
         etas.delete(member.getTripId(), List.of(member.getId()));

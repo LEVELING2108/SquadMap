@@ -48,6 +48,10 @@ public class TripMember {
     @Column(name = "travel_mode", insertable = false, updatable = false)
     private String travelMode;
 
+    /** When they paused sharing their location, or null while they share. Set by an UPDATE (see #pause). */
+    @Column(name = "paused_at", insertable = false, updatable = false)
+    private Instant pausedAt;
+
     protected TripMember() {
         // for JPA
     }
@@ -98,6 +102,10 @@ public class TripMember {
     /** "car", "bike" or "walk" as the member chose, or null before they choose. */
     public String getTravelMode() {
         return travelMode;
+    }
+
+    public Instant getPausedAt() {
+        return pausedAt;
     }
 
     public boolean isActive() {

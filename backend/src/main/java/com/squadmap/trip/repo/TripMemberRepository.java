@@ -35,6 +35,18 @@ public interface TripMemberRepository extends JpaRepository<TripMember, UUID> {
     @Query(nativeQuery = true, value = "UPDATE trip_members SET travel_mode = :mode WHERE id = :memberId")
     int setTravelMode(@Param("memberId") UUID memberId, @Param("mode") String mode);
 
+    /** Marks the member paused; 0 when they already were (or have left). */
+    @Modifying
+    @Query(nativeQuery = true, value = "UPDATE trip_members SET paused_at = :now "
+            + "WHERE id = :memberId AND paused_at IS NULL AND left_at IS NULL")
+    int pause(@Param("memberId") UUID memberId, @Param("now") Instant now);
+
+    /** Lifts the member's pause; 0 when they weren't paused. */
+    @Modifying
+    @Query(nativeQuery = true, value = "UPDATE trip_members SET paused_at = NULL "
+            + "WHERE id = :memberId AND paused_at IS NOT NULL")
+    int resume(@Param("memberId") UUID memberId);
+
     Optional<TripMember> findByIdAndTripIdAndLeftAtIsNull(UUID id, UUID tripId);
 
     /** Everyone who was ever on these trips, including people who left, in the order they joined. */

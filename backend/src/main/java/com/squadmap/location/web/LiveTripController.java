@@ -3,15 +3,18 @@ package com.squadmap.location.web;
 import com.squadmap.common.security.Caller;
 import com.squadmap.location.dto.LiveMemberResponse;
 import com.squadmap.location.dto.LocationUpdate;
+import com.squadmap.location.dto.PauseRequest;
 import com.squadmap.location.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -50,6 +53,19 @@ public class LiveTripController {
                     + "Doing it again changes nothing. Sharing ends when the person leaves or the trip ends.")
     public void startSharing(@AuthenticationPrincipal Jwt token, @PathVariable UUID tripId) {
         locations.startSharing(tripId, Caller.from(token));
+    }
+
+    @PutMapping("/members/me/pause")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Pause or resume sharing my location",
+            description = "While paused, friends see the spot from just before (kept until I resume, leave or the "
+                    + "trip ends, in memory only), my ETA is gone, and locations I send are refused with 409 PAUSED. "
+                    + "Everyone hears PAUSED or RESUMED on /topic/trip.{id}.events. Doing it again changes nothing. "
+                    + "403 NOT_SHARING for someone not sharing; 429 RATE_LIMITED past 10 changes a minute. Open to "
+                    + "guests for their trip.")
+    public void setPaused(@AuthenticationPrincipal Jwt token, @PathVariable UUID tripId,
+                          @Valid @RequestBody PauseRequest request) {
+        locations.setPaused(tripId, Caller.from(token), request.paused());
     }
 
     @PostMapping("/locations")

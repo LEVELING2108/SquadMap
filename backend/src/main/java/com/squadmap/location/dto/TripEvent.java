@@ -23,6 +23,10 @@ public record TripEvent(Type type, UUID memberId, String displayName, String col
         SHARING_STARTED,
         /** A member reached the destination: within 60 m of it for 20 seconds. */
         ARRIVED,
+        /** A member paused sharing; friends keep seeing their last spot. */
+        PAUSED,
+        /** A paused member is sharing again. */
+        RESUMED,
         TRIP_EXTENDED,
         TRIP_ENDED
     }
