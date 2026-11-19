@@ -41,6 +41,8 @@ public enum ErrorCode {
     // Live location
     NOT_SHARING,
     LOCATION_REJECTED,
+    /** A location sent while its sender has paused sharing. */
+    PAUSED,
 
     // Chat
     CHAT_OFF

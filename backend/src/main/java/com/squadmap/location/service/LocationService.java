@@ -77,6 +77,7 @@ public class LocationService {
      * already kept (a late or repeated message) is ignored without an error.
      *
      * @throws ApiException 403 {@code NOT_SHARING} when the caller hasn't agreed to share on this trip;
+     *                      409 {@code PAUSED} while the caller has paused sharing;
      *                      422 {@code LOCATION_REJECTED} for a reading that can't be right;
      *                      429 {@code RATE_LIMITED} for more than one reading per 2 seconds
      */
@@ -86,6 +87,10 @@ public class LocationService {
         if (!consents.existsByTripMemberIdAndWithdrawnAtIsNull(member.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_SHARING,
                     "Turn on location sharing for this trip first.");
+        }
+        if (member.getPausedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, ErrorCode.PAUSED,
+                    "Your location is paused. Resume sharing to send it.");
         }
         Position position = check(update);
         rateLimiter.check(RateLimit.LOCATION_PER_MEMBER, member.getId().toString());
@@ -116,7 +121,8 @@ public class LocationService {
         return everyone.stream()
                 .map(member -> new LiveMemberResponse(member.getId(), member.getDisplayName(), member.getColor(),
                         member.getRole(), member.getId().equals(me.getId()), sharing.contains(member.getId()),
-                        spots.get(member.getId()), member.getArrivedAt(), member.getTravelMode()))
+                        spots.get(member.getId()), member.getArrivedAt(), member.getTravelMode(),
+                        member.getPausedAt()))
                 .toList();
     }
 
@@ -134,6 +140,33 @@ public class LocationService {
         consents.save(new LocationConsent(UuidV7.generate(clock), member.getId(),
                 inviteProperties.locationPolicyVersion(), clock.instant()));
         liveTrips.sharingStarted(member);
+    }
+
+    /**
+     * Pauses or resumes sharing the caller's location on this trip. While paused, friends keep seeing the
+     * spot from just before, nothing new is accepted, and the ETA is gone. Doing it again changes nothing.
+     *
+     * @throws ApiException 403 {@code NOT_SHARING} when the caller isn't sharing on this trip;
+     *                      429 {@code RATE_LIMITED} past 10 changes a minute
+     */
+    @Transactional
+    public void setPaused(UUID tripId, Caller caller, boolean paused) {
+        TripMember member = access.requireLiveMember(tripId, caller);
+        if (!consents.existsByTripMemberIdAndWithdrawnAtIsNull(member.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.NOT_SHARING,
+                    "Only someone sharing their location can pause it.");
+        }
+        if ((member.getPausedAt() != null) == paused) {
+            return;
+        }
+        rateLimiter.check(RateLimit.PAUSE_PER_MEMBER, member.getId().toString());
+        if (paused) {
+            if (members.pause(member.getId(), clock.instant()) > 0) {
+                liveTrips.paused(member);
+            }
+        } else if (members.resume(member.getId()) > 0) {
+            liveTrips.resumed(member);
+        }
     }
 
     private Position check(LocationUpdate update) {

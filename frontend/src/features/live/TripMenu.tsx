@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode, type Ref } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ChevronRight, Clock, Settings, Timer, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Clock, MapPinOff, Settings, Timer, UserPlus, X, type LucideIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Switch } from '../../components/ui/Switch';
 
 type TripMenuProps = {
   ref?: Ref<HTMLElement>;
@@ -16,6 +17,8 @@ type TripMenuProps = {
   onExtend: () => void;
   onEnd: () => void;
   onLeave: () => void;
+  /** Pausing your location, for someone sharing it; absent otherwise. */
+  pause?: { paused: boolean; pending: boolean; onChange: (paused: boolean) => void };
 };
 
 const row = 'flex min-h-16 w-full items-center gap-3.5 py-2 text-left';
@@ -54,6 +57,7 @@ export function TripMenu({
   left,
   isHost,
   hasSettings,
+  pause,
   onExtend,
   onEnd,
   onLeave,
@@ -137,6 +141,18 @@ export function TripMenu({
               </div>
             )}
           </li>
+          {pause && (
+            <li className="flex min-h-16 items-center py-2">
+              <Switch
+                label="Pause my location"
+                description="Friends see your last known spot"
+                checked={pause.paused}
+                disabled={pause.pending}
+                onChange={pause.onChange}
+                leading={<Tile Icon={MapPinOff} tone="bg-track text-ink" />}
+              />
+            </li>
+          )}
           {hasSettings && (
             <li>
               <Link to="/me/settings" className={row}>

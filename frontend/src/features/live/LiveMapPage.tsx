@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LocateFixed, Maximize, MessageSquare, WifiOff } from 'lucide-react';
+import { LocateFixed, MapPinOff, Maximize, MessageSquare, WifiOff } from 'lucide-react';
 import { api } from '../../lib/api/client';
 import { ApiError } from '../../lib/api/ApiError';
 import { DEFAULT_VIEW, type LatLng } from '../../lib/map/geo';
@@ -28,7 +28,14 @@ import { WARN_BEFORE_MS } from './tripActions';
 import { EtaList } from './EtaList';
 import { FriendDetails } from './FriendDetails';
 import { LayersControl } from './LayersControl';
-import { liveKeys, useChooseTravelMode, useLiveMembers, useStartSharing, useTripEtas } from './liveApi';
+import {
+  liveKeys,
+  useChooseTravelMode,
+  useLiveMembers,
+  useSetPaused,
+  useStartSharing,
+  useTripEtas,
+} from './liveApi';
 import { TravelModePicker } from './TravelModePicker';
 import { timeLeft, staleLabel } from './liveFormat';
 import {
@@ -89,6 +96,10 @@ function announce(event: TripEvent): string | null {
       return `${who} left the trip`;
     case 'SHARING_STARTED':
       return `${who} is sharing their location`;
+    case 'PAUSED':
+      return `${who} paused their location`;
+    case 'RESUMED':
+      return `${who} is sharing again`;
     case 'TRIP_EXTENDED':
       return 'The host added more time';
     default:
@@ -124,6 +135,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   const now = useNow(15_000);
   const [toast, setToast] = useState<string | null>(null);
   const startSharing = useStartSharing(tripId);
+  const setPaused = useSetPaused(tripId);
   const chooseMode = useChooseTravelMode(tripId);
   const { settings } = useSettings();
   const chatOn = trip.data?.chatEnabled === true;
@@ -174,6 +186,8 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         endTrip();
         return;
       }
+      // A paused friend's ETA is gone on the server too; their dot stays where they paused.
+      if (event.type === 'PAUSED' && event.memberId) forgetEta(event.memberId);
       if (event.type === 'ARRIVED') {
         if (event.memberId) forgetEta(event.memberId);
         refreshMembers();
@@ -216,7 +230,8 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   const me = members.data?.find((member) => member.you);
   const friends = useMemo(() => (members.data ?? []).filter((member) => !member.you), [members.data]);
   const { sharing, you } = useLocationSharing({
-    enabled: !tripOver && me?.sharing === true,
+    // Paused: no location is read at all, not just not sent.
+    enabled: !tripOver && me?.sharing === true && !me.pausedAt,
     connected: socket.connection === 'live',
     send: socket.send,
   });
@@ -267,7 +282,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
             lng: spot.lng,
             name: friend.displayName,
             color: friend.color,
-            stale: staleLabel(spot.ts, now) ?? undefined,
+            stale: friend.pausedAt ? 'Paused' : (staleLabel(spot.ts, now) ?? undefined),
             arrived: friend.arrivedAt !== null,
             selected: view === 'friend' && friend.memberId === memberId,
           },
@@ -278,7 +293,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
     ? []
     : (members.data ?? []).flatMap((member) => {
         const eta = etas[member.memberId];
-        if (!eta?.route || member.arrivedAt) return [];
+        if (!eta?.route || member.arrivedAt || member.pausedAt) return [];
         const color = member.you ? themeColor('--you', '#1A73E8') : member.color;
         return [{ id: member.memberId, color, points: decodePolyline(eta.route) }];
       });
@@ -409,6 +424,21 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
             </p>
           )}
         </div>
+        {!tripOver && view !== 'menu' && me?.pausedAt && (
+          <p className="flex items-center gap-2 rounded-pill bg-amber-bg py-1 pr-1 pl-4 text-[15px] font-bold text-amber">
+            <MapPinOff aria-hidden="true" className="size-4" />
+            Your location is paused
+            <button
+              type="button"
+              onClick={() => setPaused.mutate(false)}
+              disabled={setPaused.isPending}
+              className="min-h-11 rounded-pill px-3 text-[15px] font-extrabold underline"
+            >
+              Resume
+            </button>
+          </p>
+        )}
+        {setPaused.isError && <Banner tone="error">{describeFailure(setPaused.error)}</Banner>}
         {following && friend && (
           <p className="glass-strong flex items-center gap-2 rounded-pill py-1 pr-1 pl-4 text-[15px] font-bold text-ink">
             <LocateFixed aria-hidden="true" className="size-4 text-blue" />
@@ -533,6 +563,15 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
           left={timeLeft(trip.data.expiresAt, now)}
           isHost={isHost}
           hasSettings={status === 'signedIn'}
+          pause={
+            me?.sharing
+              ? {
+                  paused: Boolean(me.pausedAt),
+                  pending: setPaused.isPending,
+                  onChange: (paused) => setPaused.mutate(paused),
+                }
+              : undefined
+          }
           onExtend={() => setDialog('extend')}
           onEnd={() => setDialog('end')}
           onLeave={() => {
@@ -597,7 +636,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
               error={startSharing.error}
             />
           )}
-          {view === 'map' && me?.sharing && destination && !me.arrivedAt && (
+          {view === 'map' && me?.sharing && !me.pausedAt && destination && !me.arrivedAt && (
             <TravelModePicker
               chosen={me.travelMode}
               current={etas[me.memberId]?.mode ?? null}

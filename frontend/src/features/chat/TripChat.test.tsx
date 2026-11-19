@@ -21,6 +21,7 @@ const priya: LiveMember = {
   location: null,
   arrivedAt: null,
   travelMode: null,
+  pausedAt: null,
 };
 const aman: LiveMember = {
   ...priya,

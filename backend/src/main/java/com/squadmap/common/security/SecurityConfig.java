@@ -84,7 +84,8 @@ public class SecurityConfig {
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/locations", "/api/v1/trips/*/sharing")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
-                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode")
+                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode",
+                            "/api/v1/trips/*/members/me/pause")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers("/api/v1/trips/*/messages", "/api/v1/trips/*/messages/read")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());

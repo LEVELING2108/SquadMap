@@ -1676,6 +1676,91 @@ test.describe('trip menu', () => {
   }
 });
 
+/** The host is sharing but has paused, and so has Aman, who paused 4 minutes ago. */
+async function asHostPaused(page: Page) {
+  const server = await asHostWithAMenu(page);
+  const pauses: boolean[] = [];
+  let paused = true;
+  const pausedAt = new Date().toISOString();
+  await page.route('**/api/v1/trips/trip-1/members', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          memberId: 'm-priya',
+          displayName: 'Priya',
+          color: '#0F6E56',
+          role: 'host',
+          you: true,
+          sharing: true,
+          location: null,
+          arrivedAt: null,
+          travelMode: null,
+          pausedAt: paused ? pausedAt : null,
+        },
+        {
+          memberId: 'm-aman',
+          displayName: 'Aman',
+          color: '#993C1D',
+          role: 'member',
+          you: false,
+          sharing: true,
+          location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date(Date.now() - 4 * 60_000).toISOString() },
+          arrivedAt: null,
+          travelMode: null,
+          pausedAt,
+        },
+      ]),
+    }),
+  );
+  await page.route('**/api/v1/trips/trip-1/members/me/pause', (route) => {
+    paused = (route.request().postDataJSON() as { paused: boolean }).paused;
+    pauses.push(paused);
+    return route.fulfill({ status: 204 });
+  });
+  return { server, pauses };
+}
+
+test.describe('pause my location', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      const { server } = await asHostPaused(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/friend/m-aman');
+      await expect(page.getByText(/^Paused · last seen \d+ min ago$/)).toBeVisible();
+      await expect(page.getByText('Your location is paused')).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      await expectAccessible(page);
+
+      await page.goto('/trip/trip-1/menu');
+      await expect(page.getByRole('switch', { name: 'Pause my location' })).toBeChecked();
+      await expectAccessible(page);
+    });
+  }
+
+  test('works with the keyboard, from the menu and from the map', async ({ page }) => {
+    const { server, pauses } = await asHostPaused(page);
+    await page.goto('/trip/trip-1/menu');
+    await expect.poll(server.connected).toBe(true);
+
+    const toggle = page.getByRole('switch', { name: 'Pause my location' });
+    await expect(toggle).toBeChecked();
+    await toggle.focus();
+    await page.keyboard.press('Space');
+    await expect(toggle).not.toBeChecked();
+
+    await page.keyboard.press('Space');
+    await expect(toggle).toBeChecked();
+    await page.keyboard.press('Escape');
+    const resume = page.getByRole('button', { name: 'Resume' });
+    await resume.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Your location is paused')).toHaveCount(0);
+    expect(pauses).toEqual([false, true, false]);
+  });
+});
+
 test.describe('layout', () => {
   for (const width of [320, 360, 390, 430, 768, 1024, 1440]) {
     test(`no sideways scroll at ${width} px`, async ({ page }) => {

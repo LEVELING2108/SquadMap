@@ -83,13 +83,15 @@ export function EtaList({ members, etas, destination, unit, inviteHref, friendHr
           const name = member.you ? 'You' : member.displayName;
           const detail = member.arrivedAt
             ? 'At destination'
-            : eta
-              ? `${formatDistance(eta.distanceM, unit)} · ${modeWords(eta.mode)}`
-              : !member.sharing
-                ? 'Not sharing yet'
-                : destination
-                  ? 'Working out the route…'
-                  : 'Sharing live';
+            : member.pausedAt
+              ? 'Paused'
+              : eta
+                ? `${formatDistance(eta.distanceM, unit)} · ${modeWords(eta.mode)}`
+                : !member.sharing
+                  ? 'Not sharing yet'
+                  : destination
+                    ? 'Working out the route…'
+                    : 'Sharing live';
           const content = (
             <>
               <span
