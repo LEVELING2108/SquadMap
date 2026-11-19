@@ -42,6 +42,19 @@ describe('Invite screen', () => {
     expect(fetchMock.mock.calls[0]![0]).toBe('/api/v1/trips/trip-1');
   });
 
+  it('opens for a guest, whose "Skip for now" goes back to their trip', async () => {
+    useSession.setState({
+      status: 'guest',
+      user: null,
+      guest: { tripId: 'trip-1', memberId: 'm1', displayName: 'Aman', color: '#993C1D' },
+      accessToken: 'guest-pass',
+    });
+    renderInvite({ ...sampleTrip, role: 'member' });
+
+    expect(await screen.findByRole('button', { name: 'Share invite link' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Skip for now' })).toHaveAttribute('href', '/trip/trip-1');
+  });
+
   it('says "Anywhere" for a trip without a destination', async () => {
     renderInvite({ ...sampleTrip, destination: null });
 

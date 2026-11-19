@@ -7,6 +7,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
+import { useSession } from '../auth/session';
 import { BoardingPass } from './BoardingPass';
 import { QrDialog } from './QrDialog';
 import { useTrip } from './tripQueries';
@@ -17,6 +18,8 @@ const step = (n: number) => ({ '--motion-delay': `${n * 80}ms` }) as React.CSSPr
 export function InvitePage() {
   const { tripId = '' } = useParams();
   const trip = useTrip(tripId);
+  // A guest has no Home; skipping takes them back to their trip.
+  const guest = useSession((state) => state.status) === 'guest';
   const [notice, setNotice] = useState('');
   const [qrOpen, setQrOpen] = useState(false);
   const qrButton = useRef<HTMLButtonElement>(null);
@@ -62,7 +65,7 @@ export function InvitePage() {
       <div className="relative z-10 flex items-center justify-between px-3 pt-3">
         <BackButton />
         <Link
-          to="/home"
+          to={guest ? `/trip/${tripId}` : '/home'}
           className="glass inline-flex min-h-11 items-center rounded-pill px-4 text-sm font-bold"
         >
           Skip for now

@@ -134,7 +134,7 @@ export function AppRoutes() {
       <Route
         path="/trip/:tripId/invite"
         element={
-          <RequireAuth>
+          <RequireAuth allowGuest>
             <InvitePage />
           </RequireAuth>
         }
@@ -169,6 +169,14 @@ export function AppRoutes() {
         element={
           <RequireAuth allowGuest>
             <LiveMapPage view="chat" />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/:tripId/menu"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="menu" />
           </RequireAuth>
         }
       />

@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 /** No backend runs in these tests: answer the startup session check with "not signed in". */
 async function withNoSession(page: Page) {
@@ -1236,8 +1236,6 @@ test.describe('live map', () => {
       await expect(page.getByRole('heading', { name: '2 friends on the way' })).toBeVisible();
       await expect.poll(server.connected).toBe(true);
       await expect(page.getByText(/^Live · /)).toBeVisible();
-      await page.getByRole('button', { name: 'Trip menu' }).click();
-      await expect(page.getByRole('link', { name: 'Show the invite' }).first()).toBeVisible();
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
@@ -1544,6 +1542,136 @@ test.describe('trip chat', () => {
       );
       expect(overflow).toBe(0);
       await expect(page.getByRole('button', { name: 'Send' })).toBeInViewport();
+    });
+  }
+});
+
+/** The live map with a trip that has `leftMs` to go, and extend and end answered like the server would. */
+async function asHostWithAMenu(page: Page, leftMs = 3 * 3_600_000, role: 'host' | 'member' = 'host') {
+  const server = await asHostOnTheLiveMap(page);
+  const now = Date.now();
+  let trip = {
+    ...signedInTrip,
+    role,
+    startsAt: new Date(now - 3_600_000).toISOString(),
+    expiresAt: new Date(now + leftMs).toISOString(),
+  };
+  const answer = (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(trip) });
+  await page.route('**/api/v1/trips/trip-1', answer);
+  await page.route('**/api/v1/trips/trip-1/extend', (route) => {
+    const { minutes } = route.request().postDataJSON() as { minutes: number };
+    trip = { ...trip, expiresAt: new Date(Date.parse(trip.expiresAt) + minutes * 60_000).toISOString() };
+    return answer(route);
+  });
+  await page.route('**/api/v1/trips/trip-1/end', (route) => {
+    trip = { ...trip, status: 'ended' };
+    return answer(route);
+  });
+  return server;
+}
+
+async function expectAccessible(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual([]);
+  // Measured in one go, so a control re-rendering by the clock can't stall the check.
+  const small = await page.evaluate(() =>
+    [...document.querySelectorAll('a, button')].flatMap((control) => {
+      const box = control.getBoundingClientRect();
+      const shown = box.width > 0 && box.height > 0 && getComputedStyle(control).visibility !== 'hidden';
+      return shown && box.height < 44
+        ? [`${control.getAttribute('aria-label') ?? control.textContent}: ${box.height}`]
+        : [];
+    }),
+  );
+  expect(small).toEqual([]);
+}
+
+test.describe('trip menu', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode, nor its dialogs`, async ({ page }) => {
+      const server = await asHostWithAMenu(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/menu');
+      await expect(page.getByRole('heading', { name: 'Saturday at Phoenix' })).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      await expectAccessible(page);
+
+      await page.getByRole('button', { name: 'End trip for everyone' }).click();
+      await expect(page.getByRole('dialog', { name: 'End this trip for everyone?' })).toBeVisible();
+      await expectAccessible(page);
+      await page.getByRole('button', { name: 'Keep sharing' }).click();
+
+      await page.getByRole('button', { name: /Extend sharing time/ }).click();
+      await expect(page.getByRole('dialog', { name: 'Extend sharing time' })).toBeVisible();
+      await expectAccessible(page);
+    });
+
+    test(`warns ten minutes before the end, accessibly, in ${colorScheme} mode`, async ({ page }) => {
+      await asHostWithAMenu(page, 8 * 60_000);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1');
+      await expect(page.getByRole('dialog', { name: 'Sharing ends in 8 min' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+
+  test('works with the keyboard and closes with Esc', async ({ page }) => {
+    const server = await asHostWithAMenu(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+
+    await page.getByRole('link', { name: 'Trip menu' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/trip\/trip-1\/menu$/);
+    await expect(page.getByRole('heading', { name: 'Saturday at Phoenix' })).toBeFocused();
+
+    const end = page.getByRole('button', { name: 'End trip for everyone' });
+    await end.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'End this trip for everyone?' })).toBeVisible();
+    // Esc closes the dialog first, giving focus back, and leaves the menu open.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(end).toBeFocused();
+    await expect(page).toHaveURL(/\/menu$/);
+
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/trip\/trip-1$/);
+  });
+
+  test('adds time, then ends the trip for everyone', async ({ page }) => {
+    const server = await asHostWithAMenu(page);
+    await page.goto('/trip/trip-1/menu');
+    await expect.poll(server.connected).toBe(true);
+
+    await page.getByRole('button', { name: /Extend sharing time/ }).click();
+    await page.getByRole('radio', { name: '30 minutes' }).click();
+    await page.getByRole('button', { name: 'Extend sharing', exact: true }).click();
+    await expect(page.getByText(/^Sharing now ends at /)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Extend sharing time/ })).toContainText('3 h left');
+
+    await page.getByRole('button', { name: 'End trip for everyone' }).click();
+    await page.getByRole('button', { name: 'End trip', exact: true }).click();
+    await expect(page).toHaveURL(/\/trip\/trip-1$/);
+    await expect(page.getByRole('heading', { name: 'This trip has ended' })).toBeVisible();
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`fits ${width} px without sideways scroll`, async ({ page }) => {
+      await asHostWithAMenu(page);
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto('/trip/trip-1/menu');
+      await expect(page.getByRole('heading', { name: 'Saturday at Phoenix' })).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+      const end = page.getByRole('button', { name: 'End trip for everyone' });
+      await end.scrollIntoViewIfNeeded();
+      await expect(end).toBeInViewport();
     });
   }
 });
