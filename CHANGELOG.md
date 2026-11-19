@@ -6,6 +6,11 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-19
+
+Trips: start a trip, invite friends by link, see everyone live on one map with routes and ETAs,
+and chat while you travel.
+
 ### Added
 
 - Trips: a signed-in person can start a trip with a name, an optional destination, a sharing time
@@ -80,6 +85,31 @@ All notable changes to SquadMap are recorded here. The format follows
   pin, since these results may not be stored. The search point is rounded to about 100 m before it
   leaves the server, searches are limited to 20 a minute, and repeating one in the same area within
   2 minutes is answered from memory. An Alerts chip opens the inbox.
+- Live map: everyone on a trip sees each other move on one map in real time, with the destination,
+  a list of who's on the way and who hasn't shared yet, toasts when people join or leave, dimmed
+  dots with "N min ago" when a spot is old, and an offline banner with Retry. Location is sent only
+  after consent, at most every 2 seconds (every 15 while standing still), and the app reconnects by
+  itself after a drop. Spots that are inaccurate, too old or impossible jumps are refused. Each
+  person's last spot is kept for 10 minutes and only in memory, never in the database, and is
+  deleted when they leave or the trip ends. The host, or anyone who chose "Not now", can start
+  sharing from the map.
+- Routes and ETAs: each person's route to the destination along the roads, in their colour, with
+  an ETA that follows traffic for cars and bikes. Everyone picks Car, Bike or Walk; until then the
+  app guesses from the distance. "Who's on the way" lists everyone by arrival time or name, with
+  distance and ETA. Staying within 60 m of the destination for 20 seconds counts as arrived, with
+  a toast for everyone and "Everyone has arrived" at the end. To keep costs down, routes are asked
+  for again only after moving 100 m or a minute passing, and are estimated when the limit is
+  reached or the route service fails.
+- Friend details: tapping a friend shows whether they're moving or stopped, their distance, ETA,
+  speed and progress to the destination, with Follow (keeps them centred until you drag the map or
+  tap Stop) and directions to where they are now in Google Maps. Dots glide to their new spot
+  instead of jumping (they jump with reduced motion). A Layers button switches the map between
+  Streets, Outdoors and Satellite.
+- Trip chat for everyone on a trip, guests included: a chat button with the unread count, Message
+  on a friend's details, typing dots, quick replies (I'm here, Running late, Wait for me), and
+  "Not sent" with Retry, which never posts the same message twice. Messages are plain text up to
+  280 characters, 20 a minute per person. After the trip ends the chat can still be read but not
+  written, and it is deleted 7 days later. When the host turns chat off, there is no chat.
 
 ### Fixed
 
@@ -91,6 +121,8 @@ All notable changes to SquadMap are recorded here. The format follows
   password change, log out everywhere else) can't be revived this way.
 - The web app could not send PUT requests: the browser call rules allowed GET, POST, PATCH and
   DELETE only, so the first PUT route answered 403. A test now checks every method the API uses.
+- Logging in right as the app opened could log you straight out again: a late "no session" answer
+  from the startup check overwrote the new sign-in. It is now ignored once someone has logged in.
 
 ### Security
 
@@ -162,7 +194,8 @@ Project foundations. No user-facing features yet.
 - Continuous integration: backend tests, frontend lint, type-check, unit tests and build, browser
   tests, a secret scan, and a guard that only lets `research` merge into `main`.
 
-[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.1...research
+[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.3.0...research
+[0.3.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/LEVELING2108/SquadMap/releases/tag/v0.1.0
