@@ -37,6 +37,8 @@ public enum RateLimit {
     SHARING_PER_MEMBER("sharing-member", 10, Duration.ofHours(1)),
     /** Pausing and resuming location sharing, per trip member. */
     PAUSE_PER_MEMBER("pause-member", 10, Duration.ofMinutes(1)),
+    /** Turning push notifications on or off, per account. */
+    PUSH_SUBSCRIBE_PER_USER("push-subscribe-user", 10, Duration.ofMinutes(1)),
     /** Chat messages per trip member. */
     CHAT_PER_MEMBER("chat-member", 20, Duration.ofMinutes(1)),
     /** "Typing" signals per trip member: the app sends one every 2 seconds at most; extra ones are dropped. */

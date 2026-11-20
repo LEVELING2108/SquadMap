@@ -30,3 +30,7 @@ squadmap:
       - http://localhost:5480
   mapbox:
     token: ${MAPBOX_SERVER_TOKEN:}
+  # Optional, in .env.local: without them a temporary pair is made at each start.
+  push:
+    public-key: ${VAPID_PUBLIC_KEY:}
+    private-key: ${VAPID_PRIVATE_KEY:}

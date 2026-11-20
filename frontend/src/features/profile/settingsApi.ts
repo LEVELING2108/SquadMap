@@ -19,6 +19,11 @@ export type Settings = {
   /** Turns off the app's moving effects, even where the device allows them. */
   reduceMotion: boolean;
   timeFormat: TimeFormat;
+  /** Which alerts are also sent as push notifications, on devices that turned them on. */
+  pushJoined: boolean;
+  pushLeft: boolean;
+  pushEndingSoon: boolean;
+  pushTripEnded: boolean;
 };
 
 /** What applies before the account's settings arrive, and for anyone without an account. */
@@ -30,6 +35,10 @@ export const DEFAULT_SETTINGS: Settings = {
   chatDefault: true,
   reduceMotion: false,
   timeFormat: '12h',
+  pushJoined: true,
+  pushLeft: false,
+  pushEndingSoon: true,
+  pushTripEnded: true,
 };
 
 export const settingsKey = ['me', 'settings'] as const;

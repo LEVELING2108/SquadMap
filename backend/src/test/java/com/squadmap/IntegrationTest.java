@@ -36,7 +36,11 @@ import java.util.Map;
                 "spring.mail.host=placeholder",
                 // Place search talks to FakeMapbox, and gives up quickly so the timeout test stays short.
                 "squadmap.mapbox.token=" + FakeMapbox.TOKEN,
-                "squadmap.mapbox.timeout=1s"
+                "squadmap.mapbox.timeout=1s",
+                // Push messages go to FakePushService on this machine.
+                "squadmap.push.allowed-hosts=127.0.0.1",
+                "squadmap.push.allow-http=true",
+                "squadmap.push.timeout=2s"
         })
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {

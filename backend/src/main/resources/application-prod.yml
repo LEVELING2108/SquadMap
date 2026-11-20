@@ -32,6 +32,10 @@ squadmap:
     base-url: ${WEB_BASE_URL}
   mapbox:
     token: ${MAPBOX_SERVER_TOKEN}
+  push:
+    public-key: ${VAPID_PUBLIC_KEY}
+    private-key: ${VAPID_PRIVATE_KEY}
+    subject: ${VAPID_SUBJECT}
 
 # The interactive API docs are a development aid and stay off in production.
 springdoc:

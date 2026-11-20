@@ -184,6 +184,10 @@ async function asHostWithATrip(page: Page) {
     chatDefault: true,
     reduceMotion: false,
     timeFormat: '12h',
+    pushJoined: true,
+    pushLeft: false,
+    pushEndingSoon: true,
+    pushTripEnded: true,
   };
   await page.route('**/api/v1/me/settings', (route) => {
     if (route.request().method() === 'PATCH') {
@@ -872,6 +876,64 @@ const sampleAlerts = [
   },
 ];
 
+/**
+ * Stands in for the browser's push support. The dev server runs without the offline worker, so this
+ * fakes one with push: the permission as given, and the answer to the browser's question.
+ */
+async function fakePush(
+  page: Page,
+  {
+    permission,
+    answer = 'granted',
+    subscribed = false,
+  }: { permission: string; answer?: string; subscribed?: boolean },
+) {
+  await page.addInitScript(
+    ({ permission, answer, subscribed }) => {
+      const state = { permission, subscribed };
+      const subscription = {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/e2e',
+        options: { applicationServerKey: null },
+        toJSON: () => ({
+          endpoint: 'https://fcm.googleapis.com/fcm/send/e2e',
+          keys: { p256dh: 'p', auth: 'a' },
+        }),
+        unsubscribe: async () => {
+          state.subscribed = false;
+          return true;
+        },
+      };
+      const pushManager = {
+        getSubscription: async () => (state.subscribed ? subscription : null),
+        subscribe: async () => {
+          state.subscribed = true;
+          return subscription;
+        },
+      };
+      Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true });
+      Object.defineProperty(window, 'Notification', {
+        configurable: true,
+        value: Object.defineProperties(function Notification() {}, {
+          permission: { get: () => state.permission },
+          requestPermission: {
+            value: async () => {
+              state.permission = answer;
+              return answer;
+            },
+          },
+        }),
+      });
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: Object.assign(new EventTarget(), {
+          getRegistration: async () => ({ active: {}, pushManager }),
+        }),
+      });
+    },
+    { permission, answer, subscribed },
+  );
+}
+
 test.describe('alerts', () => {
   async function withAlerts(page: Page) {
     await asHostWithATrip(page);
@@ -882,6 +944,19 @@ test.describe('alerts', () => {
         body: JSON.stringify({ items: sampleAlerts, nextBefore: null, unread: 2 }),
       }),
     );
+    await page.route('**/api/v1/me/push/key', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          publicKey:
+            'BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8',
+        }),
+      }),
+    );
+    await page.route('**/api/v1/me/push/*subscribe', (route) => route.fulfill({ status: 204 }));
+    // Notifications already on, so the checks below include every push switch.
+    await fakePush(page, { permission: 'granted', subscribed: true });
   }
 
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -936,6 +1011,56 @@ test.describe('alerts', () => {
     await page.keyboard.press('Enter');
 
     await expect(page).toHaveURL(/\/trip\/trip-1\/invite$/);
+  });
+
+  test('the push switches follow what was chosen', async ({ page }) => {
+    await withAlerts(page);
+    await page.goto('/me/alerts');
+
+    const push = page.getByRole('region', { name: 'PUSH ALERTS' });
+    await expect(push.getByRole('switch', { name: 'Notifications on this device' })).toBeChecked();
+    await expect(push.getByRole('switch', { name: 'Friend joins' })).toBeChecked();
+    await expect(push.getByRole('switch', { name: 'Friend leaves' })).not.toBeChecked();
+
+    await push.getByRole('switch', { name: 'Friend leaves' }).click();
+    await expect(push.getByRole('switch', { name: 'Friend leaves' })).toBeChecked();
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Friend leaves' })).toBeChecked();
+  });
+
+  test('turning notifications on asks the browser, then tells the server', async ({ page }) => {
+    await withAlerts(page);
+    await fakePush(page, { permission: 'default', answer: 'granted' });
+    await page.goto('/me/alerts');
+
+    const subscribed = page.waitForRequest('**/api/v1/me/push/subscribe');
+    await page.getByRole('switch', { name: 'Notifications on this device' }).click();
+
+    expect((await subscribed).postDataJSON()).toMatchObject({
+      endpoint: 'https://fcm.googleapis.com/fcm/send/e2e',
+    });
+    await expect(page.getByRole('switch', { name: 'Notifications on this device' })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Trip ended' })).toBeVisible();
+  });
+
+  test('when the browser says no, explains how to allow them', async ({ page }) => {
+    await withAlerts(page);
+    await fakePush(page, { permission: 'default', answer: 'denied' });
+    await page.goto('/me/alerts');
+
+    await page.getByRole('switch', { name: 'Notifications on this device' }).click();
+
+    await expect(page.getByText(/Notifications are blocked for SquadMap/)).toBeVisible();
+  });
+
+  test('Settings leads to the push switches', async ({ page }) => {
+    await withAlerts(page);
+    await page.goto('/me/settings');
+
+    await page.getByRole('link', { name: /Push notifications/ }).click();
+
+    await expect(page).toHaveURL(/\/me\/alerts#push$/);
+    await expect(page.getByRole('switch', { name: 'Notifications on this device' })).toBeInViewport();
   });
 });
 
