@@ -15,6 +15,11 @@ export async function downloadMyData(): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/** Removes every trip that is over from the history (POST /me/trips/forget); running trips stay. */
+export function forgetPastTrips(): Promise<{ removed: number }> {
+  return api<{ removed: number }>('/me/trips/forget', { method: 'POST' });
+}
+
 /** Closes the account; its data is removed on the day returned unless the person logs in before then. */
 export function deleteAccount(password: string): Promise<{ removeAt: string }> {
   return api<{ removeAt: string }>('/me', { method: 'DELETE', body: { password } });

@@ -143,7 +143,8 @@ public class EtaService {
         }
         Instant now = clock.instant();
         double straight = GeoMath.metres(position.lat(), position.lng(), destination.lat(), destination.lng());
-        if (checkArrival(member, straight, now)) {
+        // A rough area can't tell arriving from being nearby, so it never counts as arriving.
+        if (!position.isApproximate() && checkArrival(member, straight, now)) {
             return;
         }
         if (!store.takeTurn(tripId, memberId)) {

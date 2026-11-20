@@ -4,11 +4,15 @@ import { Link } from 'react-router';
 import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
 import { describeFailure } from '../auth/formErrors';
+import { PrivacyChoices } from './PrivacyChoices';
 import { downloadMyData } from './privacyApi';
 
 const tile = 'flex size-10 flex-none items-center justify-center rounded-control bg-tint text-blue-d';
 
-/** Privacy and data (F5): how location stays private, a copy of your data, the policy, and closing the account. */
+/**
+ * Privacy and data (F5): how location stays private, the privacy switches, a copy of your data, the policy,
+ * and closing the account.
+ */
 export function PrivacyPage() {
   const download = useMutation({ mutationFn: downloadMyData });
 
@@ -39,6 +43,8 @@ export function PrivacyPage() {
           </p>
         </div>
       </section>
+
+      <PrivacyChoices />
 
       <ul className="glass-strong m-0 list-none divide-y divide-line overflow-hidden rounded-card p-0">
         <li>

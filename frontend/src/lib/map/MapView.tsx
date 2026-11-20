@@ -87,6 +87,8 @@ export type MapPerson = {
   arrived?: boolean;
   /** The friend whose details are open: a soft ring around the dot, as in the design. */
   selected?: boolean;
+  /** Shares only a rough area: a soft circle in their colour around the dot. */
+  approximate?: boolean;
 };
 
 /** How long a dot takes to glide to a new spot. Updates come every 2 to 15 seconds. */
@@ -133,8 +135,14 @@ function PersonDot({ person }: { person: MapPerson }) {
   return (
     <div
       aria-hidden="true"
-      className={`flex cursor-pointer flex-col items-center ${person.stale ? 'opacity-55 grayscale' : ''}`}
+      className={`relative flex cursor-pointer flex-col items-center ${person.stale ? 'opacity-55 grayscale' : ''}`}
     >
+      {person.approximate && (
+        <span
+          className="absolute top-6 left-1/2 size-28 -translate-x-1/2 -translate-y-1/2 rounded-pill border-2 border-dashed opacity-70"
+          style={{ backgroundColor: `${person.color}26`, borderColor: person.color }}
+        />
+      )}
       <span
         className={`relative flex size-12 items-center justify-center rounded-pill border-[3px] border-screen text-lg font-extrabold text-on-person shadow-md ${
           person.selected ? 'ring-[10px] ring-you/25' : ''
@@ -151,6 +159,11 @@ function PersonDot({ person }: { person: MapPerson }) {
       <span className="mt-1 max-w-[120px] truncate rounded-pill bg-screen px-2 py-0.5 text-xs font-bold text-ink shadow-sm">
         {person.name}
       </span>
+      {person.approximate && (
+        <span className="relative mt-0.5 rounded-pill bg-screen px-1.5 text-[11px] font-semibold text-muted">
+          Area only
+        </span>
+      )}
       {person.stale && (
         <span className="mt-0.5 rounded-pill bg-screen px-1.5 text-[11px] font-semibold text-muted">
           {person.stale}

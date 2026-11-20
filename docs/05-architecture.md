@@ -91,6 +91,9 @@ Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 - Purpose limitation: location used only for the live trip. TTL 10 min on live points, purge at trip end.
 - User rights: export (`GET /me/export`, a JSON file, 5 an hour), delete, withdraw consent (leave trip / pause / account delete).
 - Deleting (`DELETE /me` with the password): at once, trips the person hosts end, they leave the others, every session ends, push stops and an email confirms it; `users.deleted_at` is set. Logging in within 30 days clears it and keeps the account. After 30 days a daily job (03:23 UTC, `squadmap.accounts.purge-dry-run` for counts only) removes the personal data: alerts, push devices, tokens, settings, and the email, name and password on the account row, which stays as an anonymous shell (`purged_at`) so trips keep a host in friends' history. Their places on trips become "Former member" with no link to the account; consent records stay as proof of consent.
+- Precise location off (`settings.preciseLocation=false`): the web app sends `approximate: true` with the centre of the ~220 m square the spot falls in, and no speed or heading; the server snaps again the same way (`GeoMath.area`), stores `approx: true` with accuracy 150 m, never counts it as arriving, and friends' maps draw a soft circle. Guests always share precisely, as agreed when joining.
+- Keep trip history off (`settings.keepHistory=false`): an hourly job unlinks the person from trips that ended (or that they left) over 24 hours ago, clearing their distance, so Trip complete and the chat still work right after a trip. `POST /me/trips/forget` does it at once for every finished trip. Friends keep their own copy.
+- Auto-stop is not optional: sharing always ends with the trip.
 - Minimal retention: trip summaries only (a total distance per person, no track or route), chat deleted 7 days after trip end.
 - Breach runbook and a named grievance contact in the Privacy Policy.
 
