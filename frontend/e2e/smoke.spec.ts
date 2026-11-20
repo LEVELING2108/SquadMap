@@ -188,6 +188,8 @@ async function asHostWithATrip(page: Page) {
     pushLeft: false,
     pushEndingSoon: true,
     pushTripEnded: true,
+    preciseLocation: true,
+    keepHistory: true,
   };
   await page.route('**/api/v1/me/settings', (route) => {
     if (route.request().method() === 'PATCH') {
@@ -2025,6 +2027,38 @@ test.describe('privacy and data', () => {
       });
     }
   }
+
+  test('the switches change with the keyboard and stay changed', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/me/trips/forget', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ removed: 2 }) }),
+    );
+    await page.goto('/me/privacy');
+
+    await page.getByRole('switch', { name: 'Share precise location' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('switch', { name: 'Share precise location' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+
+    await page.getByRole('switch', { name: 'Keep trip history' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Stop keeping trip history?' });
+    await expect(dialog).toBeVisible();
+    await expectAccessible(page);
+    await dialog.getByRole('button', { name: 'Remove past trips too' }).click();
+    await expect(page.getByText('Removed 2 past trips from your history.')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Share precise location' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    await expect(page.getByRole('switch', { name: 'Keep trip history' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+  });
 
   test('the sign-up link to the policy works', async ({ page }) => {
     await page.goto('/signup');
