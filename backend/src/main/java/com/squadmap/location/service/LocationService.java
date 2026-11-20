@@ -38,6 +38,8 @@ public class LocationService {
 
     /** Readings vaguer than this (a city-wide guess) would put a dot in the wrong street. */
     static final double MAX_ACCURACY_M = 200;
+    /** The accuracy given for a rough area: about half its width. */
+    static final double APPROX_ACCURACY_M = 150;
     /** About 250 km/h: faster than any road trip, slower than a phone's location jumping across town. */
     static final double MAX_SPEED_MPS = 70;
     /** A reading queued while offline is still worth showing for this long. */
@@ -202,6 +204,12 @@ public class LocationService {
         }
         if (update.ts().isBefore(now.minus(MAX_AGE))) {
             throw rejected("That location is too old to show.");
+        }
+        if (Boolean.TRUE.equals(update.approximate())) {
+            // A rough area only: snapped again here, with nothing that narrows it down (speed, heading).
+            double[] area = GeoMath.area(lat, lng);
+            return new Position(area[0], area[1], Math.min(MAX_ACCURACY_M, Math.max(APPROX_ACCURACY_M, update.acc())),
+                    null, null, update.ts(), true);
         }
         // About 10 cm: finer than any phone can tell, and no more than the map needs.
         return new Position(round(lat, 6), round(lng, 6), round(update.acc(), 1),

@@ -22,5 +22,7 @@ public record UpdateSettingsRequest(
         Boolean pushJoined,
         Boolean pushLeft,
         Boolean pushEndingSoon,
-        Boolean pushTripEnded) {
+        Boolean pushTripEnded,
+        Boolean preciseLocation,
+        Boolean keepHistory) {
 }

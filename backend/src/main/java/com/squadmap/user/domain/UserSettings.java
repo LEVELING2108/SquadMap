@@ -22,17 +22,20 @@ import java.util.Set;
  * @param pushLeft          ...when someone leaves a trip you host
  * @param pushEndingSoon    ...when your trip's sharing is about to end
  * @param pushTripEnded     ...when a trip you were on ends
+ * @param preciseLocation   share your exact spot; off sends only a rough area (snapped on the phone and again here)
+ * @param keepHistory       keep finished trips in your history; off removes them a day after they end
  */
 public record UserSettings(boolean darkMap, DistanceUnit distanceUnit, int defaultShareHours, MapStyle mapStyle,
                            boolean chatDefault, boolean reduceMotion, TimeFormat timeFormat,
-                           boolean pushJoined, boolean pushLeft, boolean pushEndingSoon, boolean pushTripEnded) {
+                           boolean pushJoined, boolean pushLeft, boolean pushEndingSoon, boolean pushTripEnded,
+                           boolean preciseLocation, boolean keepHistory) {
 
     /** The sharing times a trip can be created with; matches the trip rules. */
     public static final Set<Integer> SHARE_HOURS = Set.of(1, 2, 4, 8);
 
     public static final UserSettings DEFAULTS =
             new UserSettings(false, DistanceUnit.km, 4, MapStyle.streets, true, false, TimeFormat.h12,
-                    true, false, true, true);
+                    true, false, true, true, true, true);
 
     public enum DistanceUnit { km, mi }
 
@@ -80,7 +83,9 @@ public record UserSettings(boolean darkMap, DistanceUnit distanceUnit, int defau
                 bool(stored, "pushJoined", DEFAULTS.pushJoined()),
                 bool(stored, "pushLeft", DEFAULTS.pushLeft()),
                 bool(stored, "pushEndingSoon", DEFAULTS.pushEndingSoon()),
-                bool(stored, "pushTripEnded", DEFAULTS.pushTripEnded()));
+                bool(stored, "pushTripEnded", DEFAULTS.pushTripEnded()),
+                bool(stored, "preciseLocation", DEFAULTS.preciseLocation()),
+                bool(stored, "keepHistory", DEFAULTS.keepHistory()));
     }
 
     Map<String, Object> toJson() {
@@ -96,6 +101,8 @@ public record UserSettings(boolean darkMap, DistanceUnit distanceUnit, int defau
         json.put("pushLeft", pushLeft);
         json.put("pushEndingSoon", pushEndingSoon);
         json.put("pushTripEnded", pushTripEnded);
+        json.put("preciseLocation", preciseLocation);
+        json.put("keepHistory", keepHistory);
         return json;
     }
 

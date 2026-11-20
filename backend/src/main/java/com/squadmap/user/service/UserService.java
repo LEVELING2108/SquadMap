@@ -121,7 +121,9 @@ public class UserService {
                 request.pushJoined() != null ? request.pushJoined() : current.pushJoined(),
                 request.pushLeft() != null ? request.pushLeft() : current.pushLeft(),
                 request.pushEndingSoon() != null ? request.pushEndingSoon() : current.pushEndingSoon(),
-                request.pushTripEnded() != null ? request.pushTripEnded() : current.pushTripEnded());
+                request.pushTripEnded() != null ? request.pushTripEnded() : current.pushTripEnded(),
+                request.preciseLocation() != null ? request.preciseLocation() : current.preciseLocation(),
+                request.keepHistory() != null ? request.keepHistory() : current.keepHistory());
         user.changeSettings(changed, clock.instant());
         return changed;
     }
