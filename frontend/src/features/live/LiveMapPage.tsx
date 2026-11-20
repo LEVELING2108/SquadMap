@@ -262,6 +262,8 @@ export function LiveMapPage({
     enabled: !tripOver && me?.sharing === true && !me.pausedAt,
     connected: socket.connection === 'live',
     send: socket.send,
+    // Accounts that turned precise location off send a rough area; guests share as they agreed on joining.
+    approximate: status === 'signedIn' && !settings.preciseLocation,
   });
 
   // A guest leaving ends their pass, so this device forgets them; a member goes back home.
@@ -316,6 +318,7 @@ export function LiveMapPage({
             stale: friend.pausedAt ? 'Paused' : (staleLabel(spot.ts, now) ?? undefined),
             arrived: friend.arrivedAt !== null,
             selected: view === 'friend' && friend.memberId === memberId,
+            approximate: spot.approx === true,
           },
         ];
       });

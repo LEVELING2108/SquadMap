@@ -8,6 +8,8 @@ export type Position = {
   heading?: number;
   /** When the phone took the reading, ISO-8601. */
   ts: string;
+  /** Shared as a rough area (about 220 m) by someone who turned precise location off. */
+  approx?: boolean;
 };
 
 /** One person on the trip, from GET /trips/:id/members. */
@@ -75,4 +77,5 @@ export type TripEvent = {
 export type LiveError = { code: string; message: string; retryAfter?: number };
 
 /** The reading this phone sends: a Position without an id. */
-export type LocationReading = Position;
+/** A reading this phone sends; `approximate` asks the server to treat it as a rough area. */
+export type LocationReading = Omit<Position, 'approx'> & { approximate?: boolean };
