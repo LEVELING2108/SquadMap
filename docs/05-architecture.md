@@ -65,14 +65,14 @@ Conventions: JSON, ISO-8601 UTC timestamps, ids are UUIDv7 (time-ordered), pagin
 `trips(id, host_id, name, code, dest_name, dest_lat, dest_lng, chat_enabled, starts_at, expires_at, ended_at, status)`
 `trip_members(id, trip_id, user_id null, display_name, color, role, joined_at, left_at, arrived_at, travel_mode, chat_read_upto, paused_at)`
 `chat_messages(id, trip_id, member_id, client_id, body, created_at)`
-`trip_summaries(trip_id, distance_m, duration_s, member_count, route_polyline_simplified)`
+Trip summaries are worked out when asked for, from `trips` (start, end) and `trip_members` (who was on it, `arrived_at`, and `distance_m`: how far each person moved while sharing, saved when the trip ends or they leave). No route or point is kept, not even a simplified one. While a trip runs, each sharer's running total is a Redis hash `trip:{id}:dist:{memberId}` (total plus the last counted point, 13 h TTL), deleted at the end. A move counts once it is longer than both readings' accuracy together and at least 10 m, so the total leans short. A guest's pass stays valid 24 hours after the trip for reading its summary; anything that changes a trip still requires it to be running.
 `refresh_tokens(id, user_id, hash, expires_at, revoked_at)`
 `push_subscriptions(id, user_id, endpoint, p256dh, auth)`
 `alerts(id, user_id, type, payload jsonb, read_at, created_at)`
 Redis: `trip:{id}:loc:{memberId}` (TTL 600 s; no TTL while the member has paused, deleted when they leave or the trip ends or expires, and back to 600 s when they resume), `trip:{id}:members` (set), `rl:{key}` (Bucket4j), `eta:{tripId}:{memberId}` (TTL 20 s).
 
 ## Scheduling jobs
-- Every 30 s: find trips expiring within 10 min (send warning once), expiring now (end, close sockets, write summary, purge Redis).
+- Every 30 s: find trips expiring within 10 min (send warning once), expiring now (end, close sockets, save each member's distance, purge Redis).
 - Hourly: purge expired refresh tokens and reset tokens. Nightly: delete alerts over 30 days old and the chat of trips that ended over 7 days ago. Daily: hard-delete accounts past the 30 day grace period.
 Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 
@@ -90,7 +90,7 @@ Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 - Lawful basis: explicit consent on the consent screen, recorded with timestamp and policy version.
 - Purpose limitation: location used only for the live trip. TTL 10 min on live points, purge at trip end.
 - User rights: export (JSON), delete (30 day grace then hard delete), withdraw consent (leave trip / pause / account delete).
-- Minimal retention: trip summaries only (no raw track), chat deleted 7 days after trip end.
+- Minimal retention: trip summaries only (a total distance per person, no track or route), chat deleted 7 days after trip end.
 - Breach runbook and a named grievance contact in the Privacy Policy.
 
 ## Performance notes
