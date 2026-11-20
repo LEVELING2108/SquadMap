@@ -90,7 +90,7 @@ Nightly `pg_dump` to object storage, 14 day retention, weekly restore test into 
 ## Launch checklist
 - [ ] All P0 features pass acceptance criteria. No open blocker bugs.
 - [ ] Real-phone test on Android and iPhone, on mobile data, in a moving car with 3 friends.
-- [ ] Privacy Policy, Terms, grievance contact, consent copy reviewed.
+- [ ] Privacy Policy, Terms, grievance contact, consent copy reviewed. `/privacy` is a plain-language summary taken from the code; replace it with the reviewed text and add the grievance contact before launch.
 - [ ] Rate limits, CSP, CORS, cookies, HSTS verified with the ZAP scan.
 - [ ] Mapbox tokens restricted by URL, billing alerts on.
 - [ ] Backups restore tested. Runbook reviewed. On-call plan (even if it is only you).

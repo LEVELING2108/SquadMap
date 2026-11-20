@@ -61,7 +61,7 @@ Conventions: JSON, ISO-8601 UTC timestamps, ids are UUIDv7 (time-ordered), pagin
 - Heartbeats 10 s. Client reconnects with exponential backoff (1, 2, 4, 8, max 15 s) and re-subscribes; on reconnect it fetches `/trips/{id}/members` (everyone, whether they share, and spots under 10 min old) for the latest snapshot.
 
 ## Data model (summary)
-`users(id, email, password_hash, name, color, settings jsonb, created_at, deleted_at)`
+`users(id, email, password_hash, name, color, settings jsonb, created_at, deleted_at, purged_at)`
 `trips(id, host_id, name, code, dest_name, dest_lat, dest_lng, chat_enabled, starts_at, expires_at, ended_at, status)`
 `trip_members(id, trip_id, user_id null, display_name, color, role, joined_at, left_at, arrived_at, travel_mode, chat_read_upto, paused_at)`
 `chat_messages(id, trip_id, member_id, client_id, body, created_at)`
@@ -73,7 +73,7 @@ Redis: `trip:{id}:loc:{memberId}` (TTL 600 s; no TTL while the member has paused
 
 ## Scheduling jobs
 - Every 30 s: find trips expiring within 10 min (send warning once), expiring now (end, close sockets, save each member's distance, purge Redis).
-- Hourly: purge expired refresh tokens and reset tokens. Nightly: delete alerts over 30 days old and the chat of trips that ended over 7 days ago. Daily: hard-delete accounts past the 30 day grace period.
+- Hourly: purge expired refresh tokens and reset tokens. Nightly: delete alerts over 30 days old and the chat of trips that ended over 7 days ago. Daily: remove the personal data of accounts closed over 30 days ago (see Privacy).
 Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 
 ## Security
@@ -89,7 +89,8 @@ Use `@Scheduled` with ShedLock (Postgres) so only one instance runs each job.
 ## Privacy and compliance (DPDP Act 2023)
 - Lawful basis: explicit consent on the consent screen, recorded with timestamp and policy version.
 - Purpose limitation: location used only for the live trip. TTL 10 min on live points, purge at trip end.
-- User rights: export (JSON), delete (30 day grace then hard delete), withdraw consent (leave trip / pause / account delete).
+- User rights: export (`GET /me/export`, a JSON file, 5 an hour), delete, withdraw consent (leave trip / pause / account delete).
+- Deleting (`DELETE /me` with the password): at once, trips the person hosts end, they leave the others, every session ends, push stops and an email confirms it; `users.deleted_at` is set. Logging in within 30 days clears it and keeps the account. After 30 days a daily job (03:23 UTC, `squadmap.accounts.purge-dry-run` for counts only) removes the personal data: alerts, push devices, tokens, settings, and the email, name and password on the account row, which stays as an anonymous shell (`purged_at`) so trips keep a host in friends' history. Their places on trips become "Former member" with no link to the account; consent records stay as proof of consent.
 - Minimal retention: trip summaries only (a total distance per person, no track or route), chat deleted 7 days after trip end.
 - Breach runbook and a named grievance contact in the Privacy Policy.
 
