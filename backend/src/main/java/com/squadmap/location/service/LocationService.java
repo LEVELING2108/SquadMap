@@ -54,13 +54,15 @@ public class LocationService {
     private final RateLimiter rateLimiter;
     private final InviteProperties inviteProperties;
     private final EtaService etas;
+    private final DistanceStore distances;
     private final Clock clock;
 
     public LocationService(TripAccess access, TripMemberRepository members, LocationConsentRepository consents,
                            PositionStore positions, LiveChannel channel, LiveTrips liveTrips,
                            RateLimiter rateLimiter, InviteProperties inviteProperties, EtaService etas,
-                           Clock clock) {
+                           DistanceStore distances, Clock clock) {
         this.etas = etas;
+        this.distances = distances;
         this.access = access;
         this.members = members;
         this.consents = consents;
@@ -105,6 +107,7 @@ public class LocationService {
             }
         }
         positions.put(tripId, member.getId(), position);
+        distances.record(tripId, member.getId(), position);
         channel.publish(LiveChannel.locationsTopic(tripId), MemberLocation.of(member.getId(), position));
         // In the background: the ETA and the arrival check never hold up the update itself.
         etas.update(tripId, member.getId(), position);
