@@ -11,4 +11,6 @@ export type AuthResponse = {
   accessToken: string;
   expiresIn: number;
   user: User;
+  /** True when this log in cancelled the account's pending deletion. */
+  restored?: boolean;
 };

@@ -10,6 +10,7 @@ import { createQueryClient } from './lib/api/queryClient';
 import { initTheme } from './lib/theme';
 import { trackPageVisibility } from './motion/pageVisibility';
 import { listenForInstall } from './pwa/installPrompt';
+import { RestoredNotice } from './features/auth/RestoredNotice';
 import { NotificationTaps } from './pwa/NotificationTaps';
 import { OfflineBar } from './pwa/OfflineBar';
 import { listenForSignOut, syncPushOnSignIn } from './pwa/push';
@@ -41,6 +42,7 @@ createRoot(root).render(
         <div className="pointer-events-none fixed inset-x-0 top-[max(12px,env(safe-area-inset-top))] z-50 mx-auto flex max-w-[600px] flex-col items-center gap-2 px-3">
           <OfflineBar />
           <UpdateToast />
+          <RestoredNotice />
         </div>
       </BrowserRouter>
     </QueryClientProvider>
