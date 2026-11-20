@@ -2,6 +2,7 @@ package com.squadmap.auth.web;
 
 import com.squadmap.auth.dto.ChangeEmailRequest;
 import com.squadmap.auth.dto.ChangePasswordRequest;
+import com.squadmap.auth.dto.DeleteAccountRequest;
 import com.squadmap.auth.service.AccountService;
 import com.squadmap.common.security.CurrentUser;
 import com.squadmap.user.dto.UserResponse;
@@ -12,10 +13,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Instant;
+import java.util.Map;
 
 /**
  * A signed-in person securing their account. The password and session routes sit under /auth because
@@ -49,6 +54,17 @@ public class AccountController {
             @CookieValue(name = RefreshCookie.NAME, required = false) String session) {
         accounts.endOtherSessions(CurrentUser.id(token), session);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/api/v1/me")
+    @Operation(summary = "Delete my account",
+            description = "Needs the current password (five wrong ones in 15 minutes pause further tries). "
+                    + "Straight away: trips I host end, I leave the others, every session ends and push stops; "
+                    + "an email confirms it. The data is removed 30 days later unless I log in again before "
+                    + "then, which keeps the account. Trips stay in friends' history with my name replaced.")
+    public Map<String, Instant> deleteAccount(@AuthenticationPrincipal Jwt token,
+                                              @Valid @RequestBody DeleteAccountRequest request) {
+        return Map.of("removeAt", accounts.deleteAccount(CurrentUser.id(token), request.password()));
     }
 
     @PutMapping("/api/v1/me/email")

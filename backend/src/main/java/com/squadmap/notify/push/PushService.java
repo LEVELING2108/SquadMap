@@ -80,6 +80,14 @@ public class PushService {
         }
     }
 
+    /** Turns push off on every device of the account: it is being deleted. */
+    @Transactional
+    public int forgetAllDevices(UUID userId) {
+        List<PushSubscription> devices = subscriptions.findByUserIdOrderByCreatedAtAscIdAsc(userId);
+        subscriptions.deleteAll(devices);
+        return devices.size();
+    }
+
     /** Turns push off for this device. Nothing happens if the account had no such device. */
     @Transactional
     public void unsubscribe(UUID userId, String endpoint) {

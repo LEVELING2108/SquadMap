@@ -62,6 +62,29 @@ public class UserService {
         return users.findByEmail(email).filter(user -> !user.isDeleted());
     }
 
+    /**
+     * An account that may sign in: active, or deleted but still within the grace period (signing in then
+     * keeps it). Accounts whose data was removed never match.
+     */
+    @Transactional(readOnly = true)
+    public Optional<User> findForSignIn(String email) {
+        return users.findByEmail(email).filter(user -> !user.isPurged());
+    }
+
+    /** Stops the account working now; it is removed after the grace period unless the person signs in. */
+    @Transactional
+    public User markDeleted(UUID userId) {
+        User user = users.lockById(userId).filter(found -> !found.isDeleted()).orElseThrow(UserService::signedOut);
+        user.markDeleted(clock.instant());
+        return user;
+    }
+
+    /** Keeps an account that was waiting to be deleted. */
+    @Transactional
+    public void restore(UUID userId) {
+        users.lockById(userId).filter(found -> !found.isPurged()).ifPresent(user -> user.restore(clock.instant()));
+    }
+
     @Transactional(readOnly = true)
     public Optional<User> findActiveById(UUID id) {
         return users.findById(id).filter(user -> !user.isDeleted());
