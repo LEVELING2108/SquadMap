@@ -5,6 +5,7 @@ import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.id.UuidV7;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,10 +32,12 @@ public class AlertService {
     private static final Logger log = LoggerFactory.getLogger(AlertService.class);
 
     private final AlertRepository alerts;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
-    public AlertService(AlertRepository alerts, Clock clock) {
+    public AlertService(AlertRepository alerts, ApplicationEventPublisher events, Clock clock) {
         this.alerts = alerts;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -121,7 +124,8 @@ public class AlertService {
         if (userId == null) {
             return;
         }
-        alerts.save(new Alert(UuidV7.generate(clock), userId, kind, tripId, tripName, actorName, actorColor,
-                clock.instant()));
+        Alert alert = alerts.save(new Alert(UuidV7.generate(clock), userId, kind, tripId, tripName, actorName,
+                actorColor, clock.instant()));
+        events.publishEvent(new AlertSaved(alert.getId(), userId, kind, tripId, tripName, actorName));
     }
 }

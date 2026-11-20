@@ -94,7 +94,11 @@ public class UserService {
                 request.mapStyle() != null ? UserSettings.MapStyle.valueOf(request.mapStyle()) : current.mapStyle(),
                 request.chatDefault() != null ? request.chatDefault() : current.chatDefault(),
                 request.reduceMotion() != null ? request.reduceMotion() : current.reduceMotion(),
-                request.timeFormat() != null ? UserSettings.TimeFormat.parse(request.timeFormat()) : current.timeFormat());
+                request.timeFormat() != null ? UserSettings.TimeFormat.parse(request.timeFormat()) : current.timeFormat(),
+                request.pushJoined() != null ? request.pushJoined() : current.pushJoined(),
+                request.pushLeft() != null ? request.pushLeft() : current.pushLeft(),
+                request.pushEndingSoon() != null ? request.pushEndingSoon() : current.pushEndingSoon(),
+                request.pushTripEnded() != null ? request.pushTripEnded() : current.pushTripEnded());
         user.changeSettings(changed, clock.instant());
         return changed;
     }
