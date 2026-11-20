@@ -153,6 +153,10 @@ export function SettingsPage() {
         </Section>
 
         <Section title="Account">
+          <Link to="/me/privacy" className="flex min-h-[56px] items-center gap-4">
+            <span className="flex-1 text-base leading-[22px] font-bold text-ink">Privacy and data</span>
+            <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+          </Link>
           <button
             type="button"
             onClick={async () => {

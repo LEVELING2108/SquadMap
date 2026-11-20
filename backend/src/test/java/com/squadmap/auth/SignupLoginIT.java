@@ -187,9 +187,10 @@ class SignupLoginIT extends IntegrationTest {
     }
 
     @Test
-    void anAccountPendingDeletionCannotLogIn() {
+    void anAccountWhoseDataWasRemovedCannotLogIn() {
         post(SIGNUP, signupBody("priya@example.com"));
-        jdbc.update("UPDATE users SET deleted_at = now()");
+        // Closed, then removed after the grace period (see PrivacyIT for logging in during it).
+        jdbc.update("UPDATE users SET deleted_at = now() - interval '31 days', purged_at = now()");
 
         ResponseEntity<JsonNode> response =
                 post(LOGIN, Map.of("email", "priya@example.com", "password", PASSWORD));

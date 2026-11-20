@@ -57,6 +57,46 @@ public class AccountNotices {
         }
     }
 
+    /**
+     * Confirms a deletion request and says how to undo it, so a request made from someone else's hands on
+     * a signed-in phone doesn't go unnoticed.
+     *
+     * @param deleteOn the day the data is removed, already in words ("20 December 2026")
+     */
+    @Async
+    public void deletionScheduled(UUID userId, String address, String name, String deleteOn) {
+        try {
+            String text = """
+                    Hi %s,
+
+                    Your SquadMap account is closed, and its data will be deleted for good on %s.
+                    You've been signed out everywhere and your location is no longer shared.
+
+                    Changed your mind? Log in before then with your email and password, and the account
+                    stays as it was.
+
+                    If this wasn't you, log in straight away, then change your password.
+
+                    SquadMap
+                    """.formatted(name, deleteOn);
+            String safeName = HtmlUtils.htmlEscape(name);
+            String html = """
+                    <!doctype html>
+                    <html lang="en"><body style="margin:0;padding:24px;background:#FFF6E5;font-family:Arial,sans-serif;color:#12263A">
+                    <div style="max-width:480px;margin:0 auto;background:#FFFFFF;border-radius:20px;padding:28px">
+                    <h1 style="margin:0 0 12px;font-size:22px">Your account is closed</h1>
+                    <p style="margin:0 0 12px;font-size:15px;line-height:21px">Hi %s, your SquadMap account is closed, and its data will be deleted for good on <strong>%s</strong>. You've been signed out everywhere and your location is no longer shared.</p>
+                    <p style="margin:0 0 12px;font-size:15px;line-height:21px">Changed your mind? Log in before then with your email and password, and the account stays as it was.</p>
+                    <p style="margin:0;font-size:15px;line-height:21px">If this wasn't you, log in straight away, then change your password.</p>
+                    </div></body></html>
+                    """.formatted(safeName, HtmlUtils.htmlEscape(deleteOn));
+            email.send(address, "Your SquadMap account is closed", text, html);
+            log.info("Deletion notice sent for user {}", userId);
+        } catch (RuntimeException e) {
+            log.error("Could not send a deletion notice: {}", e.getClass().getName());
+        }
+    }
+
     /** "pr***@example.com": enough to recognise, not enough to copy. */
     static String mask(String address) {
         int at = address.indexOf('@');

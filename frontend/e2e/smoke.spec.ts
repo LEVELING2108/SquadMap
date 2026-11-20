@@ -1993,6 +1993,84 @@ test.describe('trip summaries', () => {
   }
 });
 
+test.describe('privacy and data', () => {
+  const pages: Array<[string, string, string]> = [
+    ['privacy and data', '/me/privacy', 'Privacy and data'],
+    ['delete my account', '/me/delete', 'Delete my account'],
+    ['account closed', '/account-closed?removeAt=2026-12-20T10:00:00Z', 'Your account is closed'],
+    ['terms and privacy policy', '/privacy', 'Terms and Privacy Policy'],
+  ];
+
+  for (const [name, path, heading] of pages) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+        await expectAccessible(page);
+      });
+    }
+
+    for (const width of [320, 390, 768]) {
+      test(`${name} fits ${width} px without sideways scroll`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.setViewportSize({ width, height: 760 });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow).toBe(0);
+      });
+    }
+  }
+
+  test('the sign-up link to the policy works', async ({ page }) => {
+    await page.goto('/signup');
+    await page.getByRole('link', { name: 'Terms and Privacy Policy' }).click();
+    await expect(page.getByRole('heading', { name: 'Terms and Privacy Policy', level: 1 })).toBeVisible();
+  });
+
+  test('downloads my data as a file', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/me/export', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ trips: [] }) }),
+    );
+    await page.goto('/me/privacy');
+
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: /Download my data/ }).click();
+
+    expect((await download).suggestedFilename()).toBe('squadmap-data.json');
+    await expect(page.getByText('Your data is saved as squadmap-data.json.')).toBeVisible();
+  });
+
+  test('deletes the account with the keyboard, then says when it goes for good', async ({ page }) => {
+    await asHostWithATrip(page);
+    let deleted = false;
+    await page.route('**/api/v1/me', (route) => {
+      if (route.request().method() !== 'DELETE') return route.fallback();
+      deleted = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ removeAt: '2026-12-20T10:00:00Z' }),
+      });
+    });
+    await page.route('**/api/v1/auth/logout', (route) => route.fulfill({ status: 204 }));
+    await page.goto('/me/privacy');
+
+    await page.getByRole('link', { name: 'Delete my account' }).click();
+    await page.getByLabel('Your password').fill('correct horse battery');
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('heading', { name: 'Your account is closed' })).toBeVisible();
+    await expect(page.getByText(/deleted for good on 20 December 2026/)).toBeVisible();
+    expect(deleted).toBe(true);
+  });
+});
+
 test.describe('layout', () => {
   for (const width of [320, 360, 390, 430, 768, 1024, 1440]) {
     test(`no sideways scroll at ${width} px`, async ({ page }) => {

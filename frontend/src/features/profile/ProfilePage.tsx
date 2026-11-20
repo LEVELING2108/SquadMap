@@ -8,6 +8,7 @@ import {
   Mail,
   Pencil,
   Settings as SettingsIcon,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import heroLight from '../../assets/illustrations/hero.svg';
@@ -139,6 +140,7 @@ export function ProfilePage() {
               tile="bg-amber-bg text-amber"
               count={unreadAlerts}
             />
+            <Row to="/me/privacy" label="Privacy and data" Icon={ShieldCheck} tile="bg-sea-bg text-sea-d" />
             <Row to="/me/settings" label="Settings" Icon={SettingsIcon} tile="bg-track text-ink" />
             <InstallRow />
           </ul>

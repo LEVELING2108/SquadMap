@@ -26,6 +26,8 @@ type SessionState = {
   accessToken: string | null;
   /** True when this device held a guest pass whose trip is now over, so the guest can be told why. */
   guestEnded?: boolean;
+  /** True after a log in that cancelled the account's pending deletion, until the notice is closed. */
+  accountRestored?: boolean;
 };
 
 export const useSession = create<SessionState>(() => ({
@@ -66,6 +68,8 @@ export function setSignedIn(response: AuthResponse): void {
     user: response.user,
     guest: null,
     accessToken: response.accessToken,
+    // Kept until the notice is closed; a later refresh doesn't clear it.
+    ...(response.restored ? { accountRestored: true } : {}),
   });
 }
 

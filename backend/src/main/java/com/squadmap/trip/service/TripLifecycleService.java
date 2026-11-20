@@ -122,6 +122,25 @@ public class TripLifecycleService {
     }
 
     /**
+     * The account is being deleted: trips it hosts end for everyone, and it leaves the others, so its
+     * location stops being shared everywhere at once.
+     *
+     * @return how many trips it ended or left
+     */
+    @Transactional
+    public int leaveEverything(UUID userId) {
+        List<Trip> live = trips.findLiveForUser(userId, clock.instant());
+        for (Trip trip : live) {
+            if (trip.getHostId().equals(userId)) {
+                end(trip.getId(), userId);
+            } else {
+                leave(trip.getId(), Caller.user(userId));
+            }
+        }
+        return live.size();
+    }
+
+    /**
      * Every 30 seconds, records trips whose time has run out and ends their location consent. Safe to run
      * on several instances at once; each step only ever changes rows that still need it.
      */
