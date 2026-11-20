@@ -17,6 +17,7 @@ import { TripChat } from '../chat/TripChat';
 import { useTyping } from '../chat/useTyping';
 import { refreshSession, signOut, useSession } from '../auth/session';
 import { useSettings, useUpdateSettings, type MapStyle } from '../profile/settingsApi';
+import { useTripSummary } from '../trip/summaryApi';
 import { shortPlace, tripKeys, useTrip } from '../trip/tripQueries';
 import type { Trip } from '../trip/types';
 import { EndTripDialog } from './EndTripDialog';
@@ -53,7 +54,7 @@ import type { LiveError, TripEvent } from './liveTypes';
 import { LivePeekSheet } from './LivePeekSheet';
 import { LiveTopBar } from './LiveTopBar';
 import { ShareLocationCard } from './ShareLocationCard';
-import { TripEndedCard } from './TripEndedCard';
+import { ArrivedSheet } from './ArrivedSheet';
 import { useLocationSharing } from './useLocationSharing';
 import { useTripSocket } from './useTripSocket';
 
@@ -84,6 +85,19 @@ function saveDismissed(key: string) {
   } catch {
     // Without storage the warning may show again after a reload, which is harmless.
   }
+}
+
+/** "You made it!" shows once per trip on this device; later arrivals (after leaving the spot) are a toast. */
+const ARRIVED_KEY = 'squadmap.arrivedShown';
+
+function firstArrival(tripId: string): boolean {
+  try {
+    if (sessionStorage.getItem(ARRIVED_KEY) === tripId) return false;
+    sessionStorage.setItem(ARRIVED_KEY, tripId);
+  } catch {
+    // Without storage it may show again after a reload, which is harmless.
+  }
+  return true;
 }
 
 /** What a trip event says to everyone, in a short toast. */
@@ -117,10 +131,15 @@ function themeColor(name: string, fallback: string): string {
  * The live map (D1): everyone on the trip moving on one map, in real time. It loads who is on the trip,
  * keeps a live connection for their moves, and shares this phone's location once the person has agreed.
  * With `view="eta"` (D3) the sheet lists who's on the way, with `view="friend"` (D2) one friend's details,
- * with `view="chat"` (D4) the trip chat, and with `view="menu"` (D5) the trip menu; the map and connection
- * stay the same.
+ * with `view="chat"` (D4) the trip chat, with `view="menu"` (D5) the trip menu, and with `view="arrived"`
+ * (E3) "You made it!"; the map and connection stay the same. Once the trip is over it moves on to Trip
+ * complete (E5).
  */
-export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' | 'chat' | 'menu' }) {
+export function LiveMapPage({
+  view = 'map',
+}: {
+  view?: 'map' | 'eta' | 'friend' | 'chat' | 'menu' | 'arrived';
+}) {
   const { tripId = '', memberId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -193,6 +212,10 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         refreshMembers();
         const isMe = members.data?.some((member) => member.you && member.memberId === event.memberId);
         const where = destinationName ? ` at ${destinationName}` : '';
+        if (isMe && destinationName && firstArrival(tripId)) {
+          navigate(`/trip/${tripId}/arrived`);
+          return;
+        }
         setToast(isMe ? `You arrived${where}` : `${event.displayName ?? 'Someone'} arrived${where}`);
         return;
       }
@@ -229,6 +252,11 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
 
   const me = members.data?.find((member) => member.you);
   const friends = useMemo(() => (members.data ?? []).filter((member) => !member.you), [members.data]);
+  const arrivedSummary = useTripSummary(tripId, view === 'arrived' && !tripOver);
+  // Friends still on the way, in whole minutes, for "Everyone else is 1 to 12 min behind".
+  const behindMinutes = friends
+    .filter((friend) => !friend.arrivedAt && etas[friend.memberId])
+    .map((friend) => Math.round((etas[friend.memberId]?.durationS ?? 0) / 60));
   const { sharing, you } = useLocationSharing({
     // Paused: no location is read at all, not just not sent.
     enabled: !tripOver && me?.sharing === true && !me.pausedAt,
@@ -237,10 +265,13 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
   });
 
   // A guest leaving ends their pass, so this device forgets them; a member goes back home.
-  const leave = useMutation({
+  const leave = useMutation<void, Error, { finish: boolean }>({
     mutationFn: () => api<void>(`/trips/${encodeURIComponent(tripId)}/members/me`, { method: 'DELETE' }),
-    onSuccess: async () => {
-      if (status === 'guest') {
+    onSuccess: async (_data, how) => {
+      // Finishing from "You made it!" shows how the trip went; the guest's pass still reads it.
+      if (how.finish) {
+        navigate(`/trip/${tripId}/ended`, { replace: true });
+      } else if (status === 'guest') {
         await signOut();
         navigate('/', { replace: true });
       } else {
@@ -345,9 +376,9 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
     setToast(`Sharing now ends at ${formatClock(next.expiresAt, settings.timeFormat)}`);
   }
 
-  // An ended trip has no menu: whoever ended it, or wherever they heard it, sees the ended card on the map.
+  // Once the trip is over, everyone moves on to how it went. The chat stays open to read.
   useEffect(() => {
-    if (tripOver && view === 'menu') navigate(`/trip/${tripId}`, { replace: true });
+    if (tripOver && view !== 'chat') navigate(`/trip/${tripId}/ended`, { replace: true });
   }, [tripOver, view, tripId, navigate]);
 
   const notFound = trip.error instanceof ApiError && trip.error.status === 404;
@@ -391,29 +422,32 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         className={`absolute inset-0 ${socket.connection === 'offline' ? 'grayscale' : ''}`}
       />
 
-      <LiveTopBar
-        code={code}
-        status={statusText}
-        live={!tripOver && socket.connection === 'live'}
-        back={
-          view !== 'map'
-            ? { to: `/trip/${tripId}`, label: 'Back to the map' }
-            : status === 'signedIn'
-              ? { to: '/home', label: 'Back to home' }
-              : null
-        }
-        menuHref={view !== 'menu' && trip.data && !tripOver ? `/trip/${tripId}/menu` : null}
-        heading={
-          view === 'chat'
-            ? {
-                title: 'Trip chat',
-                caption: members.data
-                  ? `${members.data.length} ${members.data.length === 1 ? 'friend' : 'friends'}`
-                  : '',
-              }
-            : undefined
-        }
-      />
+      {/* "You made it!" covers the whole screen, so nothing behind it can be reached. */}
+      {view !== 'arrived' && (
+        <LiveTopBar
+          code={code}
+          status={statusText}
+          live={!tripOver && socket.connection === 'live'}
+          back={
+            view !== 'map'
+              ? { to: `/trip/${tripId}`, label: 'Back to the map' }
+              : status === 'signedIn'
+                ? { to: '/home', label: 'Back to home' }
+                : null
+          }
+          menuHref={view !== 'menu' && trip.data && !tripOver ? `/trip/${tripId}/menu` : null}
+          heading={
+            view === 'chat'
+              ? {
+                  title: 'Trip chat',
+                  caption: members.data
+                    ? `${members.data.length} ${members.data.length === 1 ? 'friend' : 'friends'}`
+                    : '',
+                }
+              : undefined
+          }
+        />
+      )}
 
       <div className="absolute inset-x-0 top-[88px] z-10 flex flex-col items-center gap-2 px-3">
         <div aria-live="polite" className="contents">
@@ -470,7 +504,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
         )}
       </div>
 
-      {!tripOver && view !== 'chat' && view !== 'menu' && (
+      {!tripOver && view !== 'chat' && view !== 'menu' && view !== 'arrived' && (
         <div
           className="absolute right-3 z-10 flex flex-col gap-2"
           // Above Mapbox's credits button, which sits in the map's bottom-right corner.
@@ -542,18 +576,19 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
             </ButtonLink>
           </section>
         )
-      ) : tripOver ? (
-        <section
+      ) : tripOver ? null : view === 'arrived' ? (
+        <ArrivedSheet
           ref={sheetRef}
-          aria-labelledby="live-title"
-          className="glass-strong absolute inset-x-3 bottom-3 z-10 rounded-sheet px-5 pt-5 pb-4"
-        >
-          <TripEndedCard
-            guest={status === 'guest'}
-            onDone={() => void signOut().then(() => navigate('/', { replace: true }))}
-            chatHref={chatOn ? `/trip/${tripId}/chat` : undefined}
-          />
-        </section>
+          destination={destinationName ?? 'the destination'}
+          summary={arrivedSummary.data ?? null}
+          behindMinutes={behindMinutes}
+          friends={friends.length}
+          unit={settings.distanceUnit}
+          finishing={leave.isPending}
+          finishError={leave.error}
+          onKeepSharing={() => navigate(`/trip/${tripId}`, { replace: true })}
+          onFinish={() => (isHost ? setDialog('end') : leave.mutate({ finish: true }))}
+        />
       ) : view === 'menu' && trip.data ? (
         <TripMenu
           ref={sheetRef}
@@ -704,7 +739,7 @@ export function LiveMapPage({ view = 'map' }: { view?: 'map' | 'eta' | 'friend' 
               open={dialog === 'leave'}
               pending={leave.isPending}
               error={leave.error}
-              onLeave={() => leave.mutate()}
+              onLeave={() => leave.mutate({ finish: false })}
               onClose={() => setDialog(null)}
             />
           )}

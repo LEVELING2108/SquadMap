@@ -50,3 +50,16 @@ export function names(list: string[]): string {
   if (list.length === 3) return `${list[0]}, ${list[1]} and ${list[2]}`;
   return `${list[0]}, ${list[1]} and ${list.length - 2} more`;
 }
+
+/** "Everyone else is 1 to 12 min behind." */
+export function behindText(minutes: number[], friends: number): string {
+  if (friends === 0) return '';
+  if (minutes.length === 0) return ' Everyone else is here or not sharing.';
+  const low = Math.max(1, Math.min(...minutes));
+  const high = Math.max(1, Math.max(...minutes));
+  if (minutes.length === 1)
+    return ` ${friends === 1 ? 'Your friend is' : 'One friend is still'} ${low} min behind.`;
+  return low === high
+    ? ` Everyone else is ${low} min behind.`
+    : ` Everyone else is ${low} to ${high} min behind.`;
+}

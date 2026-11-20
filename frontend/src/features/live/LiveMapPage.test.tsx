@@ -56,6 +56,20 @@ function serve(members: LiveMember[], extra: Routes = {}) {
       jsonResponse(200, { ...sampleTrip, expiresAt: new Date(Date.now() + 3 * 3_600_000).toISOString() }),
     'GET /trips/trip-1/members': () => jsonResponse(200, members),
     'GET /trips/trip-1/eta': () => jsonResponse(200, []),
+    'GET /trips/trip-1/summary': () =>
+      jsonResponse(200, {
+        id: 'trip-1',
+        name: sampleTrip.name,
+        destination: sampleTrip.destination,
+        status: 'ended',
+        role: 'host',
+        startsAt: sampleTrip.startsAt,
+        endedAt: new Date().toISOString(),
+        durationSeconds: 1_140,
+        friendCount: 1,
+        distanceM: 8_100,
+        arrivedAt: null,
+      }),
     'GET /trips/trip-1/messages?limit=50': () =>
       jsonResponse(200, { items: [], nextBefore: null, unread: 0, memberId: 'm-priya' }),
     ...extra,
@@ -283,9 +297,9 @@ describe('Live map', () => {
 
     act(() => client.deliver(EVENTS, { type: 'TRIP_ENDED', at: 'x' }));
 
-    expect(await screen.findByRole('heading', { name: 'This trip has ended' })).toBeInTheDocument();
-    const ended = screen.getByRole('region', { name: 'This trip has ended' });
-    expect(within(ended).getByRole('link', { name: 'Back to home' })).toBeInTheDocument();
+    // Everyone moves on to how the trip went.
+    expect(await screen.findByRole('heading', { name: 'Trip complete' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to home' })).toBeInTheDocument();
     expect(useLiveStore.getState().positions).toEqual({});
     expect(client.active).toBe(false);
   });
@@ -297,7 +311,7 @@ describe('Live map', () => {
 
     act(() => client.refuse('TRIP_EXPIRED'));
 
-    expect(await screen.findByRole('heading', { name: 'This trip has ended' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Trip complete' })).toBeInTheDocument();
   });
 
   it('signs in again before reconnecting when the token ran out', async () => {
