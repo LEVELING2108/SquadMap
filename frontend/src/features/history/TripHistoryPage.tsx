@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { distanceText } from '../trip/summaryApi';
 import { Plane } from 'lucide-react';
 import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
@@ -38,7 +39,8 @@ function TripCard({ trip }: { trip: HistoryTrip }) {
   const when = live
     ? `Live until ${formatClock(trip.expiresAt, settings.timeFormat)}`
     : whenLabel(trip.startsAt);
-  const details = `${when} · ${friendsLabel(trip)}`;
+  const moved = !live && trip.distanceM !== null ? distanceText(trip.distanceM, settings.distanceUnit) : null;
+  const details = [when, moved, friendsLabel(trip)].filter(Boolean).join(' · ');
 
   const body = (
     <>
@@ -61,19 +63,17 @@ function TripCard({ trip }: { trip: HistoryTrip }) {
     </>
   );
 
-  // A running trip opens; a finished one has nothing to open until trip summaries exist.
+  // A running trip opens its map (hosts see the invite); a finished one opens how it went.
+  const to = live
+    ? trip.role === 'host'
+      ? `/trip/${trip.id}/invite`
+      : `/trip/${trip.id}`
+    : `/trip/${trip.id}/ended`;
   return (
     <li>
-      {live ? (
-        <Link
-          to={trip.role === 'host' ? `/trip/${trip.id}/invite` : `/trip/${trip.id}`}
-          className="glass-strong block overflow-hidden rounded-card"
-        >
-          {body}
-        </Link>
-      ) : (
-        <article className="glass-strong overflow-hidden rounded-card">{body}</article>
-      )}
+      <Link to={to} className="glass-strong block overflow-hidden rounded-card">
+        {body}
+      </Link>
     </li>
   );
 }

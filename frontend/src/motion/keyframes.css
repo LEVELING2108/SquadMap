@@ -92,6 +92,23 @@
   animation: sheet-up var(--dur-slow) var(--ease) both;
 }
 
+/* A rubber stamp coming down: from a little large and faint to its place. Once. */
+@keyframes stamp-down {
+  from {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.motion-stamp {
+  animation: stamp-down var(--dur-slow) var(--ease) both;
+  animation-delay: var(--motion-delay, 0ms);
+}
+
 /* Ambient loops */
 .motion-bob {
   animation: bob 2.6s ease-in-out infinite alternate;
