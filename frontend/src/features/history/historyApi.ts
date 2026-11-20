@@ -18,6 +18,8 @@ export type HistoryTrip = {
   friendCount: number;
   /** Up to 5 of their names. */
   friends: string[];
+  /** How far you moved while sharing, in metres, once the trip is over; null if you never shared. */
+  distanceM: number | null;
 };
 
 type HistoryPage = { items: HistoryTrip[]; nextBefore: string | null };

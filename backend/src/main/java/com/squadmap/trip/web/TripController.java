@@ -11,10 +11,12 @@ import com.squadmap.trip.dto.CreateTripRequest;
 import com.squadmap.trip.dto.ExtendTripRequest;
 import com.squadmap.trip.dto.InviteResponse;
 import com.squadmap.trip.dto.TripResponse;
+import com.squadmap.trip.dto.TripSummaryResponse;
 import com.squadmap.trip.domain.Destination;
 import com.squadmap.trip.service.DestinationResolver;
 import com.squadmap.trip.service.TripLifecycleService;
 import com.squadmap.trip.service.TripService;
+import com.squadmap.trip.service.TripSummaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -46,10 +48,13 @@ public class TripController {
     private final RateLimiter rateLimiter;
     private final IdempotencyKeys idempotency;
     private final DestinationResolver destinations;
+    private final TripSummaryService summaries;
 
     public TripController(TripService trips, TripLifecycleService lifecycle, RateLimiter rateLimiter,
-                          IdempotencyKeys idempotency, DestinationResolver destinations) {
+                          IdempotencyKeys idempotency, DestinationResolver destinations,
+                          TripSummaryService summaries) {
         this.trips = trips;
+        this.summaries = summaries;
         this.destinations = destinations;
         this.lifecycle = lifecycle;
         this.rateLimiter = rateLimiter;
@@ -98,6 +103,15 @@ public class TripController {
     @Operation(summary = "The invite for a trip I'm on: code, link and boarding-pass details")
     public InviteResponse invite(@AuthenticationPrincipal Jwt token, @PathVariable UUID tripId) {
         return trips.invite(tripId, CurrentUser.id(token));
+    }
+
+    @GetMapping("/{tripId}/summary")
+    @Operation(summary = "My summary of a trip",
+            description = "Time, friends, how far I moved while sharing (metres; null if I never shared) and "
+                    + "when I arrived. Works while the trip runs, after it ends and after I left. Open to a "
+                    + "guest for their own trip, for 24 hours after it ends. No places: only totals.")
+    public TripSummaryResponse summary(@AuthenticationPrincipal Jwt token, @PathVariable UUID tripId) {
+        return summaries.summary(tripId, Caller.from(token));
     }
 
     @PostMapping("/{tripId}/extend")

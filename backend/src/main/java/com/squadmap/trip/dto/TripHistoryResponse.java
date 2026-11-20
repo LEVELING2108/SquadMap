@@ -21,6 +21,8 @@ public record TripHistoryResponse(List<Item> items, UUID nextBefore) {
      * @param role        the caller's role on the trip
      * @param friendCount everyone else who was on the trip at any point
      * @param friends     up to 5 of their names, in the order they joined
+     * @param distanceM   how far the caller moved while sharing, in metres, saved when the trip ended or
+     *                    they left; null while it runs or if they never shared
      */
     public record Item(
             UUID id,
@@ -32,6 +34,7 @@ public record TripHistoryResponse(List<Item> items, UUID nextBefore) {
             TripStatus status,
             MemberRole role,
             int friendCount,
-            List<String> friends) {
+            List<String> friends,
+            Integer distanceM) {
     }
 }

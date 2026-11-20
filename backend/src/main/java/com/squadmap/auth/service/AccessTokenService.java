@@ -11,12 +11,16 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
 /** Issues the short-lived access tokens the web app sends as a bearer token. */
 @Service
 public class AccessTokenService {
+
+    /** How long after its trip a guest's pass can still read it (its summary, mostly). */
+    public static final Duration GUEST_READ_AFTER_END = Duration.ofHours(24);
 
     private final JwtEncoder encoder;
     private final AuthProperties properties;
@@ -44,8 +48,9 @@ public class AccessTokenService {
     }
 
     /**
-     * A guest's pass: it names one trip member on one trip, and stops working when the trip is
-     * due to end. It grants nothing outside that trip.
+     * A guest's pass: it names one trip member on one trip and grants nothing outside it. It stays valid
+     * for {@link #GUEST_READ_AFTER_END} after the trip is due to end, so the guest can still see the trip's
+     * summary; everything that changes a trip or shares a location requires it to be running.
      */
     public IssuedToken issueForGuest(UUID memberId, UUID tripId, Instant tripExpiresAt) {
         Instant now = clock.instant();
@@ -53,7 +58,7 @@ public class AccessTokenService {
                 .issuer(properties.issuer())
                 .subject(memberId.toString())
                 .issuedAt(now)
-                .expiresAt(tripExpiresAt)
+                .expiresAt(tripExpiresAt.plus(GUEST_READ_AFTER_END))
                 .claim(TokenKind.CLAIM, TokenKind.GUEST.claimValue())
                 .claim(Caller.TRIP_CLAIM, tripId.toString())
                 .build();

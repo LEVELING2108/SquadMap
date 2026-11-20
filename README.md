@@ -5,7 +5,7 @@ Get there together. One link, one live map, everyone's ETA.
 SquadMap is a real-time group location-sharing web app. A host starts a trip and shares a link, friends join as guests with just a name, and everyone sees each other live on one map with shared arrival times. Sharing stops automatically when the trip ends.
 
 > Status: early development. Accounts, trips, invites, the live map with ETAs, trip chat, the trip
-> menu, the installable app (PWA) and push notifications work locally. Not deployed yet.
+> menu, the installable app (PWA), push notifications and trip summaries work locally. Not deployed yet.
 
 ## Planned stack
 
@@ -33,7 +33,8 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | 8. Try the trip menu (as in step 6) | As the host, open the menu (top right on the map), extend sharing by 30 minutes, then end the trip | The guest's window says "The host added more time", and after ending both windows show "This trip has ended" |
 | 9. Try pausing (as in step 6, with both windows sharing) | In the guest's window, open the menu and turn on Pause my location | The host's window says "Aman paused their location" and shows the dot dimmed with "Paused"; Resume in the guest's window brings it back |
 | 10. Try the installable app | `npm run build`, then `npm run preview` in `frontend` (stop `npm run dev` first; both use port 5480) | Chrome shows an install icon in the address bar; installed, it opens in its own window and still opens with the network turned off (DevTools, Network, Offline) |
-| 11. Try push notifications (as in step 10, plus step 6) | `node infra/scripts/vapid-keys.mjs >> backend/.env.local` once, restart the API, then in the built app open Alerts and turn on Notifications on this device | Allow the browser's question; when a friend joins your trip, a "… joined your trip" notification appears even with the app closed, and tapping it opens the trip |
+| 11. Try trip summaries (as in step 6, on a trip with a destination) | Share your location in the guest's window and walk or drive to the destination (or, with Chrome DevTools, Sensors, set the location next to it) | "You made it!" opens with your distance and time; when the host ends the trip, both windows show Trip complete, and the trip in Trip history opens it again |
+| 12. Try push notifications (as in step 10, plus step 6) | `node infra/scripts/vapid-keys.mjs >> backend/.env.local` once, restart the API, then in the built app open Alerts and turn on Notifications on this device | Allow the browser's question; when a friend joins your trip, a "… joined your trip" notification appears even with the app closed, and tapping it opens the trip |
 
 The live map needs location permission in the browser. Opening the app on `localhost` counts as a secure
 page, so browsers allow it there; on another address (say, a phone on your Wi-Fi) they need HTTPS.

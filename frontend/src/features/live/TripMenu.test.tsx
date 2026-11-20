@@ -45,6 +45,20 @@ function serve(trip: Trip, routes: Record<string, Answer> = {}) {
     'GET /trips/trip-1': () => jsonResponse(200, current),
     'GET /trips/trip-1/members': () => jsonResponse(200, [priya, aman]),
     'GET /trips/trip-1/eta': () => jsonResponse(200, []),
+    'GET /trips/trip-1/summary': () =>
+      jsonResponse(200, {
+        id: 'trip-1',
+        name: current.name,
+        destination: current.destination,
+        status: 'ended',
+        role: current.role,
+        startsAt: current.startsAt,
+        endedAt: new Date().toISOString(),
+        durationSeconds: 600,
+        friendCount: 1,
+        distanceM: null,
+        arrivedAt: null,
+      }),
     'GET /trips/trip-1/messages?limit=50': () =>
       jsonResponse(200, { items: [], nextBefore: null, unread: 0, memberId: 'm-priya' }),
     ...routes,
@@ -243,11 +257,11 @@ describe('End trip', () => {
     ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'End trip' }));
 
-    expect(await screen.findByRole('heading', { name: 'This trip has ended' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Trip complete' })).toBeInTheDocument();
     expect(calls('POST /api/v1/trips/trip-1/end')).toHaveLength(1);
   });
 
-  it('goes back to the map when the trip ends while the menu is open', async () => {
+  it('moves on to Trip complete when the trip ends while the menu is open', async () => {
     const server = serve(tripWith(3 * HOUR, { role: 'member' }));
     const client = await open('/trip/trip-1/menu');
     await screen.findByRole('region', { name: 'Saturday at Phoenix' });
@@ -255,8 +269,8 @@ describe('End trip', () => {
     server.setTrip(tripWith(3 * HOUR, { role: 'member', status: 'ended' }));
     act(() => client.deliver(EVENTS, { type: 'TRIP_ENDED', at: '' }));
 
-    expect(await screen.findByRole('heading', { name: 'This trip has ended' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/trip\/trip-1$/));
+    expect(await screen.findByRole('heading', { name: 'Trip complete' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/trip\/trip-1\/ended$/));
   });
 
   it('keeps sharing when the host changes their mind', async () => {

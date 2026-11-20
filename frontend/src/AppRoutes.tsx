@@ -21,6 +21,7 @@ import { ChooseOnMapPage } from './features/newTrip/ChooseOnMapPage';
 import { DestinationPage } from './features/newTrip/DestinationPage';
 import { NewTripPage } from './features/newTrip/NewTripPage';
 import { InvitePage } from './features/trip/InvitePage';
+import { TripCompletePage } from './features/trip/TripCompletePage';
 import { LiveMapPage } from './features/live/LiveMapPage';
 import { WelcomePage } from './features/welcome/WelcomePage';
 
@@ -177,6 +178,22 @@ export function AppRoutes() {
         element={
           <RequireAuth allowGuest>
             <LiveMapPage view="menu" />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/:tripId/arrived"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="arrived" />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/:tripId/ended"
+        element={
+          <RequireAuth allowGuest>
+            <TripCompletePage />
           </RequireAuth>
         }
       />

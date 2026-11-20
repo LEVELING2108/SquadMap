@@ -1237,6 +1237,21 @@ test.describe('theme', () => {
  * Plays the server's side of the live connection: answers CONNECT, remembers subscriptions, and lets a
  * test push messages to the page or drop the connection.
  */
+/** How the sample trip went, for the host (GET /trips/trip-1/summary). */
+const sampleSummary = {
+  id: 'trip-1',
+  name: 'Saturday at Phoenix',
+  destination: { name: 'Phoenix Marketcity, Viman Nagar', lat: 18.5622, lng: 73.9167 },
+  status: 'ended',
+  role: 'host',
+  startsAt: '2026-11-19T13:10:00Z',
+  endedAt: '2026-11-19T13:29:00Z',
+  durationSeconds: 1140,
+  friendCount: 2,
+  distanceM: 8100,
+  arrivedAt: null,
+};
+
 async function fakeLiveServer(page: Page) {
   const subscriptions = new Map<string, string>();
   let socket: import('@playwright/test').WebSocketRoute | null = null;
@@ -1297,6 +1312,13 @@ async function fakeLiveServer(page: Page) {
 /** The host on their trip with Aman (sharing, with a spot) and Rohan (not sharing yet). */
 async function asHostOnTheLiveMap(page: Page) {
   await asHostWithATrip(page);
+  await page.route('**/api/v1/trips/trip-1/summary', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(sampleSummary),
+    }),
+  );
   await page.route('**/api/v1/trips/trip-1/members', (route) =>
     route.fulfill({
       status: 200,
@@ -1524,7 +1546,8 @@ test.describe('live map', () => {
 
     server.send('/topic/trip.trip-1.events', { type: 'TRIP_ENDED', at: '' });
 
-    await expect(page.getByRole('heading', { name: 'This trip has ended' })).toBeVisible();
+    await expect(page).toHaveURL(/\/trip\/trip-1\/ended$/);
+    await expect(page.getByRole('heading', { name: 'Trip complete' })).toBeVisible();
   });
 
   for (const width of [320, 390, 768]) {
@@ -1780,8 +1803,8 @@ test.describe('trip menu', () => {
 
     await page.getByRole('button', { name: 'End trip for everyone' }).click();
     await page.getByRole('button', { name: 'End trip', exact: true }).click();
-    await expect(page).toHaveURL(/\/trip\/trip-1$/);
-    await expect(page.getByRole('heading', { name: 'This trip has ended' })).toBeVisible();
+    await expect(page).toHaveURL(/\/trip\/trip-1\/ended$/);
+    await expect(page.getByRole('heading', { name: 'Trip complete' })).toBeVisible();
   });
 
   for (const width of [320, 390, 768]) {
@@ -1884,6 +1907,90 @@ test.describe('pause my location', () => {
     await expect(page.getByText('Your location is paused')).toHaveCount(0);
     expect(pauses).toEqual([false, true, false]);
   });
+});
+
+test.describe('trip summaries', () => {
+  async function onTripComplete(page: Page) {
+    const server = await asHostOnTheLiveMap(page);
+    await page.route('**/api/v1/trips/trip-1', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...signedInTrip, status: 'ended' }),
+      }),
+    );
+    return server;
+  }
+
+  /** The host reaches the destination while friends are still on the way. */
+  async function arriving(page: Page) {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+    server.send('/topic/trip.trip-1.events', {
+      type: 'ARRIVED',
+      memberId: 'm-priya',
+      displayName: 'Priya',
+      at: '',
+    });
+    await expect(page.getByRole('heading', { name: 'You made it!' })).toBeVisible();
+    return server;
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`Trip complete has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await onTripComplete(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/ended');
+      await expect(page.getByRole('region', { name: 'Trip summary' })).toContainText('8.1 km');
+      await expectAccessible(page);
+    });
+
+    test(`You made it! has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await arriving(page);
+      await expect(page.getByRole('region', { name: 'You made it!' })).toContainText('8.1 km');
+      await expectAccessible(page);
+    });
+  }
+
+  test('Trip complete shows the numbers and leads on', async ({ page }) => {
+    await onTripComplete(page);
+    await page.goto('/trip/trip-1/ended');
+
+    const pass = page.getByRole('region', { name: 'Trip summary' });
+    await expect(pass).toContainText('8.1 km');
+    await expect(pass).toContainText('19 min');
+    await expect(pass).toContainText('Phoenix Marketcity');
+    await page.getByRole('link', { name: 'View trip history' }).click();
+    await expect(page).toHaveURL(/\/me\/history$/);
+  });
+
+  test('You made it! keeps sharing, with the keyboard', async ({ page }) => {
+    await arriving(page);
+    await expect(page).toHaveURL(/\/trip\/trip-1\/arrived$/);
+
+    await page.getByRole('button', { name: 'Keep sharing' }).focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/trip\/trip-1$/);
+    await expect(page.getByRole('heading', { name: 'You made it!' })).toHaveCount(0);
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`both fit ${width} px without sideways scroll`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 760 });
+      await arriving(page);
+      const overflow = () =>
+        page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(await overflow()).toBe(0);
+
+      await onTripComplete(page);
+      await page.goto('/trip/trip-1/ended');
+      await expect(page.getByRole('region', { name: 'Trip summary' })).toContainText('8.1 km');
+      expect(await overflow()).toBe(0);
+    });
+  }
 });
 
 test.describe('layout', () => {

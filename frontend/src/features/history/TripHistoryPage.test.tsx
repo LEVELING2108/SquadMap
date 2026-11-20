@@ -22,6 +22,7 @@ function trip(overrides: Partial<HistoryTrip>): HistoryTrip {
     role: 'host',
     friendCount: 3,
     friends: ['Aman', 'Sourav', 'Rohan'],
+    distanceM: null,
     ...overrides,
   };
 }
@@ -60,7 +61,7 @@ describe('Trip history', () => {
           friendCount: 1,
           friends: ['Aman'],
         }),
-        trip({ id: 'b', name: 'Saturday at Phoenix' }),
+        trip({ id: 'b', name: 'Saturday at Phoenix', distanceM: 8_100 }),
         trip({ id: 'c', name: 'Solo walk', destination: null, friendCount: 0, friends: [] }),
       ],
       nextBefore: null,
@@ -70,7 +71,7 @@ describe('Trip history', () => {
     const cards = within(await screen.findByRole('list', { name: 'Trips' })).getAllByRole('listitem');
     expect(cards.map((card) => card.textContent)).toEqual([
       `Running nowLive until ${formatClock('2026-11-17T16:00:00Z', '12h')} · With AmanLive`,
-      'Saturday at PhoenixToday · 3 friendsDone',
+      'Saturday at PhoenixToday · 8.1 km · 3 friendsDone',
       'Solo walkToday · Just youDone',
     ]);
   });
@@ -89,7 +90,7 @@ describe('Trip history', () => {
     expect(formatClock('2026-11-17T16:00:00Z', '24h')).not.toMatch(/AM|PM/);
   });
 
-  it('opens a running trip: the invite for its host, the trip for a member', async () => {
+  it('opens a running trip (the invite for its host, the trip for a member) and a finished one’s summary', async () => {
     serveHistory({
       items: [
         trip({ id: 'a', name: 'Mine', status: 'active', endedAt: null, role: 'host' }),
@@ -102,8 +103,7 @@ describe('Trip history', () => {
 
     expect(await screen.findByRole('link', { name: /Mine/ })).toHaveAttribute('href', '/trip/a/invite');
     expect(screen.getByRole('link', { name: /Joined/ })).toHaveAttribute('href', '/trip/b');
-    // A finished trip has no page of its own yet, so it is not a link.
-    expect(screen.queryByRole('link', { name: /Over/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Over/ })).toHaveAttribute('href', '/trip/c/ended');
   });
 
   it('filters to this month and to the friend you travel with most', async () => {

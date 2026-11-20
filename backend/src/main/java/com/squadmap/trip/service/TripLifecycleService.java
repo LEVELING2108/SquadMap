@@ -88,7 +88,7 @@ public class TripLifecycleService {
         trip.end(now);
         trips.flush();
         trips.withdrawConsentForFinishedTrips(now);
-        live.ended(tripId, memberIdsOn(tripId));
+        live.ended(tripId, membersOn(tripId));
         // Everyone else with an account hears it; the host ended it, so needs no telling.
         alerts.tripEnded(accountsOn(tripId).stream().filter(id -> !id.equals(trip.getHostId())).toList(),
                 tripId, trip.getName());
@@ -133,7 +133,7 @@ public class TripLifecycleService {
         int withdrawn = trips.withdrawConsentForFinishedTrips(now);
         // Only this run's own trips: the update hands each expired trip to exactly one run.
         for (Trip trip : trips.findAllById(expired)) {
-            live.ended(trip.getId(), memberIdsOn(trip.getId()));
+            live.ended(trip.getId(), membersOn(trip.getId()));
             alerts.tripEnded(accountsOn(trip.getId()), trip.getId(), trip.getName());
         }
         if (!expired.isEmpty()) {
@@ -165,9 +165,9 @@ public class TripLifecycleService {
                 .toList();
     }
 
-    /** Everyone on the trip now, guests included: whose live spots to delete when it ends. */
-    private List<UUID> memberIdsOn(UUID tripId) {
-        return members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId).stream().map(TripMember::getId).toList();
+    /** Everyone on the trip now, guests included: whose live data to delete and distance to save at the end. */
+    private List<TripMember> membersOn(UUID tripId) {
+        return members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId);
     }
 
     private Trip hostedLiveTrip(UUID tripId, UUID userId, String action) {
