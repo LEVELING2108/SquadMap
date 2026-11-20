@@ -189,9 +189,28 @@ export function restoreSession(): Promise<boolean> {
   return refreshSession();
 }
 
+const beforeSignOut: Array<() => Promise<void>> = [];
+
+/**
+ * Work to do while an account is still signed in on this device, just before it signs out (such as
+ * turning off its push notifications here). Each task gets a few seconds; signing out never waits longer.
+ */
+export function onSignOut(task: () => Promise<void>): void {
+  beforeSignOut.push(task);
+}
+
+const SIGN_OUT_TASK_MS = 3_000;
+
 /** Ends this device's session. Always signs out locally, even if the server can't be reached. */
 export async function signOut(): Promise<void> {
   const wasGuest = useSession.getState().status === 'guest';
+  if (!wasGuest) {
+    await Promise.allSettled(
+      beforeSignOut.map((task) =>
+        Promise.race([task(), new Promise<void>((resolve) => setTimeout(resolve, SIGN_OUT_TASK_MS))]),
+      ),
+    );
+  }
   try {
     await fetch(`${API_BASE}${wasGuest ? '/guest/logout' : '/auth/logout'}`, {
       method: 'POST',
