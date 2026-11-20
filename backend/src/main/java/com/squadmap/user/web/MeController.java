@@ -7,7 +7,14 @@ import com.squadmap.user.dto.SettingsResponse;
 import com.squadmap.user.dto.UpdateProfileRequest;
 import com.squadmap.user.dto.UpdateSettingsRequest;
 import com.squadmap.user.dto.UserResponse;
+import com.squadmap.user.service.DataExportService;
 import com.squadmap.user.service.UserService;
+import com.squadmap.common.ratelimit.RateLimit;
+import com.squadmap.common.ratelimit.RateLimiter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import java.util.Map;
+import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -27,9 +34,27 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     private final UserService users;
+    private final DataExportService exports;
+    private final RateLimiter rateLimiter;
 
-    public MeController(UserService users) {
+    public MeController(UserService users, DataExportService exports, RateLimiter rateLimiter) {
         this.users = users;
+        this.exports = exports;
+        this.rateLimiter = rateLimiter;
+    }
+
+    @GetMapping("/export")
+    @Operation(summary = "Download my data",
+            description = "Everything kept about my account, as a JSON file: account, settings, trips (with my "
+                    + "total distance; no locations are ever kept), location consents, chat messages still "
+                    + "stored, alerts, and how many devices get push. Five an hour.")
+    public ResponseEntity<Map<String, Object>> export(@AuthenticationPrincipal Jwt token) {
+        UUID userId = CurrentUser.id(token);
+        rateLimiter.check(RateLimit.EXPORT_PER_USER, userId.toString());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"squadmap-data.json\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(exports.export(userId));
     }
 
     @GetMapping
