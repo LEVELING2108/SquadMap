@@ -44,11 +44,19 @@ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (optional)
 SENTRY_DSN
 ```
-Frontend (build time): `VITE_API_URL`, `VITE_WS_URL`, `VITE_MAPBOX_PUBLIC_TOKEN` (URL-restricted), `VITE_SENTRY_DSN`, `VITE_VAPID_PUBLIC_KEY`.
+Frontend (build time): `VITE_API_URL`, `VITE_WS_URL`, `VITE_MAPBOX_PUBLIC_TOKEN` (URL-restricted), `VITE_SENTRY_DSN`. (The push key is fetched from the API, `GET /api/v1/me/push/key`, so it isn't built in.)
+
+Push keys: make a pair once with `node infra/scripts/vapid-keys.mjs` and keep it in the password manager
+with the rest of the env file. The API refuses to start in production without them. Changing them stops
+every device's notifications until each person turns them on again (the app does this by itself on its
+next start). The API sends only to known push services (Google, Mozilla, Apple, Microsoft), set by
+`squadmap.push.allowed-hosts`; a new browser's push host must be added there.
+Verify: after a deploy, turn on notifications on a phone and have a friend join a trip; the phone shows
+"… joined your trip".
 
 ## Containers
 - `backend/Dockerfile`: multi-stage (Maven build on JDK 21, run on a slim JRE 21), non-root user, `HEALTHCHECK` on `/actuator/health/readiness`, `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70`.
-- `frontend/Dockerfile`: build with Node 20, serve static files from Nginx with long-cache for hashed assets and `no-cache` for `index.html` and the service worker.
+- `frontend/Dockerfile`: build with Node 20, serve static files from Nginx with long-cache for hashed assets and `no-cache` for `index.html`, `sw.js` and `manifest.webmanifest`, so a new version is found on the next visit. Serve `manifest.webmanifest` as `application/manifest+json`.
 - `infra/docker-compose.prod.yml`: nginx, app (2 replicas), postgres, redis, optional prometheus + grafana. Volumes for postgres and redis. Restart policy `unless-stopped`.
 
 ## Nginx essentials
@@ -82,13 +90,15 @@ Nightly `pg_dump` to object storage, 14 day retention, weekly restore test into 
 ## Launch checklist
 - [ ] All P0 features pass acceptance criteria. No open blocker bugs.
 - [ ] Real-phone test on Android and iPhone, on mobile data, in a moving car with 3 friends.
-- [ ] Privacy Policy, Terms, grievance contact, consent copy reviewed.
+- [ ] Privacy Policy, Terms, grievance contact, consent copy reviewed. `/privacy` is a plain-language summary taken from the code; replace it with the reviewed text and add the grievance contact before launch.
 - [ ] Rate limits, CSP, CORS, cookies, HSTS verified with the ZAP scan.
 - [ ] Mapbox tokens restricted by URL, billing alerts on.
 - [ ] Backups restore tested. Runbook reviewed. On-call plan (even if it is only you).
 - [ ] Sentry receiving events from both sides. Dashboards and alerts live.
-- [ ] Store listing assets if installing as PWA: icons 192/512/maskable, screenshots from `design/screens`, short description.
+- [x] PWA icons 192/512/maskable and the Apple touch icon, generated from `frontend/public/favicon.svg` with `npm run icons`. `npm run check:pwa` (also in CI) checks the built app has them, the manifest and a service worker that caches only the app's own files.
+- [ ] Store listing assets if listing the PWA anywhere: screenshots from `design/screens`, short description.
 - [ ] Feature flags for risky features (push, Google sign-in) with a kill switch.
+- [ ] Push notifications checked on a real Android phone and an iPhone (installed to the Home Screen, iOS 16.4 or later), with the app closed.
 - [ ] Beta with 10 to 20 users for a week; collect feedback and crash reports.
 
 ## After launch (v1.1 ideas)

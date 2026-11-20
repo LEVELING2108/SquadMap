@@ -14,7 +14,10 @@ import java.util.UUID;
  * @param location  their last spot from the past few minutes, or null when there is none
  * @param arrivedAt  when they reached the destination, or null
  * @param travelMode "car", "bike" or "walk" as they chose it, or null before they choose
+ * @param pausedAt   when they paused sharing, or null while they share; a paused member's location is the
+ *                   spot from just before they paused
  */
 public record LiveMemberResponse(UUID memberId, String displayName, String color, MemberRole role, boolean you,
-                                 boolean sharing, Position location, Instant arrivedAt, String travelMode) {
+                                 boolean sharing, Position location, Instant arrivedAt, String travelMode,
+                                 Instant pausedAt) {
 }

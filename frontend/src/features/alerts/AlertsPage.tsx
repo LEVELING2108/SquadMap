@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { Bell, Check, Clock } from 'lucide-react';
 import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { describeFailure } from '../auth/formErrors';
 import { timeAgo } from '../invite/timeAgo';
 import { alertLink, alertTitle, isToday, useAlerts, useMarkRead, type Alert } from './alertsApi';
+import { PushAlerts } from './PushAlerts';
 
 function capitalised(text: string | null): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
@@ -103,6 +104,12 @@ export function AlertsPage() {
   const markRead = useMarkRead();
   const alerts = useMemo(() => list.data?.pages.flatMap((page) => page.items) ?? [], [list.data]);
   const unread = list.data?.pages[0]?.unread ?? 0;
+  const { hash } = useLocation();
+
+  // Settings links straight to the push switches.
+  useEffect(() => {
+    if (hash === '#push') document.getElementById('push')?.scrollIntoView({ block: 'start' });
+  }, [hash]);
 
   function open(alert: Alert) {
     if (!alert.read) markRead.mutate(alert.id);
@@ -154,6 +161,8 @@ export function AlertsPage() {
           {list.isFetchingNextPage ? 'Loading…' : 'Show older alerts'}
         </Button>
       )}
+
+      <PushAlerts />
 
       <BottomNav />
     </main>

@@ -8,6 +8,7 @@ import { useSession } from '../auth/session';
 import { DEFAULT_SETTINGS } from '../profile/settingsApi';
 import type { Eta, LiveMember } from './liveTypes';
 import { useLiveStore } from './liveStore';
+import { toArea } from '../../lib/map/geo';
 
 const fetchMock = vi.fn<typeof fetch>();
 const LOCATIONS = '/topic/trip.trip-1.locations';
@@ -26,6 +27,7 @@ const priya: LiveMember = {
   location: null,
   arrivedAt: null,
   travelMode: null,
+  pausedAt: null,
 };
 const aman: LiveMember = {
   memberId: 'm-aman',
@@ -37,6 +39,7 @@ const aman: LiveMember = {
   location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date().toISOString() },
   arrivedAt: null,
   travelMode: null,
+  pausedAt: null,
 };
 const rohan: LiveMember = {
   ...aman,
@@ -54,6 +57,20 @@ function serve(members: LiveMember[], extra: Routes = {}) {
       jsonResponse(200, { ...sampleTrip, expiresAt: new Date(Date.now() + 3 * 3_600_000).toISOString() }),
     'GET /trips/trip-1/members': () => jsonResponse(200, members),
     'GET /trips/trip-1/eta': () => jsonResponse(200, []),
+    'GET /trips/trip-1/summary': () =>
+      jsonResponse(200, {
+        id: 'trip-1',
+        name: sampleTrip.name,
+        destination: sampleTrip.destination,
+        status: 'ended',
+        role: 'host',
+        startsAt: sampleTrip.startsAt,
+        endedAt: new Date().toISOString(),
+        durationSeconds: 1_140,
+        friendCount: 1,
+        distanceM: 8_100,
+        arrivedAt: null,
+      }),
     'GET /trips/trip-1/messages?limit=50': () =>
       jsonResponse(200, { items: [], nextBefore: null, unread: 0, memberId: 'm-priya' }),
     ...extra,
@@ -173,6 +190,28 @@ describe('Live map', () => {
     expect(await within(friendsList()).findByText('Aman, last seen 3 min ago')).toBeInTheDocument();
   });
 
+  it('with precise location off, sends only the rough area and nothing that narrows it down', async () => {
+    const phone = withLocation();
+    serve([priya]);
+    renderApp('/trip/trip-1', { settings: { ...DEFAULT_SETTINGS, preciseLocation: false } });
+    await screen.findByText('K7QX2P9T');
+    await waitFor(() => expect(lastClient().connected).toBe(true));
+    const client = lastClient();
+    await waitFor(() => expect(phone.watchPosition).toHaveBeenCalled());
+
+    act(() =>
+      (navigator.geolocation.watchPosition as ReturnType<typeof vi.fn>).mock.calls[0]![0]({
+        coords: { latitude: 18.56123, longitude: 73.91234, accuracy: 8, speed: 4.2, heading: 90 },
+        timestamp: Date.now(),
+      } as GeolocationPosition),
+    );
+
+    const sent = JSON.parse(client.published[0]!.body);
+    expect(sent).toMatchObject({ ...toArea(18.56123, 73.91234), acc: 8, approximate: true });
+    expect(sent).not.toHaveProperty('speed');
+    expect(sent).not.toHaveProperty('heading');
+  });
+
   it('sends this phone’s location, at most once per 2 seconds', async () => {
     const phone = withLocation();
     serve([priya]);
@@ -281,9 +320,9 @@ describe('Live map', () => {
 
     act(() => client.deliver(EVENTS, { type: 'TRIP_ENDED', at: 'x' }));
 
-    expect(await screen.findByRole('heading', { name: 'This trip has ended' })).toBeInTheDocument();
-    const ended = screen.getByRole('region', { name: 'This trip has ended' });
-    expect(within(ended).getByRole('link', { name: 'Back to home' })).toBeInTheDocument();
+    // Everyone moves on to how the trip went.
+    expect(await screen.findByRole('heading', { name: 'Trip complete' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to home' })).toBeInTheDocument();
     expect(useLiveStore.getState().positions).toEqual({});
     expect(client.active).toBe(false);
   });
@@ -295,7 +334,7 @@ describe('Live map', () => {
 
     act(() => client.refuse('TRIP_EXPIRED'));
 
-    expect(await screen.findByRole('heading', { name: 'This trip has ended' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Trip complete' })).toBeInTheDocument();
   });
 
   it('signs in again before reconnecting when the token ran out', async () => {

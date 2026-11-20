@@ -183,7 +183,17 @@ public class TripService {
         MemberRole role = trip.getHostId().equals(userId) ? MemberRole.host : MemberRole.member;
         return new TripHistoryResponse.Item(trip.getId(), trip.getName(), trip.getDestination(), trip.getStartsAt(),
                 trip.getExpiresAt(), endedAt, status, role, others.size(),
-                others.stream().map(TripMember::getDisplayName).limit(HISTORY_FRIEND_NAMES).toList());
+                others.stream().map(TripMember::getDisplayName).limit(HISTORY_FRIEND_NAMES).toList(),
+                savedDistance(everyone, userId));
+    }
+
+    /** The account's saved distance on the trip, over every time they were on it; null if none was saved. */
+    private static Integer savedDistance(List<TripMember> everyone, UUID userId) {
+        return everyone.stream()
+                .filter(member -> userId.equals(member.getUserId()) && member.getDistanceM() != null)
+                .map(TripMember::getDistanceM)
+                .reduce(Integer::sum)
+                .orElse(null);
     }
 
     private TripResponse toResponse(Trip trip, MemberRole role, long memberCount) {

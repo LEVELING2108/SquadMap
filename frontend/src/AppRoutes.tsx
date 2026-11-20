@@ -21,6 +21,11 @@ import { ChooseOnMapPage } from './features/newTrip/ChooseOnMapPage';
 import { DestinationPage } from './features/newTrip/DestinationPage';
 import { NewTripPage } from './features/newTrip/NewTripPage';
 import { InvitePage } from './features/trip/InvitePage';
+import { TripCompletePage } from './features/trip/TripCompletePage';
+import { AccountClosedPage } from './features/privacy/AccountClosedPage';
+import { DeleteAccountPage } from './features/privacy/DeleteAccountPage';
+import { PolicyPage } from './features/privacy/PolicyPage';
+import { PrivacyPage } from './features/privacy/PrivacyPage';
 import { LiveMapPage } from './features/live/LiveMapPage';
 import { WelcomePage } from './features/welcome/WelcomePage';
 
@@ -134,7 +139,7 @@ export function AppRoutes() {
       <Route
         path="/trip/:tripId/invite"
         element={
-          <RequireAuth>
+          <RequireAuth allowGuest>
             <InvitePage />
           </RequireAuth>
         }
@@ -172,6 +177,48 @@ export function AppRoutes() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/trip/:tripId/menu"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="menu" />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/:tripId/arrived"
+        element={
+          <RequireAuth allowGuest>
+            <LiveMapPage view="arrived" />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trip/:tripId/ended"
+        element={
+          <RequireAuth allowGuest>
+            <TripCompletePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/privacy"
+        element={
+          <RequireAuth>
+            <PrivacyPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/delete"
+        element={
+          <RequireAuth>
+            <DeleteAccountPage />
+          </RequireAuth>
+        }
+      />
+      <Route path="/account-closed" element={<AccountClosedPage />} />
+      <Route path="/privacy" element={<PolicyPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

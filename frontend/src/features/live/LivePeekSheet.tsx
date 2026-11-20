@@ -31,6 +31,9 @@ function describe(
   if (friend.arrivedAt) return `${friend.displayName}, arrived`;
   if (!friend.sharing) return `${friend.displayName}, not sharing their location yet`;
   if (!position) return `${friend.displayName}, waiting for their location`;
+  if (friend.pausedAt) {
+    return `${friend.displayName}, paused, last seen ${staleLabel(position.ts, now) ?? 'just now'}`;
+  }
   const stale = staleLabel(position.ts, now);
   const where = stale ? `last seen ${stale}` : 'live on the map';
   return eta
@@ -45,6 +48,9 @@ export const LivePeekSheet = forwardRef<HTMLElement, LivePeekSheetProps>(functio
 ) {
   const onTheWay = friends.filter((friend) => !friend.arrivedAt);
   const notSharing = onTheWay.filter((friend) => !friend.sharing).map((friend) => friend.displayName);
+  const paused = onTheWay
+    .filter((friend) => friend.sharing && friend.pausedAt)
+    .map((friend) => friend.displayName);
   const next = onTheWay
     .flatMap((friend) => (etas[friend.memberId] ? [{ friend, eta: etas[friend.memberId]! }] : []))
     .sort((a, b) => a.eta.durationS - b.eta.durationS)[0];
@@ -61,11 +67,13 @@ export const LivePeekSheet = forwardRef<HTMLElement, LivePeekSheetProps>(functio
         ? `Next: ${next.friend.displayName} in ${formatDuration(next.eta.durationS)} · ${modeWords(next.eta.mode)}`
         : notSharing.length > 0
           ? `${names(notSharing)} ${notSharing.length === 1 ? 'hasn’t' : 'haven’t'} shared yet`
-          : onTheWay.length === 0
-            ? destination
-              ? `All at ${destination}`
-              : 'Everyone is there'
-            : 'Everyone is sharing their location';
+          : paused.length > 0
+            ? `${names(paused)} paused their location`
+            : onTheWay.length === 0
+              ? destination
+                ? `All at ${destination}`
+                : 'Everyone is there'
+              : 'Everyone is sharing their location';
 
   return (
     <section

@@ -46,6 +46,10 @@ public class User {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /** When the personal data of a deleted account was removed; the row is then an anonymous shell. */
+    @Column(name = "purged_at")
+    private Instant purgedAt;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false)
     private Map<String, Object> settings = new HashMap<>();
@@ -103,8 +107,50 @@ public class User {
         this.updatedAt = now;
     }
 
+    public String getTermsVersion() {
+        return termsVersion;
+    }
+
+    public Instant getTermsAcceptedAt() {
+        return termsAcceptedAt;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public boolean isPurged() {
+        return purgedAt != null;
+    }
+
+    /** The person asked to delete the account; it stops working now and is removed after the grace period. */
+    public void markDeleted(Instant now) {
+        this.deletedAt = now;
+        this.updatedAt = now;
+    }
+
+    /** Signing in again during the grace period keeps the account. */
+    public void restore(Instant now) {
+        this.deletedAt = null;
+        this.updatedAt = now;
+    }
+
+    /**
+     * Removes everything that identifies the person, keeping only an anonymous row so trips they hosted
+     * stay in friends' history. The password can never match again.
+     */
+    public void purge(Instant now) {
+        this.email = "deleted-" + id + "@deleted.invalid";
+        this.passwordHash = "!";
+        this.name = "Former member";
+        this.color = "#888780";
+        this.settings = new HashMap<>();
+        this.purgedAt = now;
+        this.updatedAt = now;
     }
 
     public void changePasswordHash(String newHash, Instant now) {

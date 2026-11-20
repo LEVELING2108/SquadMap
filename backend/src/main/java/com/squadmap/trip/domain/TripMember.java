@@ -48,6 +48,14 @@ public class TripMember {
     @Column(name = "travel_mode", insertable = false, updatable = false)
     private String travelMode;
 
+    /** When they paused sharing their location, or null while they share. Set by an UPDATE (see #pause). */
+    @Column(name = "paused_at", insertable = false, updatable = false)
+    private Instant pausedAt;
+
+    /** Metres moved while sharing, saved when the trip ends or they leave; null if they never shared. */
+    @Column(name = "distance_m")
+    private Integer distanceM;
+
     protected TripMember() {
         // for JPA
     }
@@ -98,6 +106,21 @@ public class TripMember {
     /** "car", "bike" or "walk" as the member chose, or null before they choose. */
     public String getTravelMode() {
         return travelMode;
+    }
+
+    public Instant getPausedAt() {
+        return pausedAt;
+    }
+
+    public Integer getDistanceM() {
+        return distanceM;
+    }
+
+    /** Saves how far they moved on the trip. Null keeps "never shared". */
+    public void recordDistance(Integer metres) {
+        if (metres != null) {
+            this.distanceM = Math.max(0, metres);
+        }
     }
 
     public boolean isActive() {

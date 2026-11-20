@@ -75,7 +75,7 @@ public class SecurityConfig {
                     // A guest's session comes from their cookie, checked by the guest session routes.
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/guest/session", "/api/v1/guest/logout").permitAll();
                     // A guest may read the one trip their pass is for; the service checks which trip.
-                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*")
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/trips/*", "/api/v1/trips/*/summary")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.DELETE, "/api/v1/trips/*/members/me")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
@@ -84,7 +84,8 @@ public class SecurityConfig {
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/trips/*/locations", "/api/v1/trips/*/sharing")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
-                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode")
+                    auth.requestMatchers(HttpMethod.PUT, "/api/v1/trips/*/members/me/travel-mode",
+                            "/api/v1/trips/*/members/me/pause")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());
                     auth.requestMatchers("/api/v1/trips/*/messages", "/api/v1/trips/*/messages/read")
                             .hasAnyAuthority(TokenKind.USER.authority(), TokenKind.GUEST.authority());

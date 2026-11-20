@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 /** No backend runs in these tests: answer the startup session check with "not signed in". */
 async function withNoSession(page: Page) {
@@ -184,6 +184,12 @@ async function asHostWithATrip(page: Page) {
     chatDefault: true,
     reduceMotion: false,
     timeFormat: '12h',
+    pushJoined: true,
+    pushLeft: false,
+    pushEndingSoon: true,
+    pushTripEnded: true,
+    preciseLocation: true,
+    keepHistory: true,
   };
   await page.route('**/api/v1/me/settings', (route) => {
     if (route.request().method() === 'PATCH') {
@@ -872,6 +878,64 @@ const sampleAlerts = [
   },
 ];
 
+/**
+ * Stands in for the browser's push support. The dev server runs without the offline worker, so this
+ * fakes one with push: the permission as given, and the answer to the browser's question.
+ */
+async function fakePush(
+  page: Page,
+  {
+    permission,
+    answer = 'granted',
+    subscribed = false,
+  }: { permission: string; answer?: string; subscribed?: boolean },
+) {
+  await page.addInitScript(
+    ({ permission, answer, subscribed }) => {
+      const state = { permission, subscribed };
+      const subscription = {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/e2e',
+        options: { applicationServerKey: null },
+        toJSON: () => ({
+          endpoint: 'https://fcm.googleapis.com/fcm/send/e2e',
+          keys: { p256dh: 'p', auth: 'a' },
+        }),
+        unsubscribe: async () => {
+          state.subscribed = false;
+          return true;
+        },
+      };
+      const pushManager = {
+        getSubscription: async () => (state.subscribed ? subscription : null),
+        subscribe: async () => {
+          state.subscribed = true;
+          return subscription;
+        },
+      };
+      Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true });
+      Object.defineProperty(window, 'Notification', {
+        configurable: true,
+        value: Object.defineProperties(function Notification() {}, {
+          permission: { get: () => state.permission },
+          requestPermission: {
+            value: async () => {
+              state.permission = answer;
+              return answer;
+            },
+          },
+        }),
+      });
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: Object.assign(new EventTarget(), {
+          getRegistration: async () => ({ active: {}, pushManager }),
+        }),
+      });
+    },
+    { permission, answer, subscribed },
+  );
+}
+
 test.describe('alerts', () => {
   async function withAlerts(page: Page) {
     await asHostWithATrip(page);
@@ -882,6 +946,19 @@ test.describe('alerts', () => {
         body: JSON.stringify({ items: sampleAlerts, nextBefore: null, unread: 2 }),
       }),
     );
+    await page.route('**/api/v1/me/push/key', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          publicKey:
+            'BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8',
+        }),
+      }),
+    );
+    await page.route('**/api/v1/me/push/*subscribe', (route) => route.fulfill({ status: 204 }));
+    // Notifications already on, so the checks below include every push switch.
+    await fakePush(page, { permission: 'granted', subscribed: true });
   }
 
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -936,6 +1013,56 @@ test.describe('alerts', () => {
     await page.keyboard.press('Enter');
 
     await expect(page).toHaveURL(/\/trip\/trip-1\/invite$/);
+  });
+
+  test('the push switches follow what was chosen', async ({ page }) => {
+    await withAlerts(page);
+    await page.goto('/me/alerts');
+
+    const push = page.getByRole('region', { name: 'PUSH ALERTS' });
+    await expect(push.getByRole('switch', { name: 'Notifications on this device' })).toBeChecked();
+    await expect(push.getByRole('switch', { name: 'Friend joins' })).toBeChecked();
+    await expect(push.getByRole('switch', { name: 'Friend leaves' })).not.toBeChecked();
+
+    await push.getByRole('switch', { name: 'Friend leaves' }).click();
+    await expect(push.getByRole('switch', { name: 'Friend leaves' })).toBeChecked();
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Friend leaves' })).toBeChecked();
+  });
+
+  test('turning notifications on asks the browser, then tells the server', async ({ page }) => {
+    await withAlerts(page);
+    await fakePush(page, { permission: 'default', answer: 'granted' });
+    await page.goto('/me/alerts');
+
+    const subscribed = page.waitForRequest('**/api/v1/me/push/subscribe');
+    await page.getByRole('switch', { name: 'Notifications on this device' }).click();
+
+    expect((await subscribed).postDataJSON()).toMatchObject({
+      endpoint: 'https://fcm.googleapis.com/fcm/send/e2e',
+    });
+    await expect(page.getByRole('switch', { name: 'Notifications on this device' })).toBeChecked();
+    await expect(page.getByRole('switch', { name: 'Trip ended' })).toBeVisible();
+  });
+
+  test('when the browser says no, explains how to allow them', async ({ page }) => {
+    await withAlerts(page);
+    await fakePush(page, { permission: 'default', answer: 'denied' });
+    await page.goto('/me/alerts');
+
+    await page.getByRole('switch', { name: 'Notifications on this device' }).click();
+
+    await expect(page.getByText(/Notifications are blocked for SquadMap/)).toBeVisible();
+  });
+
+  test('Settings leads to the push switches', async ({ page }) => {
+    await withAlerts(page);
+    await page.goto('/me/settings');
+
+    await page.getByRole('link', { name: /Push notifications/ }).click();
+
+    await expect(page).toHaveURL(/\/me\/alerts#push$/);
+    await expect(page.getByRole('switch', { name: 'Notifications on this device' })).toBeInViewport();
   });
 });
 
@@ -1112,6 +1239,21 @@ test.describe('theme', () => {
  * Plays the server's side of the live connection: answers CONNECT, remembers subscriptions, and lets a
  * test push messages to the page or drop the connection.
  */
+/** How the sample trip went, for the host (GET /trips/trip-1/summary). */
+const sampleSummary = {
+  id: 'trip-1',
+  name: 'Saturday at Phoenix',
+  destination: { name: 'Phoenix Marketcity, Viman Nagar', lat: 18.5622, lng: 73.9167 },
+  status: 'ended',
+  role: 'host',
+  startsAt: '2026-11-19T13:10:00Z',
+  endedAt: '2026-11-19T13:29:00Z',
+  durationSeconds: 1140,
+  friendCount: 2,
+  distanceM: 8100,
+  arrivedAt: null,
+};
+
 async function fakeLiveServer(page: Page) {
   const subscriptions = new Map<string, string>();
   let socket: import('@playwright/test').WebSocketRoute | null = null;
@@ -1172,6 +1314,13 @@ async function fakeLiveServer(page: Page) {
 /** The host on their trip with Aman (sharing, with a spot) and Rohan (not sharing yet). */
 async function asHostOnTheLiveMap(page: Page) {
   await asHostWithATrip(page);
+  await page.route('**/api/v1/trips/trip-1/summary', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(sampleSummary),
+    }),
+  );
   await page.route('**/api/v1/trips/trip-1/members', (route) =>
     route.fulfill({
       status: 200,
@@ -1236,8 +1385,6 @@ test.describe('live map', () => {
       await expect(page.getByRole('heading', { name: '2 friends on the way' })).toBeVisible();
       await expect.poll(server.connected).toBe(true);
       await expect(page.getByText(/^Live · /)).toBeVisible();
-      await page.getByRole('button', { name: 'Trip menu' }).click();
-      await expect(page.getByRole('link', { name: 'Show the invite' }).first()).toBeVisible();
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
@@ -1401,7 +1548,8 @@ test.describe('live map', () => {
 
     server.send('/topic/trip.trip-1.events', { type: 'TRIP_ENDED', at: '' });
 
-    await expect(page.getByRole('heading', { name: 'This trip has ended' })).toBeVisible();
+    await expect(page).toHaveURL(/\/trip\/trip-1\/ended$/);
+    await expect(page.getByRole('heading', { name: 'Trip complete' })).toBeVisible();
   });
 
   for (const width of [320, 390, 768]) {
@@ -1546,6 +1694,415 @@ test.describe('trip chat', () => {
       await expect(page.getByRole('button', { name: 'Send' })).toBeInViewport();
     });
   }
+});
+
+/** The live map with a trip that has `leftMs` to go, and extend and end answered like the server would. */
+async function asHostWithAMenu(page: Page, leftMs = 3 * 3_600_000, role: 'host' | 'member' = 'host') {
+  const server = await asHostOnTheLiveMap(page);
+  const now = Date.now();
+  let trip = {
+    ...signedInTrip,
+    role,
+    startsAt: new Date(now - 3_600_000).toISOString(),
+    expiresAt: new Date(now + leftMs).toISOString(),
+  };
+  const answer = (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(trip) });
+  await page.route('**/api/v1/trips/trip-1', answer);
+  await page.route('**/api/v1/trips/trip-1/extend', (route) => {
+    const { minutes } = route.request().postDataJSON() as { minutes: number };
+    trip = { ...trip, expiresAt: new Date(Date.parse(trip.expiresAt) + minutes * 60_000).toISOString() };
+    return answer(route);
+  });
+  await page.route('**/api/v1/trips/trip-1/end', (route) => {
+    trip = { ...trip, status: 'ended' };
+    return answer(route);
+  });
+  return server;
+}
+
+async function expectAccessible(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)).toEqual([]);
+  // Measured in one go, so a control re-rendering by the clock can't stall the check.
+  const small = await page.evaluate(() =>
+    [...document.querySelectorAll('a, button')].flatMap((control) => {
+      const box = control.getBoundingClientRect();
+      const shown = box.width > 0 && box.height > 0 && getComputedStyle(control).visibility !== 'hidden';
+      return shown && box.height < 44
+        ? [`${control.getAttribute('aria-label') ?? control.textContent}: ${box.height}`]
+        : [];
+    }),
+  );
+  expect(small).toEqual([]);
+}
+
+test.describe('trip menu', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode, nor its dialogs`, async ({ page }) => {
+      const server = await asHostWithAMenu(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/menu');
+      await expect(page.getByRole('heading', { name: 'Saturday at Phoenix' })).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      await expectAccessible(page);
+
+      await page.getByRole('button', { name: 'End trip for everyone' }).click();
+      await expect(page.getByRole('dialog', { name: 'End this trip for everyone?' })).toBeVisible();
+      await expectAccessible(page);
+      await page.getByRole('button', { name: 'Keep sharing' }).click();
+
+      await page.getByRole('button', { name: /Extend sharing time/ }).click();
+      await expect(page.getByRole('dialog', { name: 'Extend sharing time' })).toBeVisible();
+      await expectAccessible(page);
+    });
+
+    test(`warns ten minutes before the end, accessibly, in ${colorScheme} mode`, async ({ page }) => {
+      await asHostWithAMenu(page, 8 * 60_000);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1');
+      await expect(page.getByRole('dialog', { name: 'Sharing ends in 8 min' })).toBeVisible();
+      await expectAccessible(page);
+    });
+  }
+
+  test('works with the keyboard and closes with Esc', async ({ page }) => {
+    const server = await asHostWithAMenu(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+
+    await page.getByRole('link', { name: 'Trip menu' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/trip\/trip-1\/menu$/);
+    await expect(page.getByRole('heading', { name: 'Saturday at Phoenix' })).toBeFocused();
+
+    const end = page.getByRole('button', { name: 'End trip for everyone' });
+    await end.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'End this trip for everyone?' })).toBeVisible();
+    // Esc closes the dialog first, giving focus back, and leaves the menu open.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(end).toBeFocused();
+    await expect(page).toHaveURL(/\/menu$/);
+
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/trip\/trip-1$/);
+  });
+
+  test('adds time, then ends the trip for everyone', async ({ page }) => {
+    const server = await asHostWithAMenu(page);
+    await page.goto('/trip/trip-1/menu');
+    await expect.poll(server.connected).toBe(true);
+
+    await page.getByRole('button', { name: /Extend sharing time/ }).click();
+    await page.getByRole('radio', { name: '30 minutes' }).click();
+    await page.getByRole('button', { name: 'Extend sharing', exact: true }).click();
+    await expect(page.getByText(/^Sharing now ends at /)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Extend sharing time/ })).toContainText('3 h left');
+
+    await page.getByRole('button', { name: 'End trip for everyone' }).click();
+    await page.getByRole('button', { name: 'End trip', exact: true }).click();
+    await expect(page).toHaveURL(/\/trip\/trip-1\/ended$/);
+    await expect(page.getByRole('heading', { name: 'Trip complete' })).toBeVisible();
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`fits ${width} px without sideways scroll`, async ({ page }) => {
+      await asHostWithAMenu(page);
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto('/trip/trip-1/menu');
+      await expect(page.getByRole('heading', { name: 'Saturday at Phoenix' })).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+      const end = page.getByRole('button', { name: 'End trip for everyone' });
+      await end.scrollIntoViewIfNeeded();
+      await expect(end).toBeInViewport();
+    });
+  }
+});
+
+/** The host is sharing but has paused, and so has Aman, who paused 4 minutes ago. */
+async function asHostPaused(page: Page) {
+  const server = await asHostWithAMenu(page);
+  const pauses: boolean[] = [];
+  let paused = true;
+  const pausedAt = new Date().toISOString();
+  await page.route('**/api/v1/trips/trip-1/members', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          memberId: 'm-priya',
+          displayName: 'Priya',
+          color: '#0F6E56',
+          role: 'host',
+          you: true,
+          sharing: true,
+          location: null,
+          arrivedAt: null,
+          travelMode: null,
+          pausedAt: paused ? pausedAt : null,
+        },
+        {
+          memberId: 'm-aman',
+          displayName: 'Aman',
+          color: '#993C1D',
+          role: 'member',
+          you: false,
+          sharing: true,
+          location: { lat: 18.56, lng: 73.91, acc: 10, ts: new Date(Date.now() - 4 * 60_000).toISOString() },
+          arrivedAt: null,
+          travelMode: null,
+          pausedAt,
+        },
+      ]),
+    }),
+  );
+  await page.route('**/api/v1/trips/trip-1/members/me/pause', (route) => {
+    paused = (route.request().postDataJSON() as { paused: boolean }).paused;
+    pauses.push(paused);
+    return route.fulfill({ status: 204 });
+  });
+  return { server, pauses };
+}
+
+test.describe('pause my location', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      const { server } = await asHostPaused(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/friend/m-aman');
+      await expect(page.getByText(/^Paused · last seen \d+ min ago$/)).toBeVisible();
+      await expect(page.getByText('Your location is paused')).toBeVisible();
+      await expect.poll(server.connected).toBe(true);
+      await expectAccessible(page);
+
+      await page.goto('/trip/trip-1/menu');
+      await expect(page.getByRole('switch', { name: 'Pause my location' })).toBeChecked();
+      await expectAccessible(page);
+    });
+  }
+
+  test('works with the keyboard, from the menu and from the map', async ({ page }) => {
+    const { server, pauses } = await asHostPaused(page);
+    await page.goto('/trip/trip-1/menu');
+    await expect.poll(server.connected).toBe(true);
+
+    const toggle = page.getByRole('switch', { name: 'Pause my location' });
+    await expect(toggle).toBeChecked();
+    await toggle.focus();
+    await page.keyboard.press('Space');
+    await expect(toggle).not.toBeChecked();
+
+    await page.keyboard.press('Space');
+    await expect(toggle).toBeChecked();
+    await page.keyboard.press('Escape');
+    const resume = page.getByRole('button', { name: 'Resume' });
+    await resume.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Your location is paused')).toHaveCount(0);
+    expect(pauses).toEqual([false, true, false]);
+  });
+});
+
+test.describe('trip summaries', () => {
+  async function onTripComplete(page: Page) {
+    const server = await asHostOnTheLiveMap(page);
+    await page.route('**/api/v1/trips/trip-1', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...signedInTrip, status: 'ended' }),
+      }),
+    );
+    return server;
+  }
+
+  /** The host reaches the destination while friends are still on the way. */
+  async function arriving(page: Page) {
+    const server = await asHostOnTheLiveMap(page);
+    await page.goto('/trip/trip-1');
+    await expect.poll(server.connected).toBe(true);
+    server.send('/topic/trip.trip-1.events', {
+      type: 'ARRIVED',
+      memberId: 'm-priya',
+      displayName: 'Priya',
+      at: '',
+    });
+    await expect(page.getByRole('heading', { name: 'You made it!' })).toBeVisible();
+    return server;
+  }
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`Trip complete has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await onTripComplete(page);
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await page.goto('/trip/trip-1/ended');
+      await expect(page.getByRole('region', { name: 'Trip summary' })).toContainText('8.1 km');
+      await expectAccessible(page);
+    });
+
+    test(`You made it! has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      await arriving(page);
+      await expect(page.getByRole('region', { name: 'You made it!' })).toContainText('8.1 km');
+      await expectAccessible(page);
+    });
+  }
+
+  test('Trip complete shows the numbers and leads on', async ({ page }) => {
+    await onTripComplete(page);
+    await page.goto('/trip/trip-1/ended');
+
+    const pass = page.getByRole('region', { name: 'Trip summary' });
+    await expect(pass).toContainText('8.1 km');
+    await expect(pass).toContainText('19 min');
+    await expect(pass).toContainText('Phoenix Marketcity');
+    await page.getByRole('link', { name: 'View trip history' }).click();
+    await expect(page).toHaveURL(/\/me\/history$/);
+  });
+
+  test('You made it! keeps sharing, with the keyboard', async ({ page }) => {
+    await arriving(page);
+    await expect(page).toHaveURL(/\/trip\/trip-1\/arrived$/);
+
+    await page.getByRole('button', { name: 'Keep sharing' }).focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/trip\/trip-1$/);
+    await expect(page.getByRole('heading', { name: 'You made it!' })).toHaveCount(0);
+  });
+
+  for (const width of [320, 390, 768]) {
+    test(`both fit ${width} px without sideways scroll`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 760 });
+      await arriving(page);
+      const overflow = () =>
+        page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(await overflow()).toBe(0);
+
+      await onTripComplete(page);
+      await page.goto('/trip/trip-1/ended');
+      await expect(page.getByRole('region', { name: 'Trip summary' })).toContainText('8.1 km');
+      expect(await overflow()).toBe(0);
+    });
+  }
+});
+
+test.describe('privacy and data', () => {
+  const pages: Array<[string, string, string]> = [
+    ['privacy and data', '/me/privacy', 'Privacy and data'],
+    ['delete my account', '/me/delete', 'Delete my account'],
+    ['account closed', '/account-closed?removeAt=2026-12-20T10:00:00Z', 'Your account is closed'],
+    ['terms and privacy policy', '/privacy', 'Terms and Privacy Policy'],
+  ];
+
+  for (const [name, path, heading] of pages) {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+        await expectAccessible(page);
+      });
+    }
+
+    for (const width of [320, 390, 768]) {
+      test(`${name} fits ${width} px without sideways scroll`, async ({ page }) => {
+        await asHostWithATrip(page);
+        await page.setViewportSize({ width, height: 760 });
+        await page.goto(path);
+        await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible();
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow).toBe(0);
+      });
+    }
+  }
+
+  test('the switches change with the keyboard and stay changed', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/me/trips/forget', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ removed: 2 }) }),
+    );
+    await page.goto('/me/privacy');
+
+    await page.getByRole('switch', { name: 'Share precise location' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('switch', { name: 'Share precise location' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+
+    await page.getByRole('switch', { name: 'Keep trip history' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Stop keeping trip history?' });
+    await expect(dialog).toBeVisible();
+    await expectAccessible(page);
+    await dialog.getByRole('button', { name: 'Remove past trips too' }).click();
+    await expect(page.getByText('Removed 2 past trips from your history.')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Share precise location' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    await expect(page.getByRole('switch', { name: 'Keep trip history' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+  });
+
+  test('the sign-up link to the policy works', async ({ page }) => {
+    await page.goto('/signup');
+    await page.getByRole('link', { name: 'Terms and Privacy Policy' }).click();
+    await expect(page.getByRole('heading', { name: 'Terms and Privacy Policy', level: 1 })).toBeVisible();
+  });
+
+  test('downloads my data as a file', async ({ page }) => {
+    await asHostWithATrip(page);
+    await page.route('**/api/v1/me/export', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ trips: [] }) }),
+    );
+    await page.goto('/me/privacy');
+
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: /Download my data/ }).click();
+
+    expect((await download).suggestedFilename()).toBe('squadmap-data.json');
+    await expect(page.getByText('Your data is saved as squadmap-data.json.')).toBeVisible();
+  });
+
+  test('deletes the account with the keyboard, then says when it goes for good', async ({ page }) => {
+    await asHostWithATrip(page);
+    let deleted = false;
+    await page.route('**/api/v1/me', (route) => {
+      if (route.request().method() !== 'DELETE') return route.fallback();
+      deleted = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ removeAt: '2026-12-20T10:00:00Z' }),
+      });
+    });
+    await page.route('**/api/v1/auth/logout', (route) => route.fulfill({ status: 204 }));
+    await page.goto('/me/privacy');
+
+    await page.getByRole('link', { name: 'Delete my account' }).click();
+    await page.getByLabel('Your password').fill('correct horse battery');
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('heading', { name: 'Your account is closed' })).toBeVisible();
+    await expect(page.getByText(/deleted for good on 20 December 2026/)).toBeVisible();
+    expect(deleted).toBe(true);
+  });
 });
 
 test.describe('layout', () => {

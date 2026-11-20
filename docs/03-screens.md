@@ -44,12 +44,12 @@ Home/Profile -> History, Settings, Alerts, Privacy
 | D2 | Friend details (`Friend`) | `/trip/:id/friend/:uid` | One friend | Map shifted up, friend selected; avatar, status "Moving, updated just now", ETA badge; stats distance, ETA, speed; progress bar; **Message** → Chat; **Follow**; **Directions to Priya** (deep link to maps) | `GET /trips/:id/members/:uid` |
 | D3 | Who's on the way (`EtaSheet`) | `/trip/:id/eta` | ETA list | Sort button; rows Priya, Aman, You, Rohan (Arrived); **Invite more friends** → Invite | `GET /trips/:id/eta`; WS events |
 | D4 | Trip chat (`Chat`) | `/trip/:id/chat` | Talk | Header with count; day separator; bubbles; typing dots; quick chips I'm here / Running late / Wait for me; input + send; menu | `GET/POST /trips/:id/messages`; WS `.chat` |
-| D5 | Trip menu (`TripMenu`) | `/trip/:id/menu` | Trip actions | Sheet: **Invite friends**, **Who's on the way**, **Extend sharing time** → Expiry, **Pause my location** switch, **Settings**, **End trip for everyone** → End trip (host), **Leave trip** | `PATCH /trips/:id`, `DELETE /trips/:id/members/me` |
+| D5 | Trip menu (`TripMenu`) | `/trip/:id/menu` | Trip actions | Sheet: **Invite friends** (everyone, guests included), **Who's on the way**, **Extend sharing time** → Expiry (host; others see the time left), **Pause my location** switch (for anyone sharing; while paused the map shows "Your location is paused" with Resume, and friends see the dot dimmed with "Paused"), **Settings** (accounts only), **End trip for everyone** → End trip (host), **Leave trip** → confirm (everyone else; the host can't leave) | `POST /trips/:id/extend`, `POST /trips/:id/end`, `DELETE /trips/:id/members/me` |
 
 ## E · Moments and states
 | # | Screen | Route | Purpose | Elements and buttons | API / WS |
 |---|---|---|---|---|---|
-| E1 | Trip ending soon (`ExpiryWarning`) | modal | 10 min warning | Countdown ring; "Sharing ends in 10 min"; segmented +30 min / +1 h / +2 h; **Extend sharing**, **End now** → End trip, **Dismiss** | `POST /trips/:id/extend` |
+| E1 | Trip ending soon (`ExpiryWarning`) | modal | 10 min warning | Countdown ring; "Sharing ends in 10 min"; segmented +30 min / +1 h / +2 h; **Extend sharing**, **End now** → End trip, **Dismiss**. Shown to everyone once per end time; only the host gets the extend choices and End now | `POST /trips/:id/extend` |
 | E2 | End trip (`EndTrip`) | modal | Confirm | Red power icon; "End this trip for everyone?"; **End trip** → Trip ended; **Keep sharing** | `POST /trips/:id/end` |
 | E3 | Arrived (`Arrived`) | `/trip/:id/arrived` | Celebrate | Confetti, ARRIVED stamp, "You made it!"; stats travelled, time, friends; **Keep sharing**, **Stop sharing and finish** → Trip ended | WS event `ARRIVED` |
 | E4 | Offline (`Offline`) | overlay | No connection | Grayscale map, stale dots with "2 min ago"; amber banner "No connection, showing last known spots" with **Retry**; queued-updates card with shimmer | service worker + queue |

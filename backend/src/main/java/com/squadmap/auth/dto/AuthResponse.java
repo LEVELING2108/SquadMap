@@ -5,8 +5,9 @@ import com.squadmap.user.dto.UserResponse;
 /**
  * @param accessToken bearer token for API calls; the web app keeps it in memory only
  * @param expiresIn   seconds until the access token expires
+ * @param restored    true when this sign-in cancelled the account's pending deletion
  */
-public record AuthResponse(String accessToken, long expiresIn, UserResponse user) {
+public record AuthResponse(String accessToken, long expiresIn, UserResponse user, boolean restored) {
 
     /** Keeps the token out of logs if the response is ever printed. */
     @Override

@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api/client';
 import { useSession } from '../auth/session';
+import type { AlertKind } from './alertWords';
 
-export type AlertKind = 'member_joined' | 'member_left' | 'ending_soon' | 'trip_ended';
+export { alertLink, alertTitle, type AlertKind } from './alertWords';
 
 /** One alert (GET /me/alerts). The app words it; the server keeps only the facts. */
 export type Alert = {
@@ -66,26 +67,6 @@ export function useMarkRead() {
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: alertKeys.all }),
   });
-}
-
-/** Where tapping an alert leads: the running trip (hosts see its invite), or trip history once it's over. */
-export function alertLink(alert: Alert): string {
-  if (!alert.tripLive || alert.kind === 'trip_ended') return '/me/history';
-  return `/trip/${encodeURIComponent(alert.tripId)}/invite`;
-}
-
-/** The alert's headline, in the app's words. */
-export function alertTitle(alert: Alert): string {
-  switch (alert.kind) {
-    case 'member_joined':
-      return `${alert.actorName ?? 'Someone'} joined your trip`;
-    case 'member_left':
-      return `${alert.actorName ?? 'Someone'} left your trip`;
-    case 'ending_soon':
-      return 'Sharing ends soon';
-    case 'trip_ended':
-      return `${alert.tripName} ended`;
-  }
 }
 
 /** Whether the moment falls on the same calendar day as now, for the TODAY group. */

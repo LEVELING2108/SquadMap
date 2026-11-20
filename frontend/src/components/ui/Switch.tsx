@@ -1,14 +1,18 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
 type SwitchProps = {
   label: string;
   description?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** Shown before the label, such as an icon tile in a menu row. */
+  leading?: ReactNode;
+  /** While a change is being saved: the switch keeps focus but ignores presses. */
+  disabled?: boolean;
 };
 
 /** An on/off setting with its label. The whole row is one control, at least 44 px tall. */
-export function Switch({ label, description, checked, onChange }: SwitchProps) {
+export function Switch({ label, description, checked, onChange, leading, disabled }: SwitchProps) {
   const id = useId();
   return (
     <button
@@ -17,10 +21,13 @@ export function Switch({ label, description, checked, onChange }: SwitchProps) {
       aria-checked={checked}
       aria-labelledby={`${id}-label`}
       aria-describedby={description ? `${id}-description` : undefined}
-      onClick={() => onChange(!checked)}
-      className="flex min-h-11 w-full items-center justify-between gap-4 text-left"
+      // Busy rather than disabled: a disabled button would drop keyboard focus mid-change.
+      aria-disabled={disabled || undefined}
+      onClick={() => !disabled && onChange(!checked)}
+      className="flex min-h-11 w-full items-center justify-between gap-4 text-left aria-disabled:opacity-60"
     >
-      <span>
+      {leading}
+      <span className="min-w-0 flex-1">
         <span id={`${id}-label`} className="block text-base leading-[22px] font-bold text-ink">
           {label}
         </span>

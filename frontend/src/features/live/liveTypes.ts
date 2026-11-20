@@ -8,6 +8,8 @@ export type Position = {
   heading?: number;
   /** When the phone took the reading, ISO-8601. */
   ts: string;
+  /** Shared as a rough area (about 220 m) by someone who turned precise location off. */
+  approx?: boolean;
 };
 
 /** One person on the trip, from GET /trips/:id/members. */
@@ -24,6 +26,8 @@ export type LiveMember = {
   arrivedAt: string | null;
   /** How they said they are travelling, or null before they choose (the ETA's mode is then a guess). */
   travelMode: TravelMode | null;
+  /** When they paused sharing, or null while they share. Their location is then where they paused. */
+  pausedAt: string | null;
 };
 
 /** A bike is a motorbike or scooter: it takes the same roads as a car. */
@@ -50,7 +54,14 @@ export type Eta = {
 export type MemberLocation = Position & { memberId: string };
 
 export type TripEventType =
-  'MEMBER_JOINED' | 'MEMBER_LEFT' | 'SHARING_STARTED' | 'ARRIVED' | 'TRIP_EXTENDED' | 'TRIP_ENDED';
+  | 'MEMBER_JOINED'
+  | 'MEMBER_LEFT'
+  | 'SHARING_STARTED'
+  | 'ARRIVED'
+  | 'PAUSED'
+  | 'RESUMED'
+  | 'TRIP_EXTENDED'
+  | 'TRIP_ENDED';
 
 /** Something happened on the trip: what arrives on /topic/trip.{id}.events. */
 export type TripEvent = {
@@ -66,4 +77,5 @@ export type TripEvent = {
 export type LiveError = { code: string; message: string; retryAfter?: number };
 
 /** The reading this phone sends: a Position without an id. */
-export type LocationReading = Position;
+/** A reading this phone sends; `approximate` asks the server to treat it as a rough area. */
+export type LocationReading = Omit<Position, 'approx'> & { approximate?: boolean };

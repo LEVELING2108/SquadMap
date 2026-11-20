@@ -8,6 +8,7 @@ import {
   Mail,
   Pencil,
   Settings as SettingsIcon,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import heroLight from '../../assets/illustrations/hero.svg';
@@ -16,6 +17,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { useUnreadAlerts } from '../alerts/alertsApi';
 import { signOut, useSession } from '../auth/session';
+import { InstallRow } from '../../pwa/InstallRow';
 import { LogOutOthers } from './LogOutOthers';
 import { useStats } from './settingsApi';
 
@@ -138,7 +140,9 @@ export function ProfilePage() {
               tile="bg-amber-bg text-amber"
               count={unreadAlerts}
             />
+            <Row to="/me/privacy" label="Privacy and data" Icon={ShieldCheck} tile="bg-sea-bg text-sea-d" />
             <Row to="/me/settings" label="Settings" Icon={SettingsIcon} tile="bg-track text-ink" />
+            <InstallRow />
           </ul>
         </nav>
 

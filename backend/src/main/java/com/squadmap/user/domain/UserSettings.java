@@ -18,15 +18,24 @@ import java.util.Set;
  * @param chatDefault       whether "Friends can chat" starts on for a new trip
  * @param reduceMotion      turns off the app's moving effects, even where the device allows them
  * @param timeFormat        how clock times are shown
+ * @param pushJoined        push a notification when someone joins a trip you host
+ * @param pushLeft          ...when someone leaves a trip you host
+ * @param pushEndingSoon    ...when your trip's sharing is about to end
+ * @param pushTripEnded     ...when a trip you were on ends
+ * @param preciseLocation   share your exact spot; off sends only a rough area (snapped on the phone and again here)
+ * @param keepHistory       keep finished trips in your history; off removes them a day after they end
  */
 public record UserSettings(boolean darkMap, DistanceUnit distanceUnit, int defaultShareHours, MapStyle mapStyle,
-                           boolean chatDefault, boolean reduceMotion, TimeFormat timeFormat) {
+                           boolean chatDefault, boolean reduceMotion, TimeFormat timeFormat,
+                           boolean pushJoined, boolean pushLeft, boolean pushEndingSoon, boolean pushTripEnded,
+                           boolean preciseLocation, boolean keepHistory) {
 
     /** The sharing times a trip can be created with; matches the trip rules. */
     public static final Set<Integer> SHARE_HOURS = Set.of(1, 2, 4, 8);
 
     public static final UserSettings DEFAULTS =
-            new UserSettings(false, DistanceUnit.km, 4, MapStyle.streets, true, false, TimeFormat.h12);
+            new UserSettings(false, DistanceUnit.km, 4, MapStyle.streets, true, false, TimeFormat.h12,
+                    true, false, true, true, true, true);
 
     public enum DistanceUnit { km, mi }
 
@@ -70,7 +79,13 @@ public record UserSettings(boolean darkMap, DistanceUnit distanceUnit, int defau
                 bool(stored, "chatDefault", DEFAULTS.chatDefault()),
                 bool(stored, "reduceMotion", DEFAULTS.reduceMotion()),
                 stored.get("timeFormat") instanceof String value && Set.of("12h", "24h").contains(value)
-                        ? TimeFormat.parse(value) : DEFAULTS.timeFormat());
+                        ? TimeFormat.parse(value) : DEFAULTS.timeFormat(),
+                bool(stored, "pushJoined", DEFAULTS.pushJoined()),
+                bool(stored, "pushLeft", DEFAULTS.pushLeft()),
+                bool(stored, "pushEndingSoon", DEFAULTS.pushEndingSoon()),
+                bool(stored, "pushTripEnded", DEFAULTS.pushTripEnded()),
+                bool(stored, "preciseLocation", DEFAULTS.preciseLocation()),
+                bool(stored, "keepHistory", DEFAULTS.keepHistory()));
     }
 
     Map<String, Object> toJson() {
@@ -82,6 +97,12 @@ public record UserSettings(boolean darkMap, DistanceUnit distanceUnit, int defau
         json.put("chatDefault", chatDefault);
         json.put("reduceMotion", reduceMotion);
         json.put("timeFormat", timeFormat.value());
+        json.put("pushJoined", pushJoined);
+        json.put("pushLeft", pushLeft);
+        json.put("pushEndingSoon", pushEndingSoon);
+        json.put("pushTripEnded", pushTripEnded);
+        json.put("preciseLocation", preciseLocation);
+        json.put("keepHistory", keepHistory);
         return json;
     }
 

@@ -91,7 +91,7 @@ public class EtaService {
     public List<EtaView> snapshot(UUID tripId, Caller caller) {
         access.requireMember(tripId, caller);
         List<UUID> ids = members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId).stream()
-                .filter(member -> member.getArrivedAt() == null)
+                .filter(member -> member.getArrivedAt() == null && member.getPausedAt() == null)
                 .map(TripMember::getId)
                 .toList();
         Map<UUID, Eta> found = store.getAll(tripId, ids);
@@ -137,12 +137,14 @@ public class EtaService {
             return;
         }
         TripMember member = members.findById(memberId).orElse(null);
-        if (member == null || !member.isActive() || member.getArrivedAt() != null) {
+        // A paused member's ETA was deleted when they paused and stays away until they move again.
+        if (member == null || !member.isActive() || member.getArrivedAt() != null || member.getPausedAt() != null) {
             return;
         }
         Instant now = clock.instant();
         double straight = GeoMath.metres(position.lat(), position.lng(), destination.lat(), destination.lng());
-        if (checkArrival(member, straight, now)) {
+        // A rough area can't tell arriving from being nearby, so it never counts as arriving.
+        if (!position.isApproximate() && checkArrival(member, straight, now)) {
             return;
         }
         if (!store.takeTurn(tripId, memberId)) {

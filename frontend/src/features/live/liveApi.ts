@@ -38,6 +38,16 @@ export function useChooseTravelMode(tripId: string) {
   });
 }
 
+/** Pauses or resumes sharing this person's location; friends keep their last spot while paused. */
+export function useSetPaused(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (paused: boolean) =>
+      api<void>(`/trips/${encodeURIComponent(tripId)}/members/me/pause`, { method: 'PUT', body: { paused } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: liveKeys.members(tripId) }),
+  });
+}
+
 /** Agrees to share this person's location on the trip (the host, or someone who chose "Not now"). */
 export function useStartSharing(tripId: string) {
   const queryClient = useQueryClient();

@@ -1,0 +1,5 @@
+# Known non-secrets the secrets scan flags. Each line is one finding: commit:file:rule:line.
+# The example keys from RFC 8291 Appendix A, published in the standard and used as push encryption test data.
+81abbd0e9bf4168a4711f514a7b400c76746ce97:frontend/src/pwa/push.test.tsx:generic-api-key:14
+81abbd0e9bf4168a4711f514a7b400c76746ce97:frontend/src/pwa/push.test.tsx:generic-api-key:15
+32e9f69ccadd99e33d8f7d35aade4af64078bf89:backend/src/test/java/com/squadmap/notify/push/PushEncryptionTest.java:generic-api-key:31

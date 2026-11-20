@@ -88,7 +88,7 @@ public class TripLifecycleService {
         trip.end(now);
         trips.flush();
         trips.withdrawConsentForFinishedTrips(now);
-        live.ended(tripId, memberIdsOn(tripId));
+        live.ended(tripId, membersOn(tripId));
         // Everyone else with an account hears it; the host ended it, so needs no telling.
         alerts.tripEnded(accountsOn(tripId).stream().filter(id -> !id.equals(trip.getHostId())).toList(),
                 tripId, trip.getName());
@@ -122,6 +122,25 @@ public class TripLifecycleService {
     }
 
     /**
+     * The account is being deleted: trips it hosts end for everyone, and it leaves the others, so its
+     * location stops being shared everywhere at once.
+     *
+     * @return how many trips it ended or left
+     */
+    @Transactional
+    public int leaveEverything(UUID userId) {
+        List<Trip> live = trips.findLiveForUser(userId, clock.instant());
+        for (Trip trip : live) {
+            if (trip.getHostId().equals(userId)) {
+                end(trip.getId(), userId);
+            } else {
+                leave(trip.getId(), Caller.user(userId));
+            }
+        }
+        return live.size();
+    }
+
+    /**
      * Every 30 seconds, records trips whose time has run out and ends their location consent. Safe to run
      * on several instances at once; each step only ever changes rows that still need it.
      */
@@ -133,7 +152,7 @@ public class TripLifecycleService {
         int withdrawn = trips.withdrawConsentForFinishedTrips(now);
         // Only this run's own trips: the update hands each expired trip to exactly one run.
         for (Trip trip : trips.findAllById(expired)) {
-            live.ended(trip.getId(), memberIdsOn(trip.getId()));
+            live.ended(trip.getId(), membersOn(trip.getId()));
             alerts.tripEnded(accountsOn(trip.getId()), trip.getId(), trip.getName());
         }
         if (!expired.isEmpty()) {
@@ -165,9 +184,9 @@ public class TripLifecycleService {
                 .toList();
     }
 
-    /** Everyone on the trip now, guests included: whose live spots to delete when it ends. */
-    private List<UUID> memberIdsOn(UUID tripId) {
-        return members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId).stream().map(TripMember::getId).toList();
+    /** Everyone on the trip now, guests included: whose live data to delete and distance to save at the end. */
+    private List<TripMember> membersOn(UUID tripId) {
+        return members.findByTripIdAndLeftAtIsNullOrderByJoinedAt(tripId);
     }
 
     private Trip hostedLiveTrip(UUID tripId, UUID userId, String action) {

@@ -12,12 +12,16 @@ import com.squadmap.user.dto.UserResponse;
 import com.squadmap.user.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserService users;
     private final PasswordEncoder passwordEncoder;
@@ -51,7 +55,8 @@ public class AuthService {
     }
 
     public SignedIn login(LoginRequest request) {
-        Optional<User> found = users.findActiveByEmail(Text.normalizeEmail(request.email()));
+        // An account waiting to be deleted can still sign in: doing so keeps it.
+        Optional<User> found = users.findForSignIn(Text.normalizeEmail(request.email()));
 
         // Always run one password check. Skipping it for unknown emails would make those
         // requests answer faster and reveal which emails have an account.
@@ -63,7 +68,12 @@ public class AuthService {
                     "Email or password is incorrect.");
         }
         User user = found.get();
-        return new SignedIn(respond(user), refreshTokens.startSession(user.getId()));
+        boolean restored = user.isDeleted();
+        if (restored) {
+            users.restore(user.getId());
+            log.info("Account {} signed in during its deletion grace period; deletion cancelled", user.getId());
+        }
+        return new SignedIn(respond(user, restored), refreshTokens.startSession(user.getId()));
     }
 
     /** Swaps a refresh token for a new access token and the next refresh token. */
@@ -85,8 +95,12 @@ public class AuthService {
     }
 
     private AuthResponse respond(User user) {
+        return respond(user, false);
+    }
+
+    private AuthResponse respond(User user, boolean restored) {
         AccessTokenService.IssuedToken token = accessTokens.issueForUser(user.getId());
-        return new AuthResponse(token.value(), token.expiresInSeconds(), UserResponse.from(user));
+        return new AuthResponse(token.value(), token.expiresInSeconds(), UserResponse.from(user), restored);
     }
 
     private static ApiException sessionExpired() {

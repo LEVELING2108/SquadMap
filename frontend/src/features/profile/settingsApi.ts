@@ -19,6 +19,15 @@ export type Settings = {
   /** Turns off the app's moving effects, even where the device allows them. */
   reduceMotion: boolean;
   timeFormat: TimeFormat;
+  /** Which alerts are also sent as push notifications, on devices that turned them on. */
+  pushJoined: boolean;
+  pushLeft: boolean;
+  pushEndingSoon: boolean;
+  pushTripEnded: boolean;
+  /** Share the exact spot; off sends only a rough area of about 220 m. */
+  preciseLocation: boolean;
+  /** Keep finished trips in the history; off removes them a day after they end. */
+  keepHistory: boolean;
 };
 
 /** What applies before the account's settings arrive, and for anyone without an account. */
@@ -30,6 +39,12 @@ export const DEFAULT_SETTINGS: Settings = {
   chatDefault: true,
   reduceMotion: false,
   timeFormat: '12h',
+  pushJoined: true,
+  pushLeft: false,
+  pushEndingSoon: true,
+  pushTripEnded: true,
+  preciseLocation: true,
+  keepHistory: true,
 };
 
 export const settingsKey = ['me', 'settings'] as const;

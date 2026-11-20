@@ -6,6 +6,59 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-21
+
+Running a trip and wrapping it up: a trip menu, pausing your location, an installable app, push
+notifications, trip summaries, and your privacy controls.
+
+### Added
+
+- Trip menu, from the top right of the live map: invite friends (open to everyone on the trip,
+  guests included), who's on the way, extend sharing by 30 minutes, 1 hour or 2 hours (host), end
+  the trip for everyone (host, after a confirm) or leave it (others). Ten minutes before sharing
+  ends, a warning offers to extend (host) or says how long is left (others).
+- Pause my location, from the trip menu: friends keep seeing where you were, marked Paused, until
+  you resume, leave or the trip ends. Nothing new is read or sent while paused, and your ETA goes.
+- Installable app (PWA): install from the You tab in Chrome and Edge, or Add to Home Screen on
+  iPhone. It opens without signal, shows "You're offline" off the map, and offers to reload when a
+  new version is ready instead of reloading mid-trip.
+- Push notifications: the Alerts screen can turn on notifications for this device, with a switch
+  for each kind (friend joins, friend leaves, sharing ends soon, trip ended). Messages are
+  encrypted end to end and never contain a location; tapping one opens the trip. Logging out turns
+  them off on that device. Not yet checked on a real device: see Known issues.
+- "You made it!": shown once when you reach the trip's destination, with your distance, time and
+  friends so far and how far behind the others are. Keep sharing, or stop and finish.
+- Trip complete: when a trip ends, everyone (guests too) sees a boarding-pass summary with when it
+  started, where it went, your distance, its length and how many friends came. Finished trips in
+  Trip history show your distance and open this summary.
+- Privacy and data, from the You tab and Settings:
+  - Download my data, as a JSON file with everything kept about your account.
+  - Delete my account, confirmed with your password. It closes at once (trips you host end,
+    you leave the others, you're logged out everywhere) and is deleted for good after 30 days;
+    logging in before then keeps it. Friends keep their trips, with you shown as Former member.
+  - Share precise location: off shares only an area of about 200 m, blurred on the phone.
+  - Keep trip history: off removes finished trips from your history a day after they end, and
+    can remove past trips too.
+  - Auto-stop at trip end, shown as always on.
+- A plain-language Terms and Privacy Policy page at /privacy, which the sign-up page links to.
+
+### Changed
+
+- When a trip ends, the live map moves on to Trip complete instead of showing a small ended card.
+- Only a total distance per person is kept for a trip, never a route or any point.
+
+### Fixed
+
+- The sign-up link to the Terms and Privacy Policy no longer leads to a missing page.
+
+### Known issues
+
+- Push notifications have only been tested with a stand-in push service. On one desktop Chrome
+  the Alerts screen said the browser can't show notifications; that still needs checking on a
+  real device.
+- The /privacy page is a summary; the reviewed legal text and a grievance contact come before
+  launch.
+
 ## [0.3.0] - 2026-11-19
 
 Trips: start a trip, invite friends by link, see everyone live on one map with routes and ETAs,
@@ -194,7 +247,8 @@ Project foundations. No user-facing features yet.
 - Continuous integration: backend tests, frontend lint, type-check, unit tests and build, browser
   tests, a secret scan, and a guard that only lets `research` merge into `main`.
 
-[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.3.0...research
+[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.4.0...research
+[0.4.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.1.0...v0.2.0

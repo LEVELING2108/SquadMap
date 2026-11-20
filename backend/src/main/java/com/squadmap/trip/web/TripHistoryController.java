@@ -2,6 +2,7 @@ package com.squadmap.trip.web;
 
 import com.squadmap.common.security.CurrentUser;
 import com.squadmap.trip.dto.TripHistoryResponse;
+import com.squadmap.trip.service.HistoryForgetting;
 import com.squadmap.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,9 +12,11 @@ import jakarta.validation.constraints.Min;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -21,9 +24,20 @@ import java.util.UUID;
 public class TripHistoryController {
 
     private final TripService trips;
+    private final HistoryForgetting forgetting;
 
-    public TripHistoryController(TripService trips) {
+    public TripHistoryController(TripService trips, HistoryForgetting forgetting) {
         this.trips = trips;
+        this.forgetting = forgetting;
+    }
+
+    @PostMapping("/api/v1/me/trips/forget")
+    @Operation(summary = "Remove my past trips from my history",
+            description = "Every trip that is over for me (ended, ran out, or I left) is unlinked from my "
+                    + "account, with my distance. Friends keep their own copy. Trips still running stay until "
+                    + "they end. Cannot be undone.")
+    public Map<String, Integer> forget(@AuthenticationPrincipal Jwt token) {
+        return Map.of("removed", forgetting.forgetPastTrips(CurrentUser.id(token)));
     }
 
     @GetMapping("/api/v1/me/trips")

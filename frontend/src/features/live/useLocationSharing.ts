@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { toArea } from '../../lib/map/geo';
 import type { LocationReading } from './liveTypes';
 
 /** The server refuses more than one update per 2 seconds. */
@@ -49,8 +50,14 @@ function toReading(position: GeolocationPosition): LocationReading {
   };
 }
 
+/** What friends get when precise location is off: the area's centre, and nothing that narrows it down. */
+export function roughly(reading: LocationReading): LocationReading {
+  return { ...toArea(reading.lat, reading.lng), acc: reading.acc, ts: reading.ts, approximate: true };
+}
+
 /**
- * Watches this phone's location while `enabled` and hands readings to `send`. The browser asks for
+ * Watches this phone's location while `enabled` and hands readings to `send`. With `approximate`, only the
+ * rough area is sent; this phone still shows its own exact spot. The browser asks for
  * permission the first time. While the live connection is down, the newest reading is kept and sent once it
  * is back (older ones would be ignored anyway).
  */
@@ -58,10 +65,12 @@ export function useLocationSharing({
   enabled,
   connected,
   send,
+  approximate = false,
 }: {
   enabled: boolean;
   connected: boolean;
   send: (reading: LocationReading) => boolean;
+  approximate?: boolean;
 }) {
   // What the browser said; before it says anything, the state is worked out below.
   const [answer, setAnswer] = useState<'on' | 'denied' | null>(null);
@@ -69,8 +78,10 @@ export function useLocationSharing({
   const lastSent = useRef<Sent | null>(null);
   const pending = useRef<LocationReading | null>(null);
   const sendRef = useRef(send);
+  const approximateRef = useRef(approximate);
   useEffect(() => {
     sendRef.current = send;
+    approximateRef.current = approximate;
   });
 
   const supported =
@@ -87,11 +98,12 @@ export function useLocationSharing({
         if (reading.acc > MAX_ACCURACY_M) return;
         const now = Date.now();
         if (!shouldSend(lastSent.current, reading, now)) return;
-        if (sendRef.current(reading)) {
+        const outgoing = approximateRef.current ? roughly(reading) : reading;
+        if (sendRef.current(outgoing)) {
           lastSent.current = { lat: reading.lat, lng: reading.lng, at: now };
           pending.current = null;
         } else {
-          pending.current = reading;
+          pending.current = outgoing;
         }
       },
       (error) => {

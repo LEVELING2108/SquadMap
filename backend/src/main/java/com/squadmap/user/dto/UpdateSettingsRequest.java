@@ -18,5 +18,11 @@ public record UpdateSettingsRequest(
         String mapStyle,
         Boolean chatDefault,
         Boolean reduceMotion,
-        @Pattern(regexp = "12h|24h", message = "Choose 12h or 24h.") String timeFormat) {
+        @Pattern(regexp = "12h|24h", message = "Choose 12h or 24h.") String timeFormat,
+        Boolean pushJoined,
+        Boolean pushLeft,
+        Boolean pushEndingSoon,
+        Boolean pushTripEnded,
+        Boolean preciseLocation,
+        Boolean keepHistory) {
 }

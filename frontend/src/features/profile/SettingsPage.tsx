@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { ChevronRight } from 'lucide-react';
 import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
 import { Segmented } from '../../components/ui/Segmented';
@@ -139,7 +140,23 @@ export function SettingsPage() {
           </Item>
         </Section>
 
+        <Section title="Notifications">
+          <Link to="/me/alerts#push" className="flex min-h-[56px] items-center gap-4">
+            <span className="min-w-0 flex-1">
+              <span className="block text-base leading-[22px] font-bold text-ink">Push notifications</span>
+              <span className="block text-[13px] leading-[18px] text-muted">
+                Which alerts reach this device
+              </span>
+            </span>
+            <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+          </Link>
+        </Section>
+
         <Section title="Account">
+          <Link to="/me/privacy" className="flex min-h-[56px] items-center gap-4">
+            <span className="flex-1 text-base leading-[22px] font-bold text-ink">Privacy and data</span>
+            <ChevronRight aria-hidden="true" className="size-5 text-muted" />
+          </Link>
           <button
             type="button"
             onClick={async () => {
