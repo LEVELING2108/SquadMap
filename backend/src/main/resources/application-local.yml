@@ -34,3 +34,8 @@ squadmap:
   push:
     public-key: ${VAPID_PUBLIC_KEY:}
     private-key: ${VAPID_PRIVATE_KEY:}
+
+# Health and metrics on their own port, as in production: http://localhost:8481/actuator/prometheus
+management:
+  server:
+    port: 8481

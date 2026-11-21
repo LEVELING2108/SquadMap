@@ -156,7 +156,7 @@ jobs:
           nohup java -jar target/squadmap-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=local \
             > "$RUNNER_TEMP/backend.log" 2>&1 &
           for attempt in $(seq 1 60); do
-            if curl -fsS http://localhost:8480/actuator/health/readiness > /dev/null; then
+            if curl -fsS http://localhost:8481/actuator/health/readiness > /dev/null; then
               echo "Backend is ready."
               exit 0
             fi

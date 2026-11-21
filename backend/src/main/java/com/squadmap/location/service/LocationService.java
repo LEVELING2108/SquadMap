@@ -3,6 +3,7 @@ package com.squadmap.location.service;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.geo.GeoMath;
+import com.squadmap.common.metrics.AppMetrics;
 import com.squadmap.common.id.UuidV7;
 import com.squadmap.common.ratelimit.RateLimit;
 import com.squadmap.common.ratelimit.RateLimiter;
@@ -57,12 +58,14 @@ public class LocationService {
     private final InviteProperties inviteProperties;
     private final EtaService etas;
     private final DistanceStore distances;
+    private final AppMetrics metrics;
     private final Clock clock;
 
     public LocationService(TripAccess access, TripMemberRepository members, LocationConsentRepository consents,
                            PositionStore positions, LiveChannel channel, LiveTrips liveTrips,
                            RateLimiter rateLimiter, InviteProperties inviteProperties, EtaService etas,
-                           DistanceStore distances, Clock clock) {
+                           DistanceStore distances, AppMetrics metrics, Clock clock) {
+        this.metrics = metrics;
         this.etas = etas;
         this.distances = distances;
         this.access = access;
@@ -110,6 +113,7 @@ public class LocationService {
         }
         positions.put(tripId, member.getId(), position);
         distances.record(tripId, member.getId(), position);
+        metrics.locationAccepted();
         channel.publish(LiveChannel.locationsTopic(tripId), MemberLocation.of(member.getId(), position));
         // In the background: the ETA and the arrival check never hold up the update itself.
         etas.update(tripId, member.getId(), position);

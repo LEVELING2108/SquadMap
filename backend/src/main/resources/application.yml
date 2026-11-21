@@ -32,6 +32,11 @@ server:
     include-stacktrace: never
 
 management:
+  metrics:
+    distribution:
+      # Latency buckets for incoming requests, so dashboards can show the 95th percentile per route.
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:
@@ -51,3 +56,16 @@ logging:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# Error reports go to Sentry only when SENTRY_DSN is set (production); otherwise nothing is sent. No
+# personal data: no request bodies, headers, cookies or user details, and logs never hold places or tokens
+# (LogPrivacyIT checks that).
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:development}
+  send-default-pii: false
+  max-request-body-size: none
+  traces-sample-rate: 0.0
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
