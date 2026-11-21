@@ -58,6 +58,9 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      # Only high and critical issues fail the build; the dependency-scan job reads the same lock file in full.
+      - name: npm audit
+        run: npm audit --audit-level=high
       - name: Build
         run: npm run build
       - name: PWA check
@@ -177,6 +180,23 @@ jobs:
           name: journey-report
           path: frontend/playwright-report-journey
           retention-days: 7
+
+  # Known security issues in the backend's and web app's libraries, transitive ones included, from the
+  # OSV database. Fails on any issue that osv-scanner.toml doesn't pass over with a reason and a date.
+  dependency-scan:
+    name: dependency-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Scan the Maven and npm dependencies
+        run: >
+          docker run --rm -v "$PWD:/src" -w /src
+          ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde
+          scan source --config /src/osv-scanner.toml
+          -L /src/backend/pom.xml -L /src/frontend/package-lock.json
 
   secrets-scan:
     name: secrets-scan
