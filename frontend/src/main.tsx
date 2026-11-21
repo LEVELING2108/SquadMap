@@ -7,6 +7,7 @@ import { restoreSession } from './features/auth/session';
 import { AccountPreferences } from './features/profile/AccountPreferences';
 import { applyRememberedPreferences } from './features/profile/reducedMotion';
 import { createQueryClient } from './lib/api/queryClient';
+import { startErrorReporting } from './lib/errorReporting';
 import { initTheme } from './lib/theme';
 import { trackPageVisibility } from './motion/pageVisibility';
 import { listenForInstall } from './pwa/installPrompt';
@@ -17,6 +18,7 @@ import { listenForSignOut, syncPushOnSignIn } from './pwa/push';
 import { UpdateToast } from './pwa/UpdateToast';
 import './styles/index.css';
 
+startErrorReporting();
 initTheme();
 applyRememberedPreferences();
 trackPageVisibility();
