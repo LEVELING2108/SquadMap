@@ -1,9 +1,10 @@
 package com.squadmap;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
-import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -29,14 +30,20 @@ public class TestcontainersConfig {
     }
 
     @Bean
-    GenericContainer<?> mailpit(DynamicPropertyRegistry properties) {
-        GenericContainer<?> mailpit = new GenericContainer<>(DockerImageName.parse("axllent/mailpit:v1.33.1"))
+    GenericContainer<?> mailpit() {
+        return new GenericContainer<>(DockerImageName.parse("axllent/mailpit:v1.33.1"))
                 .withExposedPorts(1025, 8025)
                 .waitingFor(Wait.forHttp("/readyz").forPort(8025));
-        properties.add("spring.mail.host", mailpit::getHost);
-        properties.add("spring.mail.port", () -> mailpit.getMappedPort(1025));
-        properties.add(Mailpit.API_URL_PROPERTY,
-                () -> "http://" + mailpit.getHost() + ":" + mailpit.getMappedPort(8025));
-        return mailpit;
+    }
+
+    /** Points the app's mail settings, and the tests' Mailpit reader, at the container above. */
+    @Bean
+    DynamicPropertyRegistrar mailpitProperties(@Qualifier("mailpit") GenericContainer<?> mailpit) {
+        return properties -> {
+            properties.add("spring.mail.host", mailpit::getHost);
+            properties.add("spring.mail.port", () -> mailpit.getMappedPort(1025));
+            properties.add(Mailpit.API_URL_PROPERTY,
+                    () -> "http://" + mailpit.getHost() + ":" + mailpit.getMappedPort(8025));
+        };
     }
 }
