@@ -39,6 +39,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: [version-update:semver-major]
+      # Must move together with the Playwright container image in ci.yml (e2e and journey jobs), or the
+      # browsers don't match and both jobs fail. Update the two by hand in one PR.
+      - dependency-name: "@playwright/test"
 
   - package-ecosystem: github-actions
     directory: /
