@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:journey": "playwright test --config playwright.journey.config.ts",
+    "e2e:csp": "playwright test --config playwright.csp.config.ts",
     "icons": "pwa-assets-generator",
     "check:pwa": "node scripts/check-pwa.mjs"
   },

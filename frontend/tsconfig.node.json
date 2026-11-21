@@ -21,8 +21,10 @@
     "pwa-assets.config.ts",
     "playwright.config.ts",
     "playwright.journey.config.ts",
+    "playwright.csp.config.ts",
     "eslint.config.js",
     "e2e",
-    "e2e-journey"
+    "e2e-journey",
+    "e2e-csp"
   ]
 }
