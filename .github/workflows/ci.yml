@@ -83,6 +83,11 @@ jobs:
       - run: npm ci
       - name: Browser tests
         run: npm run e2e
+      # The built app under the production Content-Security-Policy (infra/nginx/security-headers.conf).
+      - name: Build for the policy check
+        run: npm run build
+      - name: Content-Security-Policy check
+        run: npm run e2e:csp
       - name: Keep the report when tests fail
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
