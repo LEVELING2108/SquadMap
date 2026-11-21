@@ -19,6 +19,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.header.Header;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -33,6 +38,12 @@ import java.util.List;
 @Configuration
 @EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
+
+    /** For API answers: they are JSON, so nothing in them may be run, loaded or framed. */
+    static final String API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+    /** API answers need no device features at all. */
+    static final String API_PERMISSIONS = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+
 
     private static final String[] API_DOCS = {"/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"};
 
@@ -55,6 +66,18 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+                // Spring's defaults stay (nosniff, frame DENY, no-store on API answers, HSTS over HTTPS).
+                // API answers are data, never pages: nothing may run, load or frame them, and no address
+                // leaks to another site. The interactive docs (development only) need their own scripts,
+                // so the strict policy covers /api only.
+                .headers(headers -> headers
+                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                        .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                                new AntPathRequestMatcher("/api/**"),
+                                new StaticHeadersWriter(List.of(
+                                        new Header("Content-Security-Policy", API_CSP),
+                                        new Header("Permissions-Policy", API_PERMISSIONS),
+                                        new Header("Cross-Origin-Resource-Policy", "same-site"))))))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
                     // The live connection signs in with its first STOMP frame, checked by StompAuthInterceptor.

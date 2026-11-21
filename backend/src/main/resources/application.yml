@@ -18,7 +18,15 @@ spring:
       fail-on-unknown-properties: true
 
 server:
-  forward-headers-strategy: framework
+  # The client address comes from X-Forwarded-For only when the request arrives from a trusted proxy on
+  # this machine or a private network (Tomcat's default list below). From anywhere else the header is
+  # ignored, so a fake one can't dodge the per-IP rate limits. Behind a chain, the right-most address that
+  # isn't a trusted proxy wins, so a value a client sent ahead of the proxy's own is ignored too.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
   error:
     include-message: never
     include-stacktrace: never
