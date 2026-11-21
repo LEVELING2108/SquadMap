@@ -1,0 +1,13 @@
+# Known issues the dependency scan (CI job "dependency-scan") may pass over, each with the reason it doesn't
+# affect SquadMap and a date to look again. After that date the scan fails until someone checks: is a fix
+# out for our Spring line, or does the reason still hold? Never add an entry without a reason.
+
+[[IgnoredVulns]]
+id = "GHSA-j9f9-w8pj-32f8"
+ignoreUntil = 2027-02-21
+reason = "Spring MVC stream corruption with Server-Sent Events and view fragments. SquadMap has no SSE and renders no views (JSON and STOMP only; NoViewRenderingTest keeps it that way). Fixed only in Spring 7."
+
+[[IgnoredVulns]]
+id = "GHSA-pc63-qcmh-9cmg"
+ignoreUntil = 2027-02-21
+reason = "Spring MVC XsltView path handling. SquadMap uses no XsltView or any view rendering (NoViewRenderingTest keeps it that way). Fixed only in Spring 7."
