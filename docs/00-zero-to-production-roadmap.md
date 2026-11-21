@@ -43,7 +43,7 @@ Chosen for one reason each: it is mainstream in industry and well documented.
 | Layer | Choice | Why | Alternative |
 | --- | --- | --- | --- |
 | Language and runtime | Java 21 (virtual threads) | Strong typing, mature ecosystem, hiring signal | Kotlin |
-| Backend framework | Spring Boot 3.3, Spring MVC | Standard for company backends, great security and testing support | Quarkus |
+| Backend framework | Spring Boot 3.5, Spring MVC | Standard for company backends, great security and testing support | Quarkus |
 | Real-time | Spring WebSocket, STOMP over SockJS | Built in, topic model fits trips | Plain WebSocket, SSE |
 | Auth | Spring Security, JWT access plus rotating refresh, Argon2id | Stateless scaling, revocable sessions | Keycloak, Auth0 |
 | Database | PostgreSQL 16 | Reliable, JSONB, good indexing | MySQL |
