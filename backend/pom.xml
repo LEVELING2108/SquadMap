@@ -22,7 +22,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>2.10.0</springdoc.version>
         <bouncycastle.version>1.87</bouncycastle.version>
-        <sentry.version>8.62.0</sentry.version>
+        <sentry.version>8.65.0</sentry.version>
         <bucket4j.version>8.22.0</bucket4j.version>
         <!--
           Newer patch releases than Spring Boot 3.5.16 picks, each fixing published security issues
