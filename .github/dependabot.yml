@@ -21,6 +21,11 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: [version-update:semver-major]
+      # The Maven wrapper: Dependabot rewrites backend/mvnw.cmd with Unix line endings, against
+      # .gitattributes, so it then shows as changed on every Windows checkout. Updated by hand instead
+      # (./mvnw wrapper:wrapper), which is rarely needed.
+      - dependency-name: "org.apache.maven:apache-maven"
+      - dependency-name: "org.apache.maven.wrapper:maven-wrapper"
 
   - package-ecosystem: npm
     directory: /frontend
