@@ -117,4 +117,8 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
               AND t.expiresAt > :now
             """)
     long countLiveHostedBy(@Param("hostId") UUID hostId, @Param("now") Instant now);
+
+    /** Trips running now, for the active-trips gauge. */
+    @Query("SELECT count(t) FROM Trip t WHERE t.status = com.squadmap.trip.domain.TripStatus.active AND t.expiresAt > :now")
+    long countLive(@Param("now") Instant now);
 }

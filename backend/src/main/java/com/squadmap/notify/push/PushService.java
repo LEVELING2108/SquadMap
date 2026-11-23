@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.squadmap.common.error.ApiException;
 import com.squadmap.common.error.ErrorCode;
 import com.squadmap.common.id.UuidV7;
+import com.squadmap.common.metrics.AppMetrics;
 import com.squadmap.notify.alert.AlertKind;
 import com.squadmap.notify.alert.AlertSaved;
 import com.squadmap.user.domain.UserSettings;
@@ -43,10 +44,12 @@ public class PushService {
     private final PushSender sender;
     private final UserService users;
     private final ObjectMapper json;
+    private final AppMetrics metrics;
     private final Clock clock;
 
     public PushService(PushSubscriptionRepository subscriptions, PushSender sender, UserService users,
-                       ObjectMapper json, Clock clock) {
+                       ObjectMapper json, AppMetrics metrics, Clock clock) {
+        this.metrics = metrics;
         this.subscriptions = subscriptions;
         this.sender = sender;
         this.users = users;
@@ -109,7 +112,9 @@ public class PushService {
         PushSender.Urgency urgency = endingSoon ? PushSender.Urgency.high : PushSender.Urgency.normal;
         int gone = 0;
         for (PushSubscription device : devices) {
-            if (sender.send(device, body, ttl, urgency) == PushSender.Outcome.GONE) {
+            PushSender.Outcome outcome = sender.send(device, body, ttl, urgency);
+            metrics.push(outcome.name());
+            if (outcome == PushSender.Outcome.GONE) {
                 subscriptions.deleteNow(device.getId());
                 gone++;
             }

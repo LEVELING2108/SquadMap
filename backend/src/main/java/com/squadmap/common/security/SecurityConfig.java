@@ -51,7 +51,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ProblemResponseWriter problems,
-            @Value("${springdoc.api-docs.enabled:true}") boolean apiDocsEnabled) throws Exception {
+            @Value("${springdoc.api-docs.enabled:true}") boolean apiDocsEnabled,
+            ManagementPort managementPort) throws Exception {
 
         AuthenticationEntryPoint unauthenticated = (request, response, ex) -> problems.write(
                 response, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHENTICATED, "Sign in to continue.");
@@ -80,6 +81,11 @@ public class SecurityConfig {
                                         new Header("Cross-Origin-Resource-Policy", "same-site"))))))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+                    // Read by Prometheus, without a token, but only on the separate management port, which
+                    // only the server's own network reaches (production sets management.server.port). On the
+                    // public port it stays closed. It holds counts, never people or places.
+                    auth.requestMatchers(request -> managementPort.isOn(request.getLocalPort())
+                            && "/actuator/prometheus".equals(request.getRequestURI())).permitAll();
                     // The live connection signs in with its first STOMP frame, checked by StompAuthInterceptor.
                     auth.requestMatchers("/ws", "/ws/**").permitAll();
                     if (apiDocsEnabled) {
