@@ -6,6 +6,57 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-23
+
+Hardening: the app is checked, scanned, measured and tested under load and failure, ready to be put
+on the internet.
+
+### Added
+
+- Metrics for Prometheus on a separate internal port (8481): trips running, live connections, location
+  updates, ETA routes by source (a Mapbox route call costs money), push notifications by outcome, and
+  response times. Counts only: no metric names a trip, a person or a place.
+- A Grafana dashboard (`infra/grafana/squadmap-dashboard.json`).
+- Error reports to Sentry, off until a DSN is set. They carry no personal data: no request bodies,
+  headers, cookies, user details or network calls, only the page path on the web app.
+- Structured (JSON) logs in production. A test runs a whole trip and checks that no token, password,
+  trip code, email, chat message or location ever reaches the logs.
+- The health check on the internal port says which part is down (database, Redis, mail).
+- `infra/scripts/chaos-drill.sh`: failure drills (restart Redis, restart the app, stop Postgres) for
+  any running stack, and the load test's results in docs/07.
+
+### Changed
+
+- Spring Boot 3.3 to 3.5, with newer patch releases of the libraries it uses. Known security issues
+  in the backend's libraries went from 98 (12 critical) to 2, and those two don't affect SquadMap.
+- When the database or Redis can't be reached, requests now fail within a few seconds with "SquadMap
+  can't reach its data right now. Please try again in a moment." (503), instead of waiting 30 seconds
+  and then showing a generic error.
+
+### Fixed
+
+- A stopped database under load no longer drops live connections: with 200 phones on the map and
+  Postgres down for 30 seconds, all 200 stayed connected and everything recovered within seconds.
+- Per-address rate limits can no longer be dodged with a made-up `X-Forwarded-For` header: it is only
+  believed from a trusted proxy.
+- Scheduled jobs no longer run on the live connection's threads.
+
+### Security
+
+- Every API route's access is now tested: without a token only public routes answer, and a guest's
+  pass reaches only the routes a guest needs, for its own trip.
+- Strict security headers on every API answer, and a production Content-Security-Policy for the web
+  app (`infra/nginx/security-headers.conf`) that CI checks against the built app.
+- CI scans every library (backend and web app, transitive ones included) for known security issues and
+  fails on any, and Dependabot proposes updates every week.
+
+### Known issues
+
+- Push notifications still haven't been checked on a real device.
+- The /privacy page is a summary until the reviewed legal text and a grievance contact are added.
+- The full load target (200 trips of 10 people for 15 minutes) is for a staging server; it was measured
+  locally at 500 phones.
+
 ## [0.4.0] - 2026-11-21
 
 Running a trip and wrapping it up: a trip menu, pausing your location, an installable app, push
@@ -247,7 +298,8 @@ Project foundations. No user-facing features yet.
 - Continuous integration: backend tests, frontend lint, type-check, unit tests and build, browser
   tests, a secret scan, and a guard that only lets `research` merge into `main`.
 
-[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.4.0...research
+[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.5.0...research
+[0.5.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.0...v0.2.1
