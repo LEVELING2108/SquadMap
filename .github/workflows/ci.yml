@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '21'
@@ -58,6 +58,9 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      # Only high and critical issues fail the build; the dependency-scan job reads the same lock file in full.
+      - name: npm audit
+        run: npm audit --audit-level=high
       - name: Build
         run: npm run build
       - name: PWA check
@@ -71,7 +74,7 @@ jobs:
     # job never downloads from the Ubuntu mirrors (which made this job fail when they were
     # unreachable). Its version must match @playwright/test in frontend/package-lock.json.
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+      image: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
       options: --ipc=host
     defaults:
       run:
@@ -83,6 +86,11 @@ jobs:
       - run: npm ci
       - name: Browser tests
         run: npm run e2e
+      # The built app under the production Content-Security-Policy (infra/nginx/security-headers.conf).
+      - name: Build for the policy check
+        run: npm run build
+      - name: Content-Security-Policy check
+        run: npm run e2e:csp
       - name: Keep the report when tests fail
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -98,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+      image: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
       options: --ipc=host
     services:
       postgres:
@@ -132,7 +140,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '21'
@@ -148,7 +156,7 @@ jobs:
           nohup java -jar target/squadmap-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=local \
             > "$RUNNER_TEMP/backend.log" 2>&1 &
           for attempt in $(seq 1 60); do
-            if curl -fsS http://localhost:8480/actuator/health/readiness > /dev/null; then
+            if curl -fsS http://localhost:8481/actuator/health/readiness > /dev/null; then
               echo "Backend is ready."
               exit 0
             fi
@@ -172,6 +180,23 @@ jobs:
           name: journey-report
           path: frontend/playwright-report-journey
           retention-days: 7
+
+  # Known security issues in the backend's and web app's libraries, transitive ones included, from the
+  # OSV database. Fails on any issue that osv-scanner.toml doesn't pass over with a reason and a date.
+  dependency-scan:
+    name: dependency-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Scan the Maven and npm dependencies
+        run: >
+          docker run --rm -v "$PWD:/src" -w /src
+          ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde
+          scan source --config /src/osv-scanner.toml
+          -L /src/backend/pom.xml -L /src/frontend/package-lock.json
 
   secrets-scan:
     name: secrets-scan

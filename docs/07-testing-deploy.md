@@ -62,7 +62,18 @@ Verify: after a deploy, turn on notifications on a phone and have a friend join 
 ## Nginx essentials
 TLS via Let's Encrypt (certbot), HTTP to HTTPS redirect, HSTS (6 months, then 1 year), gzip/brotli, `proxy_set_header Upgrade/Connection` for `/ws`, `proxy_read_timeout 75s` for WebSocket, request size limit 1 MB, security headers (CSP, X-Content-Type-Options, Referrer-Policy, Permissions-Policy: `geolocation=(self)`), per-IP rate limit zone on `/api/v1/auth` and `/api/v1/join`.
 
-**Client address:** the app's rate limits use the first value of `X-Forwarded-For`, so Nginx must *replace* that header, never append to it: `proxy_set_header X-Forwarded-For $remote_addr;` (behind Cloudflare, first restore the real visitor address with `real_ip_header CF-Connecting-IP` and `set_real_ip_from` for Cloudflare's ranges). Appending with `$proxy_add_x_forwarded_for` would let a client send a fake address and dodge the per-IP limits. **Verify:** send a request with `X-Forwarded-For: 1.2.3.4` through the proxy six times to `/api/v1/auth/login`; the sixth must still return `429`.
+**Observability:**
+- Logs: in production one JSON object per line (Elastic Common Schema). No places, tokens, passwords, codes, emails or chat text ever reach a log line; `LogPrivacyIT` runs a whole trip and checks.
+- Metrics: on the management port only (`MANAGEMENT_PORT`, default 8481), at `/actuator/prometheus` with no token; the public port doesn't serve it. Besides the JVM, HTTP (with p95 buckets), database and Redis numbers: `squadmap_trips_active`, `squadmap_live_connections`, `squadmap_location_updates_total`, `squadmap_eta_routes_total{source=mapbox|cache|estimate}` (mapbox is a paid call) and `squadmap_push_sends_total{outcome=sent|gone|failed}`. Tags are fixed words only, and outgoing calls are recorded without their address, so no metric names a trip, a person or a place (`MetricsIT` checks).
+- Dashboard: import `infra/grafana/squadmap-dashboard.json` into Grafana and pick the Prometheus data source.
+- Error reports: Sentry, off until a DSN is set. Backend: `SENTRY_DSN` (no request bodies, headers, cookies or user details; errors from logs at ERROR level). Web app: `VITE_SENTRY_DSN` at build time; without it the build contains no Sentry code at all. With it, only the page path is sent with an error, never network calls, console output, cookies, headers, bodies or user details. When turning it on, add the DSN's ingest host (for example `https://o123.ingest.sentry.io`) to `connect-src` in `infra/nginx/security-headers.conf`, or the browser blocks the reports; `npm run e2e:csp` doesn't catch this, as it builds without a DSN.
+- **Verify:** `curl -s http://localhost:8481/actuator/prometheus | grep squadmap_` on the server lists the five metrics, and `curl -sI https://<domain>/actuator/prometheus` from outside does not return 200.
+
+**Dependency scan:** the CI job `dependency-scan` runs osv-scanner (pinned image) over `backend/pom.xml` and `frontend/package-lock.json`, transitive dependencies included, and fails on any known issue that `osv-scanner.toml` doesn't pass over with a reason and a re-check date. The frontend job also runs `npm audit --audit-level=high`. `.github/dependabot.yml` opens grouped minor and patch updates into `research` every Monday. To clear a finding: update the library (or pin a fixed patch version in `backend/pom.xml`); only if it truly can't affect SquadMap, add an entry with the reason and a date, plus a test that keeps the reason true (see `NoViewRenderingTest`). **Verify:** run the image locally with the command in `ci.yml`; it ends with "No issues found".
+
+**Security headers:** the web app's headers (CSP, nosniff, Referrer-Policy, Permissions-Policy with `geolocation=(self)`, COOP, HSTS) live in `infra/nginx/security-headers.conf`; include that file in the server block. CI loads the built app under that exact policy (`npm run e2e:csp`) and fails on anything it blocks, so change the file, not a copy. The API sets its own stricter headers (`default-src 'none'`, no referrer, no device features). **Verify:** `curl -sI https://<domain>/ | grep -i content-security-policy` shows the policy, and `curl -sI https://<domain>/api/v1/me` shows `default-src 'none'`.
+
+**Client address:** the app believes `X-Forwarded-For` only from a proxy on the same machine or a private network (Tomcat's `server.tomcat.remoteip.internal-proxies`), and then takes the right-most address that isn't a trusted proxy, so a value a client sends ahead of Nginx's own is ignored. Still, have Nginx *replace* the header: `proxy_set_header X-Forwarded-For $remote_addr;` (behind Cloudflare, first restore the real visitor address with `real_ip_header CF-Connecting-IP` and `set_real_ip_from` for Cloudflare's ranges). Appending with `$proxy_add_x_forwarded_for` would let a client send a fake address and dodge the per-IP limits. **Verify:** send a request with `X-Forwarded-For: 1.2.3.4` through the proxy six times to `/api/v1/auth/login`; the sixth must still return `429`.
 
 ## CI/CD (GitHub Actions)
 1. **PR**: backend verify, frontend lint + typecheck + unit, Playwright E2E, axe, dependency scan, build images (no push). Required to merge.
@@ -83,6 +94,34 @@ Recommendation for launch: a VPS in India or Singapore with managed Postgres and
 - Logs: JSON, request id, no PII and no coordinates. Ship to Loki or the host's log service.
 - Alerts: error rate over 2% for 5 min, p95 latency over 1 s, sockets dropping suddenly, DB connections over 80%, disk over 80%, certificate expiring in under 14 days, Mapbox spend 80% of budget.
 - Uptime: external ping on `/actuator/health` every minute plus a synthetic "create and join" check every 10 minutes.
+
+## Load and failure drills
+
+**Load:** `infra/k6/ws-load.js` signs up one host per trip, joins guests, and has every member send a location every 2 s over the live connection, measuring the round trip (sent, stored, relayed, received back). Run it against a local or staging stack, never production:
+
+```sh
+docker run --rm -i -e BASE=http://host.docker.internal:8480 -e TRIPS=50 -e MEMBERS=10 -e DURATION=5m grafana/k6 run - < infra/k6/ws-load.js
+```
+
+Measured on a developer laptop (backend jar, Postgres and Redis in Docker, the load generator on the same machine), November 2026, without failures:
+
+| Run | Round trip p95 | Refused | Errors | App CPU avg / max | Database pool |
+| --- | --- | --- | --- | --- | --- |
+| 50 trips x 10 (500 phones), 5 min | 614 ms (avg 304 ms) | 0 of 71,151 | 0 | 9% / 32% | no waits or timeouts |
+
+The full target (200 trips x 10 for 15 min, then a spike to 400) belongs on the staging server: `-e TRIPS=200 -e DURATION=15m`. Add `-e DEBUG=1` to print why any live connection closes.
+
+**Failure drills:** `infra/scripts/chaos-drill.sh [redis|app|postgres]` restarts or stops one part of a running stack and probes, every 2 s, what users get from the API and what the health check reports, until it has recovered. Run it during a load test. On a server, set `APP_RESTART` (for example `docker restart squadmap-app-1`) and the container names. With 200 phones connected:
+
+| Drill | What users see | Live connections | Recovery |
+| --- | --- | --- | --- |
+| Restart Redis | Nothing: the API keeps answering, health stays UP | all 200 kept | about 3 s |
+| Stop Postgres 30 s | Actions that need the database fail within about 3 s with `503 SERVICE_UNAVAILABLE` ("try again in a moment"); location updates sent meanwhile are refused (about 11% of a 6-minute run's updates); health shows `db: DOWN` | all 200 kept | 2 to 9 s after Postgres is back, on its own |
+| Restart the app | Requests fail while it starts; the live map shows "Connecting" and reconnects by itself (covered by the e2e tests) | dropped, then the app reconnects | about 20 s (the time the app takes to start locally) |
+
+Fixed by these drills: requests used to wait 30 s for a database connection (and up to 60 s for Redis), which piled up work and dropped 169 of 200 live connections when the database came back; the waits are now 3 s and 2 s. Scheduled jobs no longer run on the live connection's threads. A missing database now answers 503 with `Retry-After`, not 500.
+
+**Verify:** after a deploy to staging, run the load test and `chaos-drill.sh` during it; every drill ends with "recovered after about N s" and the k6 summary shows p95 under 3 s.
 
 ## Backups and recovery
 Nightly `pg_dump` to object storage, 14 day retention, weekly restore test into a scratch database. Redis holds only ephemeral data (RDB snapshot is optional). Recovery targets: RPO 24 h, RTO 2 h at launch.

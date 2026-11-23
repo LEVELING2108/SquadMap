@@ -1,6 +1,16 @@
 spring:
   application:
     name: squadmap
+  # When the database or Redis is unreachable, answer within seconds instead of holding the request: the
+  # defaults (30 s for a database connection, 60 s for a Redis command) leave people staring at a spinner,
+  # and the waiting requests tie up the server. Found with infra/scripts/chaos-drill.sh.
+  datasource:
+    hikari:
+      connection-timeout: 3000
+  data:
+    redis:
+      timeout: 2s
+      connect-timeout: 2s
   threads:
     virtual:
       enabled: true
@@ -18,12 +28,25 @@ spring:
       fail-on-unknown-properties: true
 
 server:
-  forward-headers-strategy: framework
+  # The client address comes from X-Forwarded-For only when the request arrives from a trusted proxy on
+  # this machine or a private network (Tomcat's default list below). From anywhere else the header is
+  # ignored, so a fake one can't dodge the per-IP rate limits. Behind a chain, the right-most address that
+  # isn't a trusted proxy wins, so a value a client sent ahead of the proxy's own is ignored too.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
   error:
     include-message: never
     include-stacktrace: never
 
 management:
+  metrics:
+    distribution:
+      # Latency buckets for incoming requests, so dashboards can show the 95th percentile per route.
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:
@@ -43,3 +66,16 @@ logging:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+# Error reports go to Sentry only when SENTRY_DSN is set (production); otherwise nothing is sent. No
+# personal data: no request bodies, headers, cookies or user details, and logs never hold places or tokens
+# (LogPrivacyIT checks that).
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:development}
+  send-default-pii: false
+  max-request-body-size: none
+  traces-sample-rate: 0.0
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info

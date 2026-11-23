@@ -3,3 +3,5 @@
 81abbd0e9bf4168a4711f514a7b400c76746ce97:frontend/src/pwa/push.test.tsx:generic-api-key:14
 81abbd0e9bf4168a4711f514a7b400c76746ce97:frontend/src/pwa/push.test.tsx:generic-api-key:15
 32e9f69ccadd99e33d8f7d35aade4af64078bf89:backend/src/test/java/com/squadmap/notify/push/PushEncryptionTest.java:generic-api-key:31
+# A made-up password LogPrivacyIT signs up with, to check that passwords never reach the logs.
+f9543691ab17411fea9187790ada7d7fcb030f68:backend/src/test/java/com/squadmap/common/LogPrivacyIT.java:generic-api-key:31

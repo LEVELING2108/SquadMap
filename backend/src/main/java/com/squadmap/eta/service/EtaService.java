@@ -1,6 +1,7 @@
 package com.squadmap.eta.service;
 
 import com.squadmap.common.geo.GeoMath;
+import com.squadmap.common.metrics.AppMetrics;
 import com.squadmap.common.ratelimit.RateLimit;
 import com.squadmap.common.ratelimit.RateLimitedException;
 import com.squadmap.common.ratelimit.RateLimiter;
@@ -64,12 +65,14 @@ public class EtaService {
     private final TransactionTemplate transactions;
     private final TripAccess access;
     private final PositionStore positions;
+    private final AppMetrics metrics;
     private final Clock clock;
 
     public EtaService(TripRepository trips, TripMemberRepository members, EtaStore store,
                       MapboxDirections directions, RateLimiter rateLimiter, LiveChannel channel,
                       LiveTrips liveTrips, TransactionTemplate transactions, TripAccess access,
-                      PositionStore positions, Clock clock) {
+                      PositionStore positions, AppMetrics metrics, Clock clock) {
+        this.metrics = metrics;
         this.access = access;
         this.positions = positions;
         this.trips = trips;
@@ -216,16 +219,23 @@ public class EtaService {
     private Route routeFor(UUID tripId, Position position, Destination destination, TravelMode mode) {
         String key = EtaStore.routeKey(mode, position.lat(), position.lng(), destination.lat(), destination.lng());
         Route cached = store.cachedRoute(key);
-        if (cached != null || !directions.available()) {
+        if (cached != null) {
+            metrics.route(AppMetrics.RouteSource.CACHE);
             return cached;
+        }
+        if (!directions.available()) {
+            metrics.route(AppMetrics.RouteSource.ESTIMATE);
+            return null;
         }
         try {
             rateLimiter.check(RateLimit.DIRECTIONS_PER_TRIP, tripId.toString());
         } catch (RateLimitedException overBudget) {
+            metrics.route(AppMetrics.RouteSource.ESTIMATE);
             return null;
         }
         Route fresh = directions.route(position.lat(), position.lng(), destination.lat(), destination.lng(), mode)
                 .orElse(null);
+        metrics.route(fresh != null ? AppMetrics.RouteSource.MAPBOX : AppMetrics.RouteSource.ESTIMATE);
         if (fresh != null) {
             store.cacheRoute(key, fresh);
         }

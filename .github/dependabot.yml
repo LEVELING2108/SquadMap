@@ -1,0 +1,61 @@
+# Weekly version updates, opened against research (the integration branch) like every other change.
+# Minor and patch updates come grouped, one PR per ecosystem, so they are quick to review; major versions
+# are left out because each one is planned work (for example Spring Boot 4). Security updates for known
+# issues still arrive on their own, whatever the version jump, through GitHub's Dependabot alerts.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /backend
+    target-branch: research
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      backend:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+      # The Maven wrapper: Dependabot rewrites backend/mvnw.cmd with Unix line endings, against
+      # .gitattributes, so it then shows as changed on every Windows checkout. Updated by hand instead
+      # (./mvnw wrapper:wrapper), which is rarely needed.
+      - dependency-name: "org.apache.maven:apache-maven"
+      - dependency-name: "org.apache.maven.wrapper:maven-wrapper"
+
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: research
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      frontend:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+      # Must move together with the Playwright container image in ci.yml (e2e and journey jobs), or the
+      # browsers don't match and both jobs fail. Update the two by hand in one PR.
+      - dependency-name: "@playwright/test"
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: research
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]

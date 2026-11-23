@@ -11,7 +11,7 @@ SquadMap is a real-time group location-sharing web app. A host starts a trip and
 
 | Layer | Choice |
 | --- | --- |
-| Backend | Java 21, Spring Boot 3.3, Spring Security (JWT), STOMP over WebSocket |
+| Backend | Java 21, Spring Boot 3.5, Spring Security (JWT), STOMP over WebSocket |
 | Data | PostgreSQL 16, Redis 7, Flyway migrations |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
 | Platform | Installable PWA, light and dark themes |
@@ -24,7 +24,7 @@ You need Docker, Java 21 or newer, Node 22 or newer, and `make`.
 | Step | Command | Verify |
 | --- | --- | --- |
 | 1. Start Postgres, Redis and the mail catcher | `make up` | `make ps` shows three services as `healthy` |
-| 2. Run the API | `make backend` | <http://localhost:8480/actuator/health> returns `{"status":"UP"}` |
+| 2. Run the API | `make backend` | <http://localhost:8481/actuator/health> returns `{"status":"UP"}` (health and metrics have their own port, 8481; the API is on 8480) |
 | 3. Install and run the web app (second terminal) | `make install` then `make frontend` | <http://localhost:5480> shows the SquadMap page |
 | 4. Run the tests | `make test` and `make e2e` | Both finish without failures |
 | 5. Run the full account journey (steps 1 and 2 running) | `make journey` | `1 passed`: sign up, log in, and a password reset through a real email |
@@ -49,7 +49,7 @@ docker run --rm -i -e BASE=http://host.docker.internal:8480 grafana/k6 run - < i
 ```
 
 Verify: the summary shows `location_round_trip` p(95) under 3 s and `location_refused` under 0.5%.
-Raise the load with `-e TRIPS=200 -e MEMBERS=10 -e DURATION=15m` against a staging stack.
+Raise the load with `-e TRIPS=200 -e MEMBERS=10 -e DURATION=15m` against a staging stack. Failure drills (restart Redis, stop Postgres, restart the app) are in `infra/scripts/chaos-drill.sh`; results in docs/07.
 
 Place search (choosing a trip's destination) and routes to it need your own Mapbox tokens; everything
 else works without them (ETAs are then rough estimates). Create two public tokens in your [Mapbox account](https://account.mapbox.com/access-tokens/):

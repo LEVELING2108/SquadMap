@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
@@ -20,12 +20,35 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <springdoc.version>2.6.0</springdoc.version>
+        <springdoc.version>2.10.0</springdoc.version>
         <bouncycastle.version>1.87</bouncycastle.version>
-        <bucket4j.version>8.14.0</bucket4j.version>
-        <!-- Newer than the Spring Boot default: required to talk to current Docker engines. -->
-        <testcontainers.version>1.21.4</testcontainers.version>
+        <sentry.version>8.65.0</sentry.version>
+        <bucket4j.version>8.22.0</bucket4j.version>
+        <!--
+          Newer patch releases than Spring Boot 3.5.16 picks, each fixing published security issues
+          (osv-scanner in CI lists them). Same minor lines, so nothing changes in behaviour. Drop an entry
+          once a Spring Boot release ships that version or newer.
+        -->
+        <postgresql.version>42.7.14</postgresql.version>
+        <tomcat.version>10.1.62</tomcat.version>
+        <netty.version>4.1.141.Final</netty.version>
+        <jackson-bom.version>2.21.8</jackson-bom.version>
+        <log4j2.version>2.25.5</log4j2.version>
+        <httpclient5.version>5.6.5</httpclient5.version>
+        <httpcore5.version>5.4.4</httpcore5.version>
+        <commons-lang3.version>3.22.0</commons-lang3.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Pulled in by Testcontainers (tests only); 1.24.0 has published security issues. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.28.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -97,6 +120,17 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+        <!-- Error reports. Off unless SENTRY_DSN is set. -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-logback</artifactId>
+            <version>${sentry.version}</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>

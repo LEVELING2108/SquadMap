@@ -43,3 +43,21 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+# One JSON object per line (Elastic Common Schema), so a log tool can search and count them. The same
+# rule holds as everywhere: no places, tokens, passwords or codes in any message.
+logging:
+  structured:
+    format:
+      console: ecs
+
+# Health and metrics on their own port, which only the server's own network reaches: Nginx never forwards
+# it, so the public site shows neither. Prometheus scrapes http://app:8481/actuator/prometheus.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8481}
+  # Which parts are up (database, Redis, mail), without details. Only because health is on the internal
+  # management port here: on the public port it stays hidden (ApplicationSmokeIT checks that).
+  endpoint:
+    health:
+      show-components: always
