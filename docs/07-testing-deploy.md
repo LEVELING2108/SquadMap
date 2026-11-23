@@ -95,6 +95,34 @@ Recommendation for launch: a VPS in India or Singapore with managed Postgres and
 - Alerts: error rate over 2% for 5 min, p95 latency over 1 s, sockets dropping suddenly, DB connections over 80%, disk over 80%, certificate expiring in under 14 days, Mapbox spend 80% of budget.
 - Uptime: external ping on `/actuator/health` every minute plus a synthetic "create and join" check every 10 minutes.
 
+## Load and failure drills
+
+**Load:** `infra/k6/ws-load.js` signs up one host per trip, joins guests, and has every member send a location every 2 s over the live connection, measuring the round trip (sent, stored, relayed, received back). Run it against a local or staging stack, never production:
+
+```sh
+docker run --rm -i -e BASE=http://host.docker.internal:8480 -e TRIPS=50 -e MEMBERS=10 -e DURATION=5m grafana/k6 run - < infra/k6/ws-load.js
+```
+
+Measured on a developer laptop (backend jar, Postgres and Redis in Docker, the load generator on the same machine), November 2026, without failures:
+
+| Run | Round trip p95 | Refused | Errors | App CPU avg / max | Database pool |
+| --- | --- | --- | --- | --- | --- |
+| 50 trips x 10 (500 phones), 5 min | 614 ms (avg 304 ms) | 0 of 71,151 | 0 | 9% / 32% | no waits or timeouts |
+
+The full target (200 trips x 10 for 15 min, then a spike to 400) belongs on the staging server: `-e TRIPS=200 -e DURATION=15m`. Add `-e DEBUG=1` to print why any live connection closes.
+
+**Failure drills:** `infra/scripts/chaos-drill.sh [redis|app|postgres]` restarts or stops one part of a running stack and probes, every 2 s, what users get from the API and what the health check reports, until it has recovered. Run it during a load test. On a server, set `APP_RESTART` (for example `docker restart squadmap-app-1`) and the container names. With 200 phones connected:
+
+| Drill | What users see | Live connections | Recovery |
+| --- | --- | --- | --- |
+| Restart Redis | Nothing: the API keeps answering, health stays UP | all 200 kept | about 3 s |
+| Stop Postgres 30 s | Actions that need the database fail within about 3 s with `503 SERVICE_UNAVAILABLE` ("try again in a moment"); location updates sent meanwhile are refused (about 11% of a 6-minute run's updates); health shows `db: DOWN` | all 200 kept | 2 to 9 s after Postgres is back, on its own |
+| Restart the app | Requests fail while it starts; the live map shows "Connecting" and reconnects by itself (covered by the e2e tests) | dropped, then the app reconnects | about 20 s (the time the app takes to start locally) |
+
+Fixed by these drills: requests used to wait 30 s for a database connection (and up to 60 s for Redis), which piled up work and dropped 169 of 200 live connections when the database came back; the waits are now 3 s and 2 s. Scheduled jobs no longer run on the live connection's threads. A missing database now answers 503 with `Retry-After`, not 500.
+
+**Verify:** after a deploy to staging, run the load test and `chaos-drill.sh` during it; every drill ends with "recovered after about N s" and the k6 summary shows p95 under 3 s.
+
 ## Backups and recovery
 Nightly `pg_dump` to object storage, 14 day retention, weekly restore test into a scratch database. Redis holds only ephemeral data (RDB snapshot is optional). Recovery targets: RPO 24 h, RTO 2 h at launch.
 

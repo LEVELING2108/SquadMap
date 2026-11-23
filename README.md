@@ -49,7 +49,7 @@ docker run --rm -i -e BASE=http://host.docker.internal:8480 grafana/k6 run - < i
 ```
 
 Verify: the summary shows `location_round_trip` p(95) under 3 s and `location_refused` under 0.5%.
-Raise the load with `-e TRIPS=200 -e MEMBERS=10 -e DURATION=15m` against a staging stack.
+Raise the load with `-e TRIPS=200 -e MEMBERS=10 -e DURATION=15m` against a staging stack. Failure drills (restart Redis, stop Postgres, restart the app) are in `infra/scripts/chaos-drill.sh`; results in docs/07.
 
 Place search (choosing a trip's destination) and routes to it need your own Mapbox tokens; everything
 else works without them (ETAs are then rough estimates). Create two public tokens in your [Mapbox account](https://account.mapbox.com/access-tokens/):
