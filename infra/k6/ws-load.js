@@ -48,8 +48,12 @@ function durationSeconds(text) {
   return Number(match[1]) * { s: 1, m: 60, h: 3600 }[match[2]];
 }
 
+/**
+ * A different client address per person, from 198.18.0.0/15 (set aside for benchmark tests). Not a private
+ * range on purpose: the backend treats private addresses as trusted proxies, not as clients.
+ */
 function fakeAddress(n) {
-  return `10.${(n >> 16) & 255}.${(n >> 8) & 255}.${n & 255}`;
+  return `198.${18 + ((n >> 16) & 1)}.${(n >> 8) & 255}.${n & 255}`;
 }
 
 function post(path, body, headers = {}) {
@@ -146,9 +150,16 @@ export default function (data) {
       } else if (message.command === 'MESSAGE' && message.headers.subscription === 'err') {
         refused.add(true);
       } else if (message.command === 'ERROR') {
+        if (__ENV.DEBUG) console.log(`ERROR frame: ${message.headers.message || ''} ${message.body.slice(0, 200)}`);
         refused.add(true);
         socket.close();
       }
+    });
+    socket.on('close', (code) => {
+      if (__ENV.DEBUG) console.log(`closed: ${code}`);
+    });
+    socket.on('error', (e) => {
+      if (__ENV.DEBUG) console.log(`socket error: ${e.error()}`);
     });
     socket.setTimeout(() => socket.close(), durationSeconds(DURATION) * 1000);
   });
