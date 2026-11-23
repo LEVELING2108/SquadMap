@@ -15,6 +15,8 @@ public enum ErrorCode {
     RATE_LIMITED,
     BAD_REQUEST,
     INTERNAL_ERROR,
+    /** The database or Redis can't be reached for a moment; trying again shortly usually works. */
+    SERVICE_UNAVAILABLE,
 
     // Accounts
     EMAIL_TAKEN,
