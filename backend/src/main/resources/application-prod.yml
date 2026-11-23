@@ -56,3 +56,8 @@ logging:
 management:
   server:
     port: ${MANAGEMENT_PORT:8481}
+  # Which parts are up (database, Redis, mail), without details. Only because health is on the internal
+  # management port here: on the public port it stays hidden (ApplicationSmokeIT checks that).
+  endpoint:
+    health:
+      show-components: always

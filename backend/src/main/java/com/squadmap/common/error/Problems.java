@@ -53,6 +53,7 @@ public final class Problems {
             case UNSUPPORTED_MEDIA_TYPE -> ErrorCode.UNSUPPORTED_MEDIA_TYPE;
             case PAYLOAD_TOO_LARGE -> ErrorCode.PAYLOAD_TOO_LARGE;
             case TOO_MANY_REQUESTS -> ErrorCode.RATE_LIMITED;
+            case SERVICE_UNAVAILABLE -> ErrorCode.SERVICE_UNAVAILABLE;
             default -> resolved.is4xxClientError() ? ErrorCode.BAD_REQUEST : ErrorCode.INTERNAL_ERROR;
         };
     }

@@ -1,6 +1,16 @@
 spring:
   application:
     name: squadmap
+  # When the database or Redis is unreachable, answer within seconds instead of holding the request: the
+  # defaults (30 s for a database connection, 60 s for a Redis command) leave people staring at a spinner,
+  # and the waiting requests tie up the server. Found with infra/scripts/chaos-drill.sh.
+  datasource:
+    hikari:
+      connection-timeout: 3000
+  data:
+    redis:
+      timeout: 2s
+      connect-timeout: 2s
   threads:
     virtual:
       enabled: true
