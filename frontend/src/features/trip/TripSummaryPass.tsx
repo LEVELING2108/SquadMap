@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import { StatTile } from '../../components/ui/StatTile';
 import { formatClock } from '../../lib/time';
 import { distanceText, lengthText, type TripSummary } from './summaryApi';
 import { shortPlace } from './tripQueries';
@@ -9,15 +10,6 @@ type TripSummaryPassProps = {
   unit: 'km' | 'mi';
   timeFormat: '12h' | '24h';
 };
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex min-w-0 flex-1 flex-col rounded-card bg-sand px-3.5 py-3">
-      <dd className="order-1 m-0 truncate text-[22px] leading-7 font-extrabold">{value}</dd>
-      <dt className="order-2 text-[13px] leading-[18px] font-bold text-muted">{label}</dt>
-    </div>
-  );
-}
 
 /**
  * The trip as a used boarding pass: when it started, where it went, and your numbers. No place is kept
@@ -61,10 +53,22 @@ export function TripSummaryPass({ summary, unit, timeFormat }: TripSummaryPassPr
           </div>
         </div>
         <div aria-hidden="true" className="mx-5 border-t-2 border-dashed border-perforation" />
-        <dl className="m-0 flex gap-2.5 px-5 pt-4 pb-5">
-          <Stat value={summary ? distanceText(summary.distanceM, unit) : loading} label="Distance" />
-          <Stat value={summary ? lengthText(summary.durationSeconds) : loading} label="Time" />
-          <Stat value={summary ? String(summary.friendCount) : loading} label="Friends" />
+        <dl className="m-0 flex flex-wrap gap-2.5 px-5 pt-4 pb-5">
+          <StatTile
+            value={summary ? distanceText(summary.distanceM, unit) : loading}
+            label="Distance"
+            className="bg-sand"
+          />
+          <StatTile
+            value={summary ? lengthText(summary.durationSeconds) : loading}
+            label="Time"
+            className="bg-sand"
+          />
+          <StatTile
+            value={summary ? String(summary.friendCount) : loading}
+            label={summary?.friendCount === 1 ? 'Friend' : 'Friends'}
+            className="bg-sand"
+          />
         </dl>
       </section>
     </div>

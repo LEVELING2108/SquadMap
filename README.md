@@ -13,9 +13,11 @@ SquadMap is a real-time group location-sharing web app. A host starts a trip and
 Priya (left, light theme) hosts; Aman (right, dark theme) joins by link, without an account. This is the real
 app running locally with made-up people and locations. Waits are cut and the drive is sped up.
 
-| Invite | Live map, light | Live map, dark | Trip chat |
-| --- | --- | --- | --- |
-| <img src="docs/media/invite.png" width="190" alt="The invite screen: a boarding pass with the trip code, and buttons to share the link or show a QR code"> | <img src="docs/media/live-map-light.png" width="190" alt="The live map in the light theme, with both friends' routes to the destination"> | <img src="docs/media/live-map-dark.png" width="190" alt="The same trip on the friend's phone, in the dark theme"> | <img src="docs/media/chat.png" width="190" alt="Trip chat in the dark theme, with quick replies"> |
+| | |
+| --- | --- |
+| <img src="docs/media/invite.png" width="280" alt="The invite screen: a boarding pass with the trip code, and buttons to share the link or show a QR code"><br>Invite | <img src="docs/media/live-map-light.png" width="280" alt="The live map in the light theme, with both friends' routes to the destination"><br>Live map, light |
+| <img src="docs/media/live-map-dark.png" width="280" alt="The same trip on the friend's phone, in the dark theme"><br>Live map, dark | <img src="docs/media/chat.png" width="280" alt="Trip chat in the dark theme, with quick replies"><br>Trip chat |
+| <img src="docs/media/arrived.png" width="280" alt="You made it! after reaching the destination, with the distance travelled, the time and the number of friends"><br>You made it! | <img src="docs/media/trip-complete.png" width="280" alt="Trip complete: the trip as a used boarding pass, with distance, time and friends"><br>Trip complete |
 
 To record it again after a design change, with the app running: `node scripts/record-demo.mjs` in `frontend`.
 
