@@ -2,6 +2,7 @@ import type { Ref } from 'react';
 import { Banner } from '../../components/ui/Banner';
 import { Button } from '../../components/ui/Button';
 import { Stamp } from '../../components/ui/Stamp';
+import { StatTile } from '../../components/ui/StatTile';
 import { describeFailure } from '../auth/formErrors';
 import { distanceText, lengthText, type TripSummary } from '../trip/summaryApi';
 import { behindText } from './liveFormat';
@@ -28,15 +29,6 @@ type ArrivedSheetProps = {
 function stampPlace(destination: string): string {
   const first = destination.trim().split(/\s+/)[0] ?? '';
   return first.toUpperCase().slice(0, 10);
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="glass-strong flex min-w-0 flex-1 flex-col rounded-card px-3.5 py-3">
-      <dd className="order-1 m-0 truncate text-[22px] leading-7 font-extrabold">{value}</dd>
-      <dt className="order-2 text-[13px] leading-[18px] font-bold text-muted">{label}</dt>
-    </div>
-  );
 }
 
 /**
@@ -80,10 +72,22 @@ export function ArrivedSheet({
         <p className="text-center text-[15px] leading-[22px] text-muted">
           You reached {destination}.{behindText(behindMinutes, friends)}
         </p>
-        <dl aria-busy={summary === null} className="m-0 flex gap-2.5">
-          <Stat value={summary ? distanceText(summary.distanceM, unit) : loading} label="Travelled" />
-          <Stat value={summary ? lengthText(summary.durationSeconds) : loading} label="Time" />
-          <Stat value={String(friends)} label={friends === 1 ? 'Friend' : 'Friends'} />
+        <dl aria-busy={summary === null} className="m-0 flex flex-wrap gap-2.5">
+          <StatTile
+            value={summary ? distanceText(summary.distanceM, unit) : loading}
+            label="Travelled"
+            className="glass-strong"
+          />
+          <StatTile
+            value={summary ? lengthText(summary.durationSeconds) : loading}
+            label="Time"
+            className="glass-strong"
+          />
+          <StatTile
+            value={String(friends)}
+            label={friends === 1 ? 'Friend' : 'Friends'}
+            className="glass-strong"
+          />
         </dl>
         {finishError !== null && finishError !== undefined && (
           <Banner tone="error">{describeFailure(finishError)}</Banner>

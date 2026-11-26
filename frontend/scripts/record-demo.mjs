@@ -136,9 +136,12 @@ async function record(work, { speed = 1, tail = 800 } = {}) {
   await recording;
 }
 
+/** A still screen, taken with reduced motion so no button is caught mid-shine. */
 async function still(name, page) {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await sleep(1_200);
   await page.screenshot({ path: `${OUT}${name}.png`, scale: 'css' });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 }
 
 /* ---- The story ------------------------------------------------------------------------------- */
@@ -273,6 +276,7 @@ for (let i = 0; i < 40 && !a.url().endsWith('/arrived'); i++) {
   await sleep(3_000);
 }
 await record(() => a.getByRole('heading', { name: 'You made it!' }).waitFor(), { tail: 2_500 });
+await still('arrived', a);
 
 console.log('6. Priya ends the trip');
 await record(
@@ -287,6 +291,7 @@ await record(
   },
   { speed: 1.4, tail: 2_000 },
 );
+await still('trip-complete', p);
 await browser.close();
 
 /* ---- Putting it together --------------------------------------------------------------------- */
