@@ -172,6 +172,22 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Lists every dependency, transitive ones included, for the CI dependency scan
+                     (./mvnw cyclonedx:makeBom). Not part of the normal build. -->
+                <plugin>
+                    <groupId>org.cyclonedx</groupId>
+                    <artifactId>cyclonedx-maven-plugin</artifactId>
+                    <version>2.9.3</version>
+                    <configuration>
+                        <outputFormat>json</outputFormat>
+                        <outputName>bom</outputName>
+                        <includeTestScope>true</includeTestScope>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
