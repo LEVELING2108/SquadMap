@@ -16,16 +16,14 @@ app running locally with made-up people and locations. Waits are cut and the dri
 <div align="center">
 <table>
   <tr>
-    <td align="center"><img src="docs/media/live-map-light.png" width="280" alt="The live map in the light theme, with both friends' routes to the destination"><br>Live map, light</td>
-    <td align="center"><img src="docs/media/live-map-dark.png" width="280" alt="The same trip on the friend's phone, in the dark theme"><br>Live map, dark</td>
+    <td align="center"><img src="docs/media/invite.png" width="240" alt="The invite screen: a boarding pass with the trip code, and buttons to share the link or show a QR code"><br>Invite</td>
+    <td align="center"><img src="docs/media/live-map-light.png" width="240" alt="The live map in the light theme, with both friends' routes to the destination"><br>Live map, light</td>
+    <td align="center"><img src="docs/media/live-map-dark.png" width="240" alt="The same trip on the friend's phone, in the dark theme"><br>Live map, dark</td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/invite.png" width="280" alt="The invite screen: a boarding pass with the trip code, and buttons to share the link or show a QR code"><br>Invite</td>
-    <td align="center"><img src="docs/media/chat.png" width="280" alt="Trip chat in the dark theme, with quick replies"><br>Trip chat</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/media/arrived.png" width="280" alt="You made it! after reaching the destination, with the distance travelled, the time and the number of friends"><br>You made it!</td>
-    <td align="center"><img src="docs/media/trip-complete.png" width="280" alt="Trip complete: the trip as a used boarding pass, with distance, time and friends"><br>Trip complete</td>
+    <td align="center"><img src="docs/media/chat.png" width="240" alt="Trip chat in the dark theme, with quick replies"><br>Trip chat</td>
+    <td align="center"><img src="docs/media/arrived.png" width="240" alt="You made it! after reaching the destination, with the distance travelled, the time and the number of friends"><br>You made it!</td>
+    <td align="center"><img src="docs/media/trip-complete.png" width="240" alt="Trip complete: the trip as a used boarding pass, with distance, time and friends"><br>Trip complete</td>
   </tr>
 </table>
 </div>
