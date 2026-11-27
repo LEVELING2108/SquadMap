@@ -6,6 +6,43 @@ All notable changes to SquadMap are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-27
+
+Ready for people: the full Terms and Privacy Policy with a contact for data questions, and a README that
+shows the app working.
+
+### Added
+
+- The full Terms and Privacy Policy at /privacy, written for India's Digital Personal Data Protection Act
+  2023: who runs SquadMap and how to reach them (squadmap.help@gmail.com, a reply within 30 days, and the
+  right to complain to the Data Protection Board), error reports, hosting, IP addresses, correcting your
+  data, naming someone to act for you, breach notices, the rules for using SquadMap, limits of
+  liability, governing law and how changes are announced.
+- SquadMap is for people aged 18 and over. Sign-up asks you to confirm it, and the "Share your live
+  location?" screen tells people joining by link, with a link to the terms.
+- The README shows a recorded demo of two friends on one trip (light and dark phones side by side) and
+  six screenshots, with a script that records them again after a design change.
+
+### Fixed
+
+- Trip complete and You made it! no longer cut off a long distance or time ("3.3 …") on narrow phones:
+  the stat tiles share the row by what they hold and wrap on the narrowest screens.
+- One friend now reads "1 Friend", not "1 Friends".
+
+### Changed
+
+- The dependency scan in CI reads the backend's own list of libraries, made by its Maven build, instead
+  of asking Maven Central, which sometimes refused with "too many requests" and failed the build. When
+  the scanner itself fails it tries again, up to three times.
+
+### Known issues
+
+- Push notifications reach the browser (the server sends them and Chrome receives them) but haven't been
+  seen on screen yet in a local test; to be checked again once deployed.
+- The Terms and Privacy Policy haven't had a legal review.
+- The full load target (200 trips of 10 people for 15 minutes) is for a staging server; it was measured
+  locally at 500 phones.
+
 ## [0.5.0] - 2026-11-23
 
 Hardening: the app is checked, scanned, measured and tested under load and failure, ready to be put
@@ -298,7 +335,8 @@ Project foundations. No user-facing features yet.
 - Continuous integration: backend tests, frontend lint, type-check, unit tests and build, browser
   tests, a secret scan, and a guard that only lets `research` merge into `main`.
 
-[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.5.0...research
+[Unreleased]: https://github.com/LEVELING2108/SquadMap/compare/v0.6.0...research
+[0.6.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/LEVELING2108/SquadMap/compare/v0.2.1...v0.3.0
