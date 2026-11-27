@@ -4,10 +4,10 @@
 
 [[IgnoredVulns]]
 id = "GHSA-j9f9-w8pj-32f8"
-ignoreUntil = 2027-02-21
+effectiveUntil = 2027-02-21
 reason = "Spring MVC stream corruption with Server-Sent Events and view fragments. SquadMap has no SSE and renders no views (JSON and STOMP only; NoViewRenderingTest keeps it that way). Fixed only in Spring 7."
 
 [[IgnoredVulns]]
 id = "GHSA-pc63-qcmh-9cmg"
-ignoreUntil = 2027-02-21
+effectiveUntil = 2027-02-21
 reason = "Spring MVC XsltView path handling. SquadMap uses no XsltView or any view rendering (NoViewRenderingTest keeps it that way). Fixed only in Spring 7."

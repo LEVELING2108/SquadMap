@@ -54,7 +54,9 @@ export function SignupPage() {
       name: name.trim() ? undefined : 'Enter your name.',
       email: checkEmail(email),
       password: checkNewPassword(password),
-      acceptedTerms: acceptedTerms ? undefined : 'Agree to the Terms and Privacy Policy to continue.',
+      acceptedTerms: acceptedTerms
+        ? undefined
+        : 'Confirm you’re 18 or older and agree to the Terms and Privacy Policy to continue.',
     };
     setErrors(found);
     if (hasErrors(found)) {
@@ -127,7 +129,7 @@ export function SignupPage() {
               className="size-6 flex-none accent-blue"
             />
             <span className="text-[13px] leading-[18px] text-muted">
-              I agree to the{' '}
+              I’m 18 or older and agree to the{' '}
               <Link to="/privacy" className="-my-3.5 inline-block py-3.5 font-bold text-blue-d">
                 Terms and Privacy Policy
               </Link>

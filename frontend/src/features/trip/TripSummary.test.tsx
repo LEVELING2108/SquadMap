@@ -109,6 +109,18 @@ describe('Trip complete', () => {
     );
   });
 
+  it('says "1 Friend" for one friend', async () => {
+    serve({
+      'GET /trips/trip-1/summary': () => jsonResponse(200, { ...summary(), friendCount: 1 }),
+      'GET /trips/trip-1': () => jsonResponse(200, { ...sampleTrip, status: 'ended', role: 'member' }),
+    });
+    renderApp('/trip/trip-1/ended');
+
+    const pass = await screen.findByRole('region', { name: 'Trip summary' });
+    await waitFor(() => expect(pass).toHaveTextContent('1Friend'));
+    expect(pass).not.toHaveTextContent('Friends');
+  });
+
   it('shows a dash for someone who never shared, in the chosen unit otherwise', () => {
     expect(distanceText(null, 'km')).toBe('–');
     expect(distanceText(0, 'km')).toBe('0 m');

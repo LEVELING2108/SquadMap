@@ -4,10 +4,38 @@ Get there together. One link, one live map, everyone's ETA.
 
 SquadMap is a real-time group location-sharing web app. A host starts a trip and shares a link, friends join as guests with just a name, and everyone sees each other live on one map with shared arrival times. Sharing stops automatically when the trip ends.
 
-> Status: early development. Accounts, trips, invites, the live map with ETAs, trip chat, the trip
-> menu, the installable app (PWA), push notifications and trip summaries work locally. Not deployed yet.
+## Demo
 
-## Planned stack
+<p align="center">
+  <img src="docs/media/demo.gif" width="640" alt="Two phones side by side. Priya plans a trip and gets an invite. Aman opens the link and joins with just a name. Both move on the live map with their routes and arrival times, chat, Aman arrives, and Priya ends the trip for everyone.">
+</p>
+
+Priya (left, light theme) hosts; Aman (right, dark theme) joins by link, without an account. This is the real
+app running locally with made-up people and locations. Waits are cut and the drive is sped up.
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><img src="docs/media/invite.png" width="240" alt="The invite screen: a boarding pass with the trip code, and buttons to share the link or show a QR code"><br>Invite</td>
+    <td align="center"><img src="docs/media/live-map-light.png" width="240" alt="The live map in the light theme, with both friends' routes to the destination"><br>Live map, light</td>
+    <td align="center"><img src="docs/media/live-map-dark.png" width="240" alt="The same trip on the friend's phone, in the dark theme"><br>Live map, dark</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/chat.png" width="240" alt="Trip chat in the dark theme, with quick replies"><br>Trip chat</td>
+    <td align="center"><img src="docs/media/arrived.png" width="240" alt="You made it! after reaching the destination, with the distance travelled, the time and the number of friends"><br>You made it!</td>
+    <td align="center"><img src="docs/media/trip-complete.png" width="240" alt="Trip complete: the trip as a used boarding pass, with distance, time and friends"><br>Trip complete</td>
+  </tr>
+</table>
+</div>
+
+To record it again after a design change, with the app running: `node scripts/record-demo.mjs` in `frontend`.
+
+> Status: version 0.6.0, not deployed yet. Accounts, trips, invites, the live map with ETAs, trip chat, the
+> trip menu, the installable app (PWA), trip summaries, privacy controls and the Terms and Privacy Policy
+> work locally; see [Run it locally](#run-it-locally) to try it. Push notifications are sent and received
+> but still to be checked on a device.
+
+## Stack
 
 | Layer | Choice |
 | --- | --- |

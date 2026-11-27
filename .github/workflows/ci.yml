@@ -191,12 +191,38 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      # The backend's full dependency list (transitive ones included), worked out by our own Maven build from
+      # its cache. Left to itself, the scanner fetches every parent pom from Maven Central, which refuses it
+      # (429) when many CI runs hit it at once.
+      - name: List the backend dependencies
+        working-directory: backend
+        run: ./mvnw -B -ntp -q org.cyclonedx:cyclonedx-maven-plugin:makeBom
+      # Exit code 1 means issues were found: that fails at once. Any other failure is the scanner itself
+      # (a network blip reaching the vulnerability database): tried again, up to 3 times, before giving up.
       - name: Scan the Maven and npm dependencies
-        run: >
-          docker run --rm -v "$PWD:/src" -w /src
-          ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde
-          scan source --config /src/osv-scanner.toml
-          -L /src/backend/pom.xml -L /src/frontend/package-lock.json
+        run: |
+          for attempt in 1 2 3; do
+            set +e
+            docker run --rm -v "$PWD:/src" -w /src \
+              ghcr.io/google/osv-scanner@sha256:a70ffffc2bfd33482953e5d6b64c6fcdb30239717a07b0f0d3ab2859ce3e4cde \
+              scan source --config /src/osv-scanner.toml \
+              -L /src/backend/target/bom.json -L /src/frontend/package-lock.json
+            status=$?
+            set -e
+            if [ "$status" -eq 0 ] || [ "$status" -eq 1 ]; then
+              exit "$status"
+            fi
+            echo "::warning::The scanner failed (exit $status), not a finding; attempt $attempt of 3."
+            [ "$attempt" -lt 3 ] && sleep 30
+          done
+          echo "::error::The dependency scan couldn't run after 3 attempts."
+          exit 1
 
   secrets-scan:
     name: secrets-scan

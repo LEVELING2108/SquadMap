@@ -329,7 +329,8 @@ test.describe('join screens', () => {
       await expect(page.getByRole('heading', { name: 'Share your live location?' })).toBeVisible();
 
       expect(await violations(page)).toEqual([]);
-      for (const control of await page.locator('button:visible').all()) {
+      // Buttons and the link to the terms alike.
+      for (const control of await page.locator('button:visible, a:visible').all()) {
         expect(
           (await control.boundingBox())?.height,
           (await control.textContent()) ?? '',
