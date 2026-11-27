@@ -30,9 +30,10 @@ app running locally with made-up people and locations. Waits are cut and the dri
 
 To record it again after a design change, with the app running: `node scripts/record-demo.mjs` in `frontend`.
 
-> Status: version 0.5.0, not deployed yet. Accounts, trips, invites, the live map with ETAs, trip chat, the
-> trip menu, the installable app (PWA), push notifications, trip summaries and privacy controls work locally;
-> see [Run it locally](#run-it-locally) to try it.
+> Status: version 0.6.0, not deployed yet. Accounts, trips, invites, the live map with ETAs, trip chat, the
+> trip menu, the installable app (PWA), trip summaries, privacy controls and the Terms and Privacy Policy
+> work locally; see [Run it locally](#run-it-locally) to try it. Push notifications are sent and received
+> but still to be checked on a device.
 
 ## Stack
 
