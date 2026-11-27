@@ -125,8 +125,11 @@ describe('Sign up', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create account' }));
 
+    expect(screen.getByRole('checkbox')).toHaveAccessibleName(
+      'I’m 18 or older and agree to the Terms and Privacy Policy',
+    );
     expect(screen.getByRole('checkbox')).toHaveAccessibleDescription(
-      'Agree to the Terms and Privacy Policy to continue.',
+      'Confirm you’re 18 or older and agree to the Terms and Privacy Policy to continue.',
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });
