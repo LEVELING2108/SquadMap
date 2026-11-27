@@ -18,7 +18,7 @@
     "e2e": "playwright test",
     "e2e:journey": "playwright test --config playwright.journey.config.ts",
     "e2e:csp": "playwright test --config playwright.csp.config.ts",
-    "icons": "pwa-assets-generator",
+    "icons": "pwa-assets-generator && pwa-assets-generator --config pwa-assets.full-bleed.config.ts",
     "check:pwa": "node scripts/check-pwa.mjs"
   },
   "dependencies": {

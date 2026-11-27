@@ -19,6 +19,7 @@
   "include": [
     "vite.config.ts",
     "pwa-assets.config.ts",
+    "pwa-assets.full-bleed.config.ts",
     "playwright.config.ts",
     "playwright.journey.config.ts",
     "playwright.csp.config.ts",
