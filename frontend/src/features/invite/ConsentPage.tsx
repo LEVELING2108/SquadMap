@@ -172,6 +172,14 @@ export function ConsentPage() {
             </Link>
           )}
         </div>
+
+        <p className="text-[13px] leading-[18px] text-muted">
+          By joining, you confirm you’re 18 or older and agree to the{' '}
+          <Link to="/privacy" className="-my-[13px] inline-block py-[13px] font-bold text-blue-d">
+            Terms and Privacy Policy
+          </Link>
+          .
+        </p>
       </section>
     </main>
   );

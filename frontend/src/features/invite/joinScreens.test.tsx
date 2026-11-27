@@ -309,6 +309,16 @@ describe('Consent screen', () => {
     ]);
   });
 
+  it('says joining means agreeing to the terms, with a link to them', () => {
+    atConsent();
+
+    expect(screen.getByText(/By joining, you confirm you’re 18 or older/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Terms and Privacy Policy' })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
+  });
+
   it('joins sharing location once the browser allows it, and opens the trip', async () => {
     const user = userEvent.setup();
     const ask = withLocation('granted');
