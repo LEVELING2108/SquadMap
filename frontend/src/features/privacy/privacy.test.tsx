@@ -5,6 +5,7 @@ import { jsonResponse, renderApp, testUser } from '../../test/renderApp';
 import { RestoredNotice } from '../auth/RestoredNotice';
 import { setSignedIn, useSession } from '../auth/session';
 import { DEFAULT_SETTINGS } from '../profile/settingsApi';
+import { GRIEVANCE_CONTACT } from './grievanceContact';
 import { longDate } from './privacyApi';
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -175,5 +176,24 @@ describe('Terms and Privacy Policy', () => {
     expect(await screen.findByRole('heading', { name: 'Terms and Privacy Policy' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Your location' })).toBeInTheDocument();
     expect(screen.getByText(/Trip chat: deleted 7 days after the trip ends/)).toBeInTheDocument();
+  });
+
+  it('says who to contact about your data, and who may use SquadMap', async () => {
+    useSession.setState({ status: 'signedOut', user: null, guest: null, accessToken: null });
+    serve({});
+    renderApp('/privacy');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Who we are and how to reach us' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: GRIEVANCE_CONTACT.email })).toHaveAttribute(
+      'href',
+      `mailto:${GRIEVANCE_CONTACT.email}`,
+    );
+    expect(screen.getByText(/within 30 days at the latest/)).toBeInTheDocument();
+    expect(screen.getByText(/Data Protection Board of India/)).toBeInTheDocument();
+    expect(screen.getByText(/You must be 18 or older/)).toBeInTheDocument();
+    expect(screen.getByText(/Last updated/)).toBeInTheDocument();
+    expect(screen.queryByText(/will be published here before SquadMap launches/)).not.toBeInTheDocument();
   });
 });
