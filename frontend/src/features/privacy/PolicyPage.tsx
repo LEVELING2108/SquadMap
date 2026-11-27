@@ -46,7 +46,10 @@ export function PolicyPage() {
         <p className="m-0 text-[15px] leading-[22px]">
           SquadMap is run by {GRIEVANCE_CONTACT.name}, an individual developer in India, who decides how your
           data is used. For any question, request or complaint about your data, write to{' '}
-          <a href={`mailto:${GRIEVANCE_CONTACT.email}`} className="font-bold break-all text-blue-d">
+          <a
+            href={`mailto:${GRIEVANCE_CONTACT.email}`}
+            className="-my-[11px] inline-block py-[11px] font-bold break-all text-blue-d"
+          >
             {GRIEVANCE_CONTACT.email}
           </a>
           .
