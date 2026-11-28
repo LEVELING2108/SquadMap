@@ -653,6 +653,7 @@ test.describe('profile and settings', () => {
   for (const [name, path, heading] of [
     ['profile', '/me', 'Priya'],
     ['settings', '/me/settings', 'Settings'],
+    ['appearance', '/me/appearance', 'Appearance'],
   ] as const) {
     for (const colorScheme of ['light', 'dark'] as const) {
       test(`${name} has no accessibility violations in ${colorScheme} mode`, async ({ page }) => {

@@ -22,6 +22,7 @@ import { DestinationPage } from './features/newTrip/DestinationPage';
 import { NewTripPage } from './features/newTrip/NewTripPage';
 import { InvitePage } from './features/trip/InvitePage';
 import { TripCompletePage } from './features/trip/TripCompletePage';
+import { AppearancePage } from './features/profile/AppearancePage';
 import { AccountClosedPage } from './features/privacy/AccountClosedPage';
 import { DeleteAccountPage } from './features/privacy/DeleteAccountPage';
 import { PolicyPage } from './features/privacy/PolicyPage';
@@ -93,6 +94,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <SettingsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me/appearance"
+        element={
+          <RequireAuth>
+            <AppearancePage />
           </RequireAuth>
         }
       />

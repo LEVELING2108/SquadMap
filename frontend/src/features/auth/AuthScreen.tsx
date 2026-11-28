@@ -1,8 +1,5 @@
+import { Illustration } from '../../components/ui/Illustration';
 import type { ReactNode } from 'react';
-import mapLight from '../../assets/illustrations/map.svg';
-import mapDark from '../../assets/illustrations/map-dark.svg';
-import heroLight from '../../assets/illustrations/hero.svg';
-import heroDark from '../../assets/illustrations/hero-dark.svg';
 import { BackButton } from '../../components/ui/BackButton';
 
 type AuthScreenProps = {
@@ -22,7 +19,6 @@ type AuthScreenProps = {
  * On taller screens the sheet stays at the bottom; on shorter ones the page scrolls.
  */
 export function AuthScreen({ titleId, topSpace, decoration, backdrop = 'map', children }: AuthScreenProps) {
-  const [light, dark] = backdrop === 'map' ? [mapLight, mapDark] : [heroLight, heroDark];
   // The map is blurred so it reads as a backdrop; the sky is already soft.
   const finish = backdrop === 'map' ? 'scale-105 object-top blur-[3px] saturate-[1.2]' : 'object-top';
 
@@ -30,8 +26,10 @@ export function AuthScreen({ titleId, topSpace, decoration, backdrop = 'map', ch
     <main className="relative mx-auto flex min-h-dvh w-full max-w-[600px] flex-col overflow-hidden bg-screen">
       <div aria-hidden="true" className="absolute inset-0">
         {/* Scaled up slightly so the blur doesn't leave soft edges. */}
-        <img src={light} alt="" className={`size-full object-cover ${finish} dark:hidden`} />
-        <img src={dark} alt="" className={`hidden size-full object-cover ${finish} dark:block`} />
+        <Illustration
+          name={backdrop === 'map' ? 'map' : 'hero'}
+          className={`size-full object-cover ${finish}`}
+        />
       </div>
 
       <div className="relative flex-1" style={{ minHeight: topSpace }}>

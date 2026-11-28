@@ -2,8 +2,12 @@
  * Design tokens for the app. The values come from design/tokens/tokens.json (light and dark) and
  * design/tokens/tokens-atlas.json (Atlas); src/styles/tokens.test.ts fails if they ever disagree.
  * Components never hard-code a color, radius, shadow or duration: they use these.
+ *
+ * A theme applies to the page through data-theme on <html>, and to any element that carries its own
+ * data-theme (the previews on the Appearance screen show each theme inside the current one).
  */
-:root {
+:root,
+[data-theme='light'] {
   color-scheme: light;
 
   /* Color */
@@ -101,7 +105,7 @@
   --heading-weight: 800;
 }
 
-:root[data-theme='dark'] {
+[data-theme='dark'] {
   color-scheme: dark;
 
   --ink: #eaf1f8;
@@ -156,7 +160,7 @@
  * Atlas: a printed-map look. Warm paper, forest ink, vermilion routes; flat paper panels with a hairline ink
  * border instead of frosted glass; serif titles. Light only (no night version yet).
  */
-:root[data-theme='atlas'] {
+[data-theme='atlas'] {
   color-scheme: light;
 
   --ink: #16221e;

@@ -120,23 +120,15 @@ describe('Settings', () => {
     expect(darkMap).not.toBeChecked();
   });
 
-  it('picks the theme for this device from a sheet, without saving it to the account', async () => {
-    const user = userEvent.setup();
+  it('shows the theme for this device and leads to Appearance', async () => {
+    window.localStorage.setItem('squadmap.theme', 'atlas');
     serve();
     renderApp('/me/settings', { settings: null });
 
-    await user.click(screen.getByRole('button', { name: 'Theme, Match my phone' }));
-    const sheet = screen.getByRole('radiogroup', { name: 'Theme' });
-    expect(within(sheet).getByRole('radio', { name: /Match my phone/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
+    expect(await screen.findByRole('link', { name: 'Theme, Atlas' })).toHaveAttribute(
+      'href',
+      '/me/appearance',
     );
-    await user.click(within(sheet).getByRole('radio', { name: /Atlas/ }));
-
-    expect(document.documentElement.getAttribute('data-theme')).toBe('atlas');
-    expect(screen.getByRole('button', { name: 'Theme, Atlas' })).toBeInTheDocument();
-    const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
-    expect(patches).toEqual([]);
   });
 
   it('changes the map style from a sheet and saves it', async () => {

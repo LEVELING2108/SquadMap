@@ -1,6 +1,5 @@
+import { Illustration } from '../../components/ui/Illustration';
 import { Plane } from 'lucide-react';
-import heroLight from '../../assets/illustrations/hero.svg';
-import heroDark from '../../assets/illustrations/hero-dark.svg';
 
 function Cloud({ className, style }: { className: string; style?: React.CSSProperties }) {
   return (
@@ -50,16 +49,7 @@ function FriendTag({
 export function WelcomeHero() {
   return (
     <div aria-hidden="true" className="absolute inset-x-0 top-0 -bottom-28 overflow-hidden">
-      <img
-        src={heroLight}
-        alt=""
-        className="absolute inset-0 size-full object-cover object-bottom dark:hidden"
-      />
-      <img
-        src={heroDark}
-        alt=""
-        className="absolute inset-0 hidden size-full object-cover object-bottom dark:block"
-      />
+      <Illustration name="hero" className="absolute inset-0 size-full object-cover object-bottom" />
 
       <Cloud className="motion-drift top-[84px] left-[22px] h-11 w-[120px] opacity-90" />
       <Cloud

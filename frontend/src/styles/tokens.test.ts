@@ -46,9 +46,9 @@ function normalize(value: string): string {
 
 const kebab = (name: string) => name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 
-const light = declarations(':root');
-const dark = declarations(":root[data-theme='dark']");
-const atlas = declarations(":root[data-theme='atlas']");
+const light = declarations(":root,\n[data-theme='light']");
+const dark = declarations("[data-theme='dark']");
+const atlas = declarations("[data-theme='atlas']");
 
 describe('tokens.css matches design/tokens/tokens.json', () => {
   it.each(Object.entries(tokens.color.light))('light color %s', (name, value) => {
