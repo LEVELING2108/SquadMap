@@ -254,7 +254,8 @@ describe('the new settings', () => {
     renderApp('/me/settings', { settings: null });
     await screen.findByRole('switch', { name: 'Dark map' });
 
-    await user.click(screen.getByRole('radio', { name: 'Satellite' }));
+    await user.click(screen.getByRole('button', { name: 'Map style, Streets' }));
+    await user.click(screen.getByRole('radio', { name: /Satellite/ }));
 
     expect(screen.queryByRole('switch', { name: 'Dark map' })).not.toBeInTheDocument();
     await waitFor(() => expect(saved.mapStyle).toBe('satellite'));

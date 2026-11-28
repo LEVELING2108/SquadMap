@@ -702,14 +702,19 @@ test.describe('profile and settings', () => {
     await page.keyboard.press('Space');
     await page.getByRole('radio', { name: 'Kilometres' }).focus();
     await page.keyboard.press('ArrowRight');
-    await page.getByRole('radio', { name: '4 hours' }).focus();
-    await page.keyboard.press('ArrowLeft');
-    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+    // A row opens a sheet with the current choice focused; the arrows move and Enter picks and closes it.
+    await page.getByRole('button', { name: 'Default sharing time, 4 h' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('radio', { name: '4 hours' })).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Default sharing time, 2 h' })).toBeFocused();
 
     await page.reload();
     await expect(page.getByRole('switch', { name: 'Dark map' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: 'Miles' })).toBeChecked();
-    await expect(page.getByRole('radio', { name: '2 hours' })).toBeChecked();
+    await expect(page.getByRole('button', { name: 'Default sharing time, 2 h' })).toBeVisible();
   });
 
   test('the You tab opens the profile, and its settings button opens settings', async ({ page }) => {
