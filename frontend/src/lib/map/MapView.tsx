@@ -1,7 +1,14 @@
 import { Illustration } from '../../components/ui/Illustration';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapboxMap, Marker } from 'mapbox-gl';
+import type {
+  GeoJSONSource,
+  GeoJSONSourceSpecification,
+  Map as MapboxMap,
+  Marker,
+  StyleSpecification,
+} from 'mapbox-gl';
+import { ATLAS_BASE_STYLE, ATLAS_STYLE, loadAtlasStyle } from './atlasStyle';
 import { Check } from 'lucide-react';
 import { useMapStyle, type MapStyle } from '../../features/profile/settingsApi';
 import type { LatLng } from './geo';
@@ -10,6 +17,12 @@ const TOKEN = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '';
 
 /** "mapbox/streets-v12" becomes the address Mapbox GL loads. */
 const styleUrl = (style: string) => `mapbox://styles/${style}`;
+
+/** What Mapbox is given for a style id: its address, or for Atlas the repainted style (plain Streets if that fails). */
+function resolveStyle(style: string): Promise<string | StyleSpecification> {
+  if (style !== ATLAS_STYLE) return Promise.resolve(styleUrl(style));
+  return loadAtlasStyle(TOKEN).catch(() => styleUrl(ATLAS_BASE_STYLE));
+}
 
 type MapViewProps = {
   center: LatLng;
@@ -279,8 +292,9 @@ export function MapView({
     let cancelled = false;
     const container = containerRef.current;
 
-    Promise.all([import('mapbox-gl'), import('mapbox-gl/dist/mapbox-gl.css')])
-      .then(([{ default: mapboxgl }]) => {
+    const firstStyle = styleRef.current ?? 'mapbox/streets-v12';
+    Promise.all([import('mapbox-gl'), resolveStyle(firstStyle), import('mapbox-gl/dist/mapbox-gl.css')])
+      .then(([{ default: mapboxgl }, firstStyleSpec]) => {
         if (cancelled) return;
         markerClass.current = mapboxgl.Marker;
         // The "You" marker exists from the start and is put on the map while `you` is known.
@@ -294,12 +308,11 @@ export function MapView({
         destinationMarkerRef.current = new mapboxgl.Marker({ element: destinationPin, anchor: 'bottom' });
         setDestinationElement(destinationPin);
         const start = initial.current;
-        const firstStyle = styleRef.current ?? 'mapbox/streets-v12';
         appliedStyle.current = firstStyle;
         const map = new mapboxgl.Map({
           accessToken: TOKEN,
           container,
-          style: styleUrl(firstStyle),
+          style: firstStyleSpec,
           center: [view.current.center.lng, view.current.center.lat],
           zoom: view.current.zoom,
           interactive: start.interactive,
@@ -353,7 +366,10 @@ export function MapView({
   useEffect(() => {
     if (!style || !mapRef.current || appliedStyle.current === style) return;
     appliedStyle.current = style;
-    mapRef.current.setStyle(styleUrl(style));
+    void resolveStyle(style).then((spec) => {
+      // Skipped if the style changed again while Atlas was loading.
+      if (appliedStyle.current === style) mapRef.current?.setStyle(spec);
+    });
   }, [style]);
 
   const onReadyRef = useRef(onReady);

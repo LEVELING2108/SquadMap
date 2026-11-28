@@ -1,3 +1,4 @@
+import { ATLAS_STYLE } from '../../lib/map/atlasStyle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api/client';
 import { useResolvedTheme } from '../../lib/useResolvedTheme';
@@ -103,8 +104,9 @@ export function useUpdateSettings() {
 }
 
 /**
- * The Mapbox style every map uses, as "owner/style". Streets follows the app's theme, or is always dark
- * with the Dark map setting; Outdoors and Satellite look the same day and night. Null while a signed-in
+ * The Mapbox style every map uses, as "owner/style". Streets follows the app's theme (dark in Dark, the
+ * repainted ATLAS_STYLE in Atlas), or is always dark with the Dark map setting; Outdoors and Satellite look
+ * the same in every theme. Null while a signed-in
  * account's settings are still loading, so a map isn't drawn in one style and then again in another.
  *
  * @param override a style chosen on this screen only (a guest's choice from the Layers button)
@@ -116,7 +118,8 @@ export function useMapStyle(override?: MapStyle): string | null {
   const mapStyle = override ?? settings.mapStyle;
   if (mapStyle === 'outdoors') return 'mapbox/outdoors-v12';
   if (mapStyle === 'satellite') return 'mapbox/satellite-streets-v12';
-  return settings.darkMap || theme === 'dark' ? 'mapbox/dark-v11' : 'mapbox/streets-v12';
+  if (settings.darkMap || theme === 'dark') return 'mapbox/dark-v11';
+  return theme === 'atlas' ? ATLAS_STYLE : 'mapbox/streets-v12';
 }
 
 export type Stats = { trips: number; friends: number };
