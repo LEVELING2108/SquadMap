@@ -1,3 +1,4 @@
+import { Illustration } from '../../components/ui/Illustration';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
@@ -11,8 +12,6 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
-import heroLight from '../../assets/illustrations/hero.svg';
-import heroDark from '../../assets/illustrations/hero-dark.svg';
 import { BackButton } from '../../components/ui/BackButton';
 import { BOTTOM_NAV_SPACE, BottomNav } from '../../components/ui/BottomNav';
 import { useUnreadAlerts } from '../alerts/alertsApi';
@@ -87,17 +86,10 @@ export function ProfilePage() {
       className={`relative mx-auto flex min-h-dvh w-full max-w-[600px] flex-col bg-sand ${BOTTOM_NAV_SPACE}`}
     >
       <div className="relative h-[300px] flex-none overflow-hidden">
-        <img
-          src={heroLight}
-          alt=""
+        <Illustration
+          name="hero"
           aria-hidden="true"
-          className="absolute inset-0 size-full object-cover object-top dark:hidden"
-        />
-        <img
-          src={heroDark}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 hidden size-full object-cover object-top dark:block"
+          className="absolute inset-0 size-full object-cover object-top"
         />
         <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
           <BackButton fallback="/home" />

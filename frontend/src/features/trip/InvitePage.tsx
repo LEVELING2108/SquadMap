@@ -1,8 +1,7 @@
+import { Illustration } from '../../components/ui/Illustration';
 import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Copy, QrCode, Share } from 'lucide-react';
-import mapLight from '../../assets/illustrations/map.svg';
-import mapDark from '../../assets/illustrations/map-dark.svg';
 import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
 import { Button, ButtonLink } from '../../components/ui/Button';
@@ -49,16 +48,7 @@ export function InvitePage() {
   return (
     <main className="relative mx-auto flex min-h-dvh w-full max-w-[600px] flex-col overflow-hidden bg-screen">
       <div aria-hidden="true" className="absolute inset-0">
-        <img
-          src={mapLight}
-          alt=""
-          className="size-full scale-105 object-cover object-top blur-[4px] dark:hidden"
-        />
-        <img
-          src={mapDark}
-          alt=""
-          className="hidden size-full scale-105 object-cover object-top blur-[4px] dark:block"
-        />
+        <Illustration name="map" className="size-full scale-105 object-cover object-top blur-[4px]" />
         <div className="absolute inset-0 bg-scrim backdrop-blur-[4px]" />
       </div>
 

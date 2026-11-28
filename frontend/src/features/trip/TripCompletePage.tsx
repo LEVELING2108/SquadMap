@@ -1,7 +1,6 @@
+import { Illustration } from '../../components/ui/Illustration';
 import { useNavigate, useParams } from 'react-router';
 import { MessageSquare } from 'lucide-react';
-import heroLight from '../../assets/illustrations/hero.svg';
-import heroDark from '../../assets/illustrations/hero-dark.svg';
 import { Banner } from '../../components/ui/Banner';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { Stamp } from '../../components/ui/Stamp';
@@ -40,8 +39,7 @@ export function TripCompletePage() {
   return (
     <main className="relative mx-auto flex min-h-dvh w-full max-w-[600px] flex-col overflow-hidden bg-screen">
       <div aria-hidden="true" className="absolute inset-0">
-        <img src={heroLight} alt="" className="size-full object-cover object-top dark:hidden" />
-        <img src={heroDark} alt="" className="hidden size-full object-cover object-top dark:block" />
+        <Illustration name="hero" className="size-full object-cover object-top" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-5 px-5 pt-[max(48px,env(safe-area-inset-top))] pb-16">

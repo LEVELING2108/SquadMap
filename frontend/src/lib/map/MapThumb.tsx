@@ -1,6 +1,5 @@
+import { Illustration } from '../../components/ui/Illustration';
 import { useState } from 'react';
-import mapLight from '../../assets/illustrations/map.svg';
-import mapDark from '../../assets/illustrations/map-dark.svg';
 import { useMapStyle } from '../../features/profile/settingsApi';
 import { staticMapUrl, type LatLng } from './geo';
 import { DestinationPin } from './MapView';
@@ -35,8 +34,7 @@ export function MapThumb({ center, className = '' }: { center: LatLng; className
         />
       ) : (
         <>
-          <img src={mapLight} alt="" className="size-full object-cover dark:hidden" />
-          <img src={mapDark} alt="" className="hidden size-full object-cover dark:block" />
+          <Illustration name="map" className="size-full object-cover" />
         </>
       )}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full scale-75">

@@ -50,8 +50,23 @@ export function setThemeChoice(choice: ThemeChoice): void {
   } catch {
     // The theme still applies for this visit even if it cannot be saved.
   }
-  apply(choice);
-  listeners.forEach((notify) => notify());
+  const change = () => {
+    apply(choice);
+    listeners.forEach((notify) => notify());
+  };
+  // A short cross-fade between the old and new look where the browser can, unless motion is reduced.
+  if (typeof document.startViewTransition === 'function' && !wantsLessMotion()) {
+    document.startViewTransition(change);
+  } else {
+    change();
+  }
+}
+
+function wantsLessMotion(): boolean {
+  return (
+    document.documentElement.hasAttribute('data-reduce-motion') ||
+    (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  );
 }
 
 /** Subscribe to theme changes: an explicit pick, or the system setting while on "system". */

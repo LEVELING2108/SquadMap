@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { Illustration } from '../../components/ui/Illustration';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MapboxMap, Marker } from 'mapbox-gl';
 import { Check } from 'lucide-react';
-import mapLight from '../../assets/illustrations/map.svg';
-import mapDark from '../../assets/illustrations/map-dark.svg';
 import { useMapStyle, type MapStyle } from '../../features/profile/settingsApi';
 import type { LatLng } from './geo';
 
@@ -630,22 +629,22 @@ export function MapView({
       className={`overflow-hidden bg-sand ${className}`}
       style={{ '--map-inset-bottom': `${bottomInset}px` } as React.CSSProperties}
     >
+      {/* Keyed so a switch to the picture drops Mapbox's container, and what Mapbox put in it, entirely. */}
       {fallback ? (
-        <>
-          <img src={mapLight} alt="" className="size-full object-cover dark:hidden" />
-          <img src={mapDark} alt="" className="hidden size-full object-cover dark:block" />
+        <Fragment key="picture">
+          <Illustration name="map" className="size-full object-cover" />
           {pin && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full">
               <DestinationPin />
             </div>
           )}
-        </>
+        </Fragment>
       ) : (
-        <>
+        <Fragment key="map">
           <p className="sr-only">{label}</p>
           {/* Sized with width and height, not inset: Mapbox's stylesheet makes its container position: relative. */}
           <div ref={containerRef} className="map-canvas size-full" />
-        </>
+        </Fragment>
       )}
       {!fallback && pinElement && createPortal(<DestinationPin />, pinElement)}
       {!fallback && youElement && createPortal(<YouDot />, youElement)}

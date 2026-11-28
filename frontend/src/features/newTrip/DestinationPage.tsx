@@ -1,8 +1,7 @@
+import { Illustration } from '../../components/ui/Illustration';
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { MapPin, X } from 'lucide-react';
-import mapLight from '../../assets/illustrations/map.svg';
-import mapDark from '../../assets/illustrations/map-dark.svg';
 import { ApiError } from '../../lib/api/ApiError';
 import { BackButton } from '../../components/ui/BackButton';
 import { useDebounced } from '../../lib/useDebounced';
@@ -60,16 +59,7 @@ export function DestinationPage() {
   return (
     <main className="relative mx-auto flex min-h-dvh w-full max-w-[600px] flex-col overflow-hidden bg-screen">
       <div aria-hidden="true" className="absolute inset-0">
-        <img
-          src={mapLight}
-          alt=""
-          className="size-full scale-105 object-cover blur-[3px] saturate-[1.2] dark:hidden"
-        />
-        <img
-          src={mapDark}
-          alt=""
-          className="hidden size-full scale-105 object-cover blur-[3px] saturate-[1.2] dark:block"
-        />
+        <Illustration name="map" className="size-full scale-105 object-cover blur-[3px] saturate-[1.2]" />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-4 px-3 pt-3 pb-24">

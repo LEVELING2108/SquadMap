@@ -1,9 +1,8 @@
+import { Illustration } from '../../components/ui/Illustration';
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { Check, MapPin } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import mapLight from '../../assets/illustrations/map.svg';
-import mapDark from '../../assets/illustrations/map-dark.svg';
 import { ApiError } from '../../lib/api/ApiError';
 import { Banner } from '../../components/ui/Banner';
 import { Button } from '../../components/ui/Button';
@@ -101,16 +100,7 @@ export function ConsentPage() {
   return (
     <main className="relative mx-auto flex min-h-dvh w-full max-w-[600px] flex-col items-center justify-center overflow-hidden bg-screen px-6 py-8">
       <div aria-hidden="true" className="absolute inset-0">
-        <img
-          src={mapLight}
-          alt=""
-          className="size-full scale-105 object-cover blur-[3px] grayscale-[0.4] dark:hidden"
-        />
-        <img
-          src={mapDark}
-          alt=""
-          className="hidden size-full scale-105 object-cover blur-[3px] grayscale-[0.4] dark:block"
-        />
+        <Illustration name="map" className="size-full scale-105 object-cover blur-[3px] grayscale-[0.4]" />
         <div className="absolute inset-0 bg-scrim" />
       </div>
 

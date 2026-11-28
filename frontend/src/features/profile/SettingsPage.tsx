@@ -7,7 +7,6 @@ import { ChoiceRow } from '../../components/ui/ChoiceRow';
 import type { Choice } from '../../components/ui/ChoiceSheet';
 import { Segmented } from '../../components/ui/Segmented';
 import { Switch } from '../../components/ui/Switch';
-import type { ThemeChoice } from '../../lib/theme';
 import { useTheme } from '../../lib/useTheme';
 import { describeFailure } from '../auth/formErrors';
 import { signOut } from '../auth/session';
@@ -19,13 +18,8 @@ import {
   type MapStyle,
   type TimeFormat,
 } from './settingsApi';
+import { THEME_OPTIONS } from './themeOptions';
 
-const THEMES: readonly Choice<ThemeChoice>[] = [
-  { value: 'system', label: 'Match my phone', description: 'Switches between Light and Dark on its own' },
-  { value: 'light', label: 'Light', description: 'The original look: sky blue and frosted glass' },
-  { value: 'dark', label: 'Dark', description: 'Deep navy, easier on the eyes at night' },
-  { value: 'atlas', label: 'Atlas', description: 'Warm paper, forest ink and vermilion routes' },
-];
 const MAP_STYLES: readonly Choice<MapStyle>[] = [
   { value: 'streets', label: 'Streets', description: 'Roads and places' },
   { value: 'outdoors', label: 'Outdoors', description: 'Parks, trails and terrain' },
@@ -60,7 +54,8 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const { settings, isPending } = useSettings();
   const update = useUpdateSettings();
-  const theme = useTheme();
+  const { choice } = useTheme();
+  const themeName = THEME_OPTIONS.find((option) => option.value === choice)?.label;
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-5 bg-sand px-3 pt-3 pb-8">
@@ -75,7 +70,15 @@ export function SettingsPage() {
 
       <div aria-busy={isPending} className="flex flex-col gap-5">
         <Section title="Appearance">
-          <ChoiceRow label="Theme" choices={THEMES} value={theme.choice} onChange={theme.setChoice} />
+          <Link
+            to="/me/appearance"
+            aria-label={`Theme, ${themeName}`}
+            className="flex min-h-[56px] items-center gap-3.5"
+          >
+            <span className="min-w-0 flex-1 text-base leading-[22px] font-bold text-ink">Theme</span>
+            <span className="text-[15px] font-semibold text-muted">{themeName}</span>
+            <ChevronRight aria-hidden="true" className="size-5 flex-none text-muted" />
+          </Link>
         </Section>
 
         <Section title="Map">
