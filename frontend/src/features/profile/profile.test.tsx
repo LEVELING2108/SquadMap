@@ -82,7 +82,8 @@ describe('Settings', () => {
 
     await waitFor(() => expect(screen.getByRole('switch', { name: 'Dark map' })).toBeChecked());
     expect(screen.getByRole('radio', { name: 'Miles' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: '2 hours' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Default sharing time, 2 h' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Map style, Streets' })).toBeInTheDocument();
   });
 
   it('saves each change straight away', async () => {
@@ -93,6 +94,7 @@ describe('Settings', () => {
 
     await user.click(screen.getByRole('switch', { name: 'Dark map' }));
     await user.click(screen.getByRole('radio', { name: 'Miles' }));
+    await user.click(screen.getByRole('button', { name: /^Default sharing time/ }));
     await user.click(screen.getByRole('radio', { name: '8 hours' }));
 
     await waitFor(() =>
@@ -118,13 +120,35 @@ describe('Settings', () => {
     expect(darkMap).not.toBeChecked();
   });
 
-  it('includes the app theme for this device', () => {
+  it('picks the theme for this device from a sheet, without saving it to the account', async () => {
+    const user = userEvent.setup();
     serve();
     renderApp('/me/settings', { settings: null });
 
-    expect(screen.getByRole('group', { name: 'Theme' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'System' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Atlas' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Theme, Match my phone' }));
+    const sheet = screen.getByRole('radiogroup', { name: 'Theme' });
+    expect(within(sheet).getByRole('radio', { name: /Match my phone/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await user.click(within(sheet).getByRole('radio', { name: /Atlas/ }));
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('atlas');
+    expect(screen.getByRole('button', { name: 'Theme, Atlas' })).toBeInTheDocument();
+    const patches = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+    expect(patches).toEqual([]);
+  });
+
+  it('changes the map style from a sheet and saves it', async () => {
+    const user = userEvent.setup();
+    serve();
+    renderApp('/me/settings', { settings: null });
+
+    await user.click(await screen.findByRole('button', { name: /^Map style/ }));
+    await user.click(screen.getByRole('radio', { name: /Satellite/ }));
+
+    await waitFor(() => expect(saved).toEqual({ ...DEFAULT_SETTINGS, mapStyle: 'satellite' }));
+    expect(screen.getByRole('button', { name: 'Map style, Satellite' })).toBeInTheDocument();
   });
 });
 

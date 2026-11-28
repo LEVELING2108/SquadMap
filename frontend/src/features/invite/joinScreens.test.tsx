@@ -72,14 +72,7 @@ beforeEach(() => {
   signedOut();
   window.localStorage.clear();
   vi.stubGlobal('fetch', fetchMock);
-  // jsdom has no native dialog or video; give them just enough.
-  HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
-    this.setAttribute('open', '');
-  };
-  HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
-    this.removeAttribute('open');
-    this.dispatchEvent(new Event('close'));
-  };
+  // jsdom has no video; give it just enough.
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 });
 

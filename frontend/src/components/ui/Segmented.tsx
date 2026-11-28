@@ -11,6 +11,8 @@ type SegmentedProps<T extends string | number> = {
   describe?: (option: T) => string;
   /** Options that can't be chosen right now; the arrow keys skip them. */
   isDisabled?: (option: T) => boolean;
+  /** A settings row: the label on the left, small options on the right. For two or three short options. */
+  inline?: boolean;
 };
 
 /**
@@ -25,6 +27,7 @@ export function Segmented<T extends string | number>({
   format,
   describe,
   isDisabled = () => false,
+  inline = false,
 }: SegmentedProps<T>) {
   const id = useId();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
@@ -48,14 +51,21 @@ export function Segmented<T extends string | number>({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <span id={`${id}-label`} className="text-[13px] font-semibold text-muted">
+    <div className={inline ? 'flex min-h-[56px] items-center gap-3.5' : 'flex flex-col gap-1.5'}>
+      <span
+        id={`${id}-label`}
+        className={
+          inline
+            ? 'min-w-0 flex-1 text-base leading-[22px] font-bold text-ink'
+            : 'text-[13px] font-semibold text-muted'
+        }
+      >
         {label}
       </span>
       <div
         role="radiogroup"
         aria-labelledby={`${id}-label`}
-        className="flex gap-1 rounded-control bg-track p-1"
+        className={`flex gap-1 rounded-control bg-track p-1 ${inline ? 'flex-none' : ''}`}
       >
         {options.map((option, index) => {
           const selected = option === value;
@@ -73,9 +83,9 @@ export function Segmented<T extends string | number>({
               disabled={isDisabled(option)}
               onClick={() => onChange(option)}
               onKeyDown={(event) => move(event, index)}
-              className={`h-11 flex-1 rounded-[calc(var(--r-control)-4px)] text-[15px] font-bold transition-colors duration-(--dur-fast) ${
-                selected ? 'bg-screen text-blue-d shadow-sm' : 'text-ink'
-              } disabled:opacity-40`}
+              className={`h-11 rounded-[calc(var(--r-control)-4px)] text-[15px] font-bold transition-colors duration-(--dur-fast) ${
+                inline ? 'min-w-14 px-2.5' : 'flex-1'
+              } ${selected ? 'bg-screen text-blue-d shadow-sm' : 'text-ink'} disabled:opacity-40`}
             >
               {format(option)}
             </button>

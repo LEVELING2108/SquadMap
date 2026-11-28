@@ -86,14 +86,6 @@ beforeEach(() => {
   useSession.setState({ status: 'signedIn', user: testUser, guest: null, accessToken: 't' });
   useLiveStore.setState({ tripId: null, positions: {} });
   sessionStorage.clear();
-  // jsdom has no native dialog; give it just enough.
-  HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
-    this.setAttribute('open', '');
-  };
-  HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
-    this.removeAttribute('open');
-    this.dispatchEvent(new Event('close'));
-  };
 });
 
 afterEach(() => {

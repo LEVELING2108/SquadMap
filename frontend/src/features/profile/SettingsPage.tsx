@@ -3,9 +3,12 @@ import { Link, useNavigate } from 'react-router';
 import { ChevronRight } from 'lucide-react';
 import { BackButton } from '../../components/ui/BackButton';
 import { Banner } from '../../components/ui/Banner';
+import { ChoiceRow } from '../../components/ui/ChoiceRow';
+import type { Choice } from '../../components/ui/ChoiceSheet';
 import { Segmented } from '../../components/ui/Segmented';
 import { Switch } from '../../components/ui/Switch';
-import { ThemeSwitch } from '../../components/ui/ThemeSwitch';
+import type { ThemeChoice } from '../../lib/theme';
+import { useTheme } from '../../lib/useTheme';
 import { describeFailure } from '../auth/formErrors';
 import { signOut } from '../auth/session';
 import { SHARE_HOURS } from '../newTrip/tripDraft';
@@ -17,13 +20,23 @@ import {
   type TimeFormat,
 } from './settingsApi';
 
+const THEMES: readonly Choice<ThemeChoice>[] = [
+  { value: 'system', label: 'Match my phone', description: 'Switches between Light and Dark on its own' },
+  { value: 'light', label: 'Light', description: 'The original look: sky blue and frosted glass' },
+  { value: 'dark', label: 'Dark', description: 'Deep navy, easier on the eyes at night' },
+  { value: 'atlas', label: 'Atlas', description: 'Warm paper, forest ink and vermilion routes' },
+];
+const MAP_STYLES: readonly Choice<MapStyle>[] = [
+  { value: 'streets', label: 'Streets', description: 'Roads and places' },
+  { value: 'outdoors', label: 'Outdoors', description: 'Parks, trails and terrain' },
+  { value: 'satellite', label: 'Satellite', description: 'Photos from above' },
+];
+const SHARE_TIMES: readonly Choice<(typeof SHARE_HOURS)[number]>[] = SHARE_HOURS.map((hours) => ({
+  value: hours,
+  label: `${hours} h`,
+  spoken: hours === 1 ? '1 hour' : `${hours} hours`,
+}));
 const UNITS: readonly DistanceUnit[] = ['km', 'mi'];
-const MAP_STYLES: readonly MapStyle[] = ['streets', 'outdoors', 'satellite'];
-const MAP_STYLE_NAMES: Record<MapStyle, string> = {
-  streets: 'Streets',
-  outdoors: 'Outdoors',
-  satellite: 'Satellite',
-};
 const TIME_FORMATS: readonly TimeFormat[] = ['12h', '24h'];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -47,6 +60,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const { settings, isPending } = useSettings();
   const update = useUpdateSettings();
+  const theme = useTheme();
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-5 bg-sand px-3 pt-3 pb-8">
@@ -61,21 +75,16 @@ export function SettingsPage() {
 
       <div aria-busy={isPending} className="flex flex-col gap-5">
         <Section title="Appearance">
-          <Item>
-            <ThemeSwitch />
-          </Item>
+          <ChoiceRow label="Theme" choices={THEMES} value={theme.choice} onChange={theme.setChoice} />
         </Section>
 
         <Section title="Map">
-          <Item>
-            <Segmented
-              label="Map style"
-              options={MAP_STYLES}
-              value={settings.mapStyle}
-              onChange={(mapStyle) => update.mutate({ mapStyle })}
-              format={(style) => MAP_STYLE_NAMES[style]}
-            />
-          </Item>
+          <ChoiceRow
+            label="Map style"
+            choices={MAP_STYLES}
+            value={settings.mapStyle}
+            onChange={(mapStyle) => update.mutate({ mapStyle })}
+          />
           {settings.mapStyle === 'streets' && (
             <Item>
               <Switch
@@ -86,29 +95,24 @@ export function SettingsPage() {
               />
             </Item>
           )}
-          <Item>
-            <Segmented
-              label="Distance unit"
-              options={UNITS}
-              value={settings.distanceUnit}
-              onChange={(distanceUnit) => update.mutate({ distanceUnit })}
-              format={(unit) => unit}
-              describe={(unit) => (unit === 'km' ? 'Kilometres' : 'Miles')}
-            />
-          </Item>
+          <Segmented
+            inline
+            label="Distance unit"
+            options={UNITS}
+            value={settings.distanceUnit}
+            onChange={(distanceUnit) => update.mutate({ distanceUnit })}
+            format={(unit) => unit}
+            describe={(unit) => (unit === 'km' ? 'Kilometres' : 'Miles')}
+          />
         </Section>
 
         <Section title="Trips">
-          <Item>
-            <Segmented
-              label="Default sharing time"
-              options={SHARE_HOURS}
-              value={settings.defaultShareHours}
-              onChange={(defaultShareHours) => update.mutate({ defaultShareHours })}
-              format={(hours) => `${hours} h`}
-              describe={(hours) => (hours === 1 ? '1 hour' : `${hours} hours`)}
-            />
-          </Item>
+          <ChoiceRow
+            label="Default sharing time"
+            choices={SHARE_TIMES}
+            value={settings.defaultShareHours}
+            onChange={(defaultShareHours) => update.mutate({ defaultShareHours })}
+          />
           <Item>
             <Switch
               label="Chat on by default"
@@ -128,16 +132,15 @@ export function SettingsPage() {
               onChange={(reduceMotion) => update.mutate({ reduceMotion })}
             />
           </Item>
-          <Item>
-            <Segmented
-              label="Time format"
-              options={TIME_FORMATS}
-              value={settings.timeFormat}
-              onChange={(timeFormat) => update.mutate({ timeFormat })}
-              format={(format) => (format === '12h' ? '9:30 PM' : '21:30')}
-              describe={(format) => (format === '12h' ? '12-hour, like 9:30 PM' : '24-hour, like 21:30')}
-            />
-          </Item>
+          <Segmented
+            inline
+            label="Time format"
+            options={TIME_FORMATS}
+            value={settings.timeFormat}
+            onChange={(timeFormat) => update.mutate({ timeFormat })}
+            format={(format) => (format === '12h' ? '12 h' : '24 h')}
+            describe={(format) => (format === '12h' ? '12-hour, like 9:30 PM' : '24-hour, like 21:30')}
+          />
         </Section>
 
         <Section title="Notifications">
