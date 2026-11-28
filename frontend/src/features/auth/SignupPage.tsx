@@ -78,7 +78,7 @@ export function SignupPage() {
       }
     >
       <div className="motion-rise" style={{ '--motion-delay': '80ms' } as React.CSSProperties}>
-        <h1 id="signup-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+        <h1 id="signup-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
           Create account
         </h1>
         <p className="mt-1 text-sm leading-5 text-muted">Free, takes under a minute.</p>

@@ -42,7 +42,7 @@ export function EndTripDialog({ open, tripId, friends, onClose, onEnded }: EndTr
       >
         <Power className="size-8" />
       </span>
-      <h2 id="end-trip-title" className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">
+      <h2 id="end-trip-title" className="text-[22px] leading-7 font-heading tracking-[-0.3px]">
         End this trip for everyone?
       </h2>
       <p id="end-trip-text" className="text-[15px] leading-[21px] text-muted">

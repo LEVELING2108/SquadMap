@@ -570,7 +570,7 @@ export function LiveMapPage({
             aria-labelledby="live-title"
             className="glass-strong absolute inset-x-3 bottom-3 z-10 flex flex-col gap-3 rounded-sheet px-5 pt-5 pb-4"
           >
-            <h1 id="live-title" className="text-[20px] leading-[26px] font-extrabold">
+            <h1 id="live-title" className="text-[20px] leading-[26px] font-heading">
               Chat is off for this trip
             </h1>
             <p className="text-sm leading-5 text-muted">The host turned chat off when starting the trip.</p>
@@ -654,7 +654,7 @@ export function LiveMapPage({
                 />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <h1 id="live-title" className="text-[20px] leading-[26px] font-extrabold">
+                  <h1 id="live-title" className="text-[20px] leading-[26px] font-heading">
                     Not on this trip
                   </h1>
                   <p className="text-sm leading-5 text-muted">They may have left the trip.</p>

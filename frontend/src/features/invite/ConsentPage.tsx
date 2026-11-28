@@ -126,7 +126,7 @@ export function ConsentPage() {
             <MapPin className="size-7" />
           </span>
         </div>
-        <h1 id="consent-title" className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">
+        <h1 id="consent-title" className="text-[22px] leading-7 font-heading tracking-[-0.3px]">
           Share your live location?
         </h1>
         <p id="consent-summary" className="text-sm leading-5 text-muted">

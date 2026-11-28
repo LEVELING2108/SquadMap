@@ -83,7 +83,7 @@ export function PrivacyChoices() {
         labelledBy="history-title"
         describedBy="history-text"
       >
-        <h2 id="history-title" className="text-lg leading-6 font-extrabold">
+        <h2 id="history-title" className="text-lg leading-6 font-heading">
           Stop keeping trip history?
         </h2>
         <p id="history-text" className="text-sm leading-5 text-muted">

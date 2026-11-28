@@ -48,7 +48,7 @@ export function TripCompletePage() {
         <div className="motion-rise">
           <h1
             id="complete-title"
-            className="text-[32px] leading-[38px] font-extrabold tracking-[-0.5px] text-ink"
+            className="text-[32px] leading-[38px] font-heading tracking-[-0.5px] text-ink"
           >
             {stillRunning ? 'You’ve finished' : 'Trip complete'}
           </h1>

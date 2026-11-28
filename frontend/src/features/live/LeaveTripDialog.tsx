@@ -22,7 +22,7 @@ export function LeaveTripDialog({ open, pending, error, onLeave, onClose }: Leav
       >
         <LogOut className="size-8" />
       </span>
-      <h2 id="leave-trip-title" className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">
+      <h2 id="leave-trip-title" className="text-[22px] leading-7 font-heading tracking-[-0.3px]">
         Leave this trip?
       </h2>
       <p id="leave-trip-text" className="text-[15px] leading-[21px] text-muted">

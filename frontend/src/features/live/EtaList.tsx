@@ -57,7 +57,7 @@ export function EtaList({ members, etas, destination, unit, inviteHref, friendHr
     <div className="flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 id="live-title" className="text-[24px] leading-[30px] font-extrabold tracking-[-0.3px]">
+          <h1 id="live-title" className="text-[24px] leading-[30px] font-heading tracking-[-0.3px]">
             Who’s on the way
           </h1>
           <p className="text-sm leading-5 text-muted">

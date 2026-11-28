@@ -53,7 +53,7 @@ export function NearbyPanel({
   return (
     <>
       <div className="flex items-center justify-between gap-2">
-        <h1 id="home-title" className="text-[22px] leading-7 font-extrabold">
+        <h1 id="home-title" className="text-[22px] leading-7 font-heading">
           {label} nearby
         </h1>
         <button

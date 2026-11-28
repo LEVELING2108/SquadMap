@@ -39,6 +39,19 @@ describe('theme', () => {
     expect(appliedTheme()).toBe('light');
   });
 
+  it('applies Atlas, keeps it whatever the system says, and colours the status bar paper', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    document.head.append(meta);
+    setSystemPrefersDark(true);
+    setThemeChoice('atlas');
+
+    expect(appliedTheme()).toBe('atlas');
+    expect(getThemeChoice()).toBe('atlas');
+    expect(meta.getAttribute('content')).toBe('#EFE6D2');
+    meta.remove();
+  });
+
   it('ignores an unknown stored value', () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, 'purple');
     expect(getThemeChoice()).toBe('system');

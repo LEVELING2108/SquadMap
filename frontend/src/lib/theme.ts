@@ -5,8 +5,8 @@
  *
  * public/theme-init.js applies the same rules before the app loads.
  */
-export type ThemeChoice = 'system' | 'light' | 'dark';
-export type ResolvedTheme = 'light' | 'dark';
+export type ThemeChoice = 'system' | 'light' | 'dark' | 'atlas';
+export type ResolvedTheme = 'light' | 'dark' | 'atlas';
 
 export const THEME_STORAGE_KEY = 'squadmap.theme';
 
@@ -20,7 +20,7 @@ function systemPrefersDark(): boolean {
 export function getThemeChoice(): ThemeChoice {
   try {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
+    if (stored === 'light' || stored === 'dark' || stored === 'atlas') return stored;
   } catch {
     // Storage can be blocked (private mode); treat as "no choice made".
   }
@@ -32,8 +32,8 @@ export function resolveTheme(choice: ThemeChoice): ResolvedTheme {
   return choice;
 }
 
-/** The phone's status bar matches the app's background, light or dark (index.html has both). */
-const STATUS_BAR: Record<ResolvedTheme, string> = { light: '#F3EFE6', dark: '#0B1524' };
+/** The phone's status bar matches the app's background (index.html has the light and dark ones). */
+const STATUS_BAR: Record<ResolvedTheme, string> = { light: '#F3EFE6', dark: '#0B1524', atlas: '#EFE6D2' };
 
 function apply(choice: ThemeChoice): void {
   const theme = resolveTheme(choice);

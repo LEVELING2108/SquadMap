@@ -105,7 +105,7 @@ export function TripHistoryPage() {
     >
       <header className="flex items-center gap-2">
         <BackButton fallback="/home" className="bg-transparent shadow-none" />
-        <h1 className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">Trip history</h1>
+        <h1 className="text-[22px] leading-7 font-heading tracking-[-0.3px]">Trip history</h1>
       </header>
 
       {trips.length > 0 && (

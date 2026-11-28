@@ -5,7 +5,7 @@ import { GRIEVANCE_CONTACT } from './grievanceContact';
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="glass-strong flex flex-col gap-2 rounded-card p-5">
-      <h2 className="text-lg leading-6 font-extrabold">{title}</h2>
+      <h2 className="text-lg leading-6 font-heading">{title}</h2>
       {children}
     </section>
   );
@@ -32,7 +32,7 @@ export function PolicyPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-4 bg-sand px-3 pt-3 pb-10">
       <header className="flex items-center gap-2">
         <BackButton fallback="/" className="bg-transparent shadow-none" />
-        <h1 className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">Terms and Privacy Policy</h1>
+        <h1 className="text-[22px] leading-7 font-heading tracking-[-0.3px]">Terms and Privacy Policy</h1>
       </header>
 
       <p className="px-2 text-[15px] leading-[22px]">

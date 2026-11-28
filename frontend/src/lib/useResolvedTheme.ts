@@ -8,10 +8,11 @@ function subscribe(onChange: () => void): () => void {
 }
 
 function read(): ResolvedTheme {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  const theme = document.documentElement.dataset.theme;
+  return theme === 'dark' || theme === 'atlas' ? theme : 'light';
 }
 
-/** The theme actually showing, light or dark, following the attribute on <html>. */
+/** The theme actually showing (light, dark or atlas), following the attribute on <html>. */
 export function useResolvedTheme(): ResolvedTheme {
   return useSyncExternalStore(subscribe, read, () => 'light');
 }

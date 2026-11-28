@@ -125,7 +125,7 @@ export function JoinPage() {
       decoration={preview.data && code ? <InviterCard preview={preview.data} /> : undefined}
     >
       <div className="motion-rise">
-        <h1 id="join-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+        <h1 id="join-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
           Join the trip
         </h1>
         <p className="mt-1 text-sm leading-5 text-muted">

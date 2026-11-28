@@ -124,6 +124,7 @@ describe('Settings', () => {
 
     expect(screen.getByRole('group', { name: 'Theme' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'System' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Atlas' })).toBeInTheDocument();
   });
 });
 

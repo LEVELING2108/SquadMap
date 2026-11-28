@@ -25,7 +25,7 @@ export function ExtendDialog({ open, trip, left, timeFormat, onClose, onExtended
       >
         <Timer className="size-8" />
       </span>
-      <h2 id="extend-title" className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">
+      <h2 id="extend-title" className="text-[22px] leading-7 font-heading tracking-[-0.3px]">
         Extend sharing time
       </h2>
       <p id="extend-text" className="text-[15px] leading-[21px] text-muted">

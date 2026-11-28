@@ -70,7 +70,7 @@ export function ResetPasswordPage() {
         }
       >
         <div className="motion-rise">
-          <h1 id="reset-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+          <h1 id="reset-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
             This link has expired
           </h1>
           <p className="mt-1 text-sm leading-5 text-muted">
@@ -97,7 +97,7 @@ export function ResetPasswordPage() {
       }
     >
       <div className="motion-rise" style={{ '--motion-delay': '80ms' } as React.CSSProperties}>
-        <h1 id="reset-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+        <h1 id="reset-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
           {reset.isSuccess ? 'Password changed' : 'Choose a new password'}
         </h1>
         <p className="mt-1 text-sm leading-5 text-muted">

@@ -18,6 +18,9 @@ type Tokens = {
 const tokens = JSON.parse(
   readFileSync(resolve(process.cwd(), '../design/tokens/tokens.json'), 'utf8'),
 ) as Tokens;
+const atlasTokens = JSON.parse(
+  readFileSync(resolve(process.cwd(), '../design/tokens/tokens-atlas.json'), 'utf8'),
+) as { app: Record<string, string>; radius: Record<string, number> };
 const css = readFileSync(resolve(process.cwd(), 'src/styles/tokens.css'), 'utf8');
 
 function declarations(selector: string): Map<string, string> {
@@ -45,6 +48,7 @@ const kebab = (name: string) => name.replace(/[A-Z]/g, (letter) => `-${letter.to
 
 const light = declarations(':root');
 const dark = declarations(":root[data-theme='dark']");
+const atlas = declarations(":root[data-theme='atlas']");
 
 describe('tokens.css matches design/tokens/tokens.json', () => {
   it.each(Object.entries(tokens.color.light))('light color %s', (name, value) => {
@@ -86,5 +90,27 @@ describe('tokens.css matches design/tokens/tokens.json', () => {
   it('glass blur and saturation', () => {
     expect(light.get('--glass-blur')).toBe(`${tokens.glass.light.blur}px`);
     expect(light.get('--glass-saturate')).toBe(String(tokens.glass.light.saturate));
+  });
+});
+
+describe('the Atlas theme in tokens.css matches design/tokens/tokens-atlas.json', () => {
+  it.each(Object.entries(atlasTokens.app))('atlas %s', (name, value) => {
+    expect(normalize(atlas.get(`--${kebab(name)}`) ?? 'missing')).toBe(normalize(value));
+  });
+
+  it.each(['control', 'button', 'card', 'sheet'])('atlas radius %s', (name) => {
+    expect(atlas.get(`--r-${name}`)).toBe(`${atlasTokens.radius[name]}px`);
+  });
+
+  it('has no frosted glass and uses the serif for titles', () => {
+    expect(atlas.get('--glass-blur')).toBe('0px');
+    expect(atlas.get('--btn-glass-blur')).toBe('0px');
+    expect(atlas.get('--font-heading')).toContain('Fraunces');
+  });
+
+  it('keeps titles exactly as they were in light and dark', () => {
+    expect(light.get('--font-heading')).toBe('var(--font-display)');
+    expect(light.get('--heading-weight')).toBe('800');
+    expect(dark.has('--font-heading')).toBe(false);
   });
 });

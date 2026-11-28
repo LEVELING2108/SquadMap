@@ -96,7 +96,7 @@ export function NewTripPage() {
         className="glass-strong relative z-10 -mt-6 flex flex-1 flex-col gap-4 rounded-t-sheet px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))]"
       >
         <div aria-hidden="true" className="mx-auto h-1 w-10 flex-none rounded-[2px] bg-handle" />
-        <h1 id="new-trip-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+        <h1 id="new-trip-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
           Plan your trip
         </h1>
 

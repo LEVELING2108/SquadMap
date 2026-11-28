@@ -117,7 +117,7 @@ export function ProfilePage() {
           >
             {user.name.charAt(0).toUpperCase()}
           </span>
-          <h1 className="mt-2 max-w-[90%] truncate text-[26px] leading-8 font-extrabold">{user.name}</h1>
+          <h1 className="mt-2 max-w-[90%] truncate text-[26px] leading-8 font-heading">{user.name}</h1>
           <p className="text-sm leading-5 font-semibold text-ink/80">
             Explorer since {sinceLabel(user.createdAt)}
           </p>

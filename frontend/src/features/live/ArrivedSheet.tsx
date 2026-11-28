@@ -66,7 +66,7 @@ export function ArrivedSheet({
         className="motion-sheet glass glass-strong flex flex-col gap-3 rounded-t-sheet px-5 pt-3 pb-[max(24px,env(safe-area-inset-bottom))]"
       >
         <div aria-hidden="true" className="mx-auto mb-1 h-1 w-10 flex-none rounded-[2px] bg-handle" />
-        <h1 id="arrived-title" className="text-center text-[30px] leading-9 font-extrabold tracking-[-0.5px]">
+        <h1 id="arrived-title" className="text-center text-[30px] leading-9 font-heading tracking-[-0.5px]">
           You made it!
         </h1>
         <p className="text-center text-[15px] leading-[22px] text-muted">
