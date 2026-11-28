@@ -134,7 +134,7 @@ Nightly `pg_dump` to object storage, 14 day retention, weekly restore test into 
 - [ ] Mapbox tokens restricted by URL, billing alerts on.
 - [ ] Backups restore tested. Runbook reviewed. On-call plan (even if it is only you).
 - [ ] Sentry receiving events from both sides. Dashboards and alerts live.
-- [x] PWA icons 192/512/maskable and the Apple touch icon, generated from `frontend/public/favicon.svg` with `npm run icons`. `npm run check:pwa` (also in CI) checks the built app has them, the manifest and a service worker that caches only the app's own files.
+- [x] PWA icons 192/512/maskable and the Apple touch icon (the "Route S" app icon), generated with `npm run icons` from two SVG sources: `frontend/public/favicon.svg` (the rounded icon for tabs and installs) and `frontend/public/icon-full-bleed.svg` (edge-to-edge navy for home screens that crop the icon into their own shape; keep the artwork inside the central 80% circle). The manifest also offers two long-press shortcuts, Start a trip and Join with a code. `npm run check:pwa` (also in CI) checks the built app has them, the manifest and a service worker that caches only the app's own files.
 - [ ] Store listing assets if listing the PWA anywhere: screenshots from `design/screens`, short description.
 - [ ] Feature flags for risky features (push, Google sign-in) with a kill switch.
 - [ ] Push notifications checked on a real Android phone and an iPhone (installed to the Home Screen, iOS 16.4 or later), with the app closed.

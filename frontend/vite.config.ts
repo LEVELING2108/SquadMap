@@ -23,6 +23,8 @@ export default defineConfig({
       devOptions: { enabled: false },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // The source of the home-screen icons; the app never loads it.
+        globIgnores: ['icon-full-bleed.svg'],
       },
       manifest: {
         name: 'SquadMap',
@@ -40,6 +42,19 @@ export default defineConfig({
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+        // Long-press the installed icon for these.
+        shortcuts: [
+          {
+            name: 'Start a trip',
+            url: '/trip/new',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Join with a code',
+            url: '/join',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
         ],
       },
     }),
