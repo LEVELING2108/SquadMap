@@ -74,7 +74,7 @@ export function InvitePage() {
 
       <div className="relative z-10 flex flex-1 flex-col gap-6 px-5 pt-7 pb-6">
         <div className="motion-rise text-on-scrim">
-          <h1 className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">Trip is live</h1>
+          <h1 className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">Trip is live</h1>
           <p className="mt-1.5 text-[15px] leading-[21px] opacity-90">
             Send this link. Friends join without signing up.
           </p>

@@ -19,7 +19,7 @@ export function StatTile({ value, label, className }: StatTileProps) {
     <div
       className={`flex min-w-min flex-auto flex-col rounded-card px-3 py-3 min-[375px]:px-3.5 ${className}`}
     >
-      <dd className="order-1 m-0 text-[22px] leading-7 font-extrabold">
+      <dd className="order-1 m-0 font-heading text-[22px] leading-7">
         {statParts(value).map(({ number, unit }, index) => (
           <span key={index} className="whitespace-nowrap">
             {index > 0 && ' '}

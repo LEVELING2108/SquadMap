@@ -52,7 +52,7 @@ export function SettingsPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-5 bg-sand px-3 pt-3 pb-8">
       <header className="flex items-center gap-2">
         <BackButton fallback="/me" className="bg-transparent shadow-none" />
-        <h1 className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">Settings</h1>
+        <h1 className="text-[22px] leading-7 font-heading tracking-[-0.3px]">Settings</h1>
       </header>
 
       {update.isError && (

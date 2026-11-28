@@ -275,13 +275,13 @@ export function HomePage() {
             onClose={() => chooseCategory(null)}
           />
         ) : status === 'unknown' ? (
-          <h1 id="home-title" className="text-[22px] leading-7 font-extrabold">
+          <h1 id="home-title" className="text-[22px] leading-7 font-heading">
             Loading…
           </h1>
         ) : status === 'guest' && guest ? (
           <>
             <div>
-              <h1 id="home-title" className="text-[22px] leading-7 font-extrabold">
+              <h1 id="home-title" className="text-[22px] leading-7 font-heading">
                 You’re on a trip
               </h1>
               <p className="text-sm leading-5 text-muted">
@@ -294,7 +294,7 @@ export function HomePage() {
           <>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h1 id="home-title" className="text-[24px] leading-[30px] font-extrabold tracking-[-0.3px]">
+                <h1 id="home-title" className="text-[24px] leading-[30px] font-heading tracking-[-0.3px]">
                   Ready for a trip?
                 </h1>
                 <p className="text-sm leading-5 text-muted">

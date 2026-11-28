@@ -5,6 +5,7 @@ const options: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
+  { value: 'atlas', label: 'Atlas' },
 ];
 
 export function ThemeSwitch() {

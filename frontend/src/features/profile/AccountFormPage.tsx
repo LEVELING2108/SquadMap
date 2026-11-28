@@ -15,7 +15,7 @@ export function AccountFormPage({
     <main className="mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-4 bg-sand px-3 pt-3 pb-8">
       <header className="flex items-center gap-2">
         <BackButton fallback="/me" className="bg-transparent shadow-none" />
-        <h1 className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">{title}</h1>
+        <h1 className="text-[22px] leading-7 font-heading tracking-[-0.3px]">{title}</h1>
       </header>
       <section aria-label={title} className="glass-strong flex flex-col gap-4 rounded-card p-5">
         <p className="text-sm leading-5 text-muted">{intro}</p>

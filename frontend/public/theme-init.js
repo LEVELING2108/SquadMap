@@ -7,10 +7,14 @@
   } catch (e) {
     // Storage can be blocked (private mode); fall back to the system setting.
   }
-  var dark =
-    choice === 'dark' ||
-    (choice !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var theme =
+    choice === 'light' || choice === 'dark' || choice === 'atlas'
+      ? choice
+      : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  var bar = { light: '#F3EFE6', dark: '#0B1524', atlas: '#EFE6D2' }[theme];
   var metas = document.querySelectorAll('meta[name="theme-color"]');
-  for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', dark ? '#0B1524' : '#F3EFE6');
+  for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', bar);
 })();

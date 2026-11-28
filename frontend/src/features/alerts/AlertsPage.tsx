@@ -122,7 +122,7 @@ export function AlertsPage() {
     >
       <header className="flex items-center gap-2">
         <BackButton fallback="/home" className="bg-transparent shadow-none" />
-        <h1 className="flex-1 text-[22px] leading-7 font-extrabold tracking-[-0.3px]">Alerts</h1>
+        <h1 className="flex-1 text-[22px] leading-7 font-heading tracking-[-0.3px]">Alerts</h1>
         {unread > 0 && (
           <button
             type="button"

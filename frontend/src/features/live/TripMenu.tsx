@@ -94,7 +94,7 @@ export function TripMenu({
               ref={heading}
               id="trip-menu-title"
               tabIndex={-1}
-              className="truncate text-[22px] leading-7 font-extrabold tracking-[-0.3px] outline-none"
+              className="truncate text-[22px] leading-7 font-heading tracking-[-0.3px] outline-none"
             >
               {name}
             </h1>

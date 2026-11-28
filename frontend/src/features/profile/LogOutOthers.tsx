@@ -56,7 +56,7 @@ export function LogOutOthers() {
         onClick={(event) => event.target === dialogRef.current && setOpen(false)}
         className="glass-strong m-auto w-[min(360px,calc(100vw-32px))] rounded-sheet p-5 text-ink backdrop:bg-scrim backdrop:backdrop-blur-[4px]"
       >
-        <h2 id="logout-others-title" className="text-lg leading-6 font-extrabold">
+        <h2 id="logout-others-title" className="text-lg leading-6 font-heading">
           Log out everywhere else?
         </h2>
         <p id="logout-others-text" className="mt-2 text-sm leading-5 text-muted">

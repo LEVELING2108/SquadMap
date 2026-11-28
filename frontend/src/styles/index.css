@@ -1,5 +1,7 @@
 @import '@fontsource-variable/plus-jakarta-sans';
 @import '@fontsource/dm-mono/500.css';
+/* Atlas titles. Browsers fetch it only when a title uses it; the offline cache keeps its Latin file. */
+@import '@fontsource-variable/fraunces/opsz.css';
 @import 'tailwindcss';
 @import './tokens.css';
 @import '../motion/keyframes.css';
@@ -158,8 +160,8 @@
 /* Secondary button on glass: lighter frosting than panels, so it reads as a control. */
 @utility glass-button {
   background: var(--btn-glass-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(var(--btn-glass-blur));
+  backdrop-filter: blur(var(--btn-glass-blur));
   border: 1px solid var(--btn-glass-border);
   box-shadow: var(--btn-glass-shadow);
 }
@@ -174,6 +176,15 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background: var(--glass-fallback);
   }
+}
+
+/*
+ * Titles of pages and dialogs, and big numbers: bold Plus Jakarta Sans in Light and Dark, the Fraunces serif
+ * in Atlas. Use instead of font-extrabold on those.
+ */
+@utility font-heading {
+  font-family: var(--font-heading);
+  font-weight: var(--heading-weight);
 }
 
 /* Nearby places on the Home map (see MapView spots): a dot in the colour of their kind. */

@@ -89,10 +89,7 @@ export function FriendDetails({
           {friend.displayName.charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">
-          <h1
-            id="live-title"
-            className="truncate text-[24px] leading-[30px] font-extrabold tracking-[-0.3px]"
-          >
+          <h1 id="live-title" className="truncate text-[24px] leading-[30px] font-heading tracking-[-0.3px]">
             {friend.displayName}
           </h1>
           <p className="text-sm leading-5 text-muted">{statusOf(friend, position, now, destination)}</p>

@@ -23,8 +23,9 @@ export default defineConfig({
       devOptions: { enabled: false },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // The source of the home-screen icons; the app never loads it.
-        globIgnores: ['icon-full-bleed.svg'],
+        // The source of the home-screen icons, which the app never loads, and the Atlas title font's
+        // non-Latin files, fetched only if a title ever needs those letters.
+        globIgnores: ['icon-full-bleed.svg', 'assets/fraunces-latin-ext-*', 'assets/fraunces-vietnamese-*'],
       },
       manifest: {
         name: 'SquadMap',

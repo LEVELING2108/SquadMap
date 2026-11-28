@@ -63,7 +63,7 @@ export function LoginPage() {
       }
     >
       <div className="motion-rise" style={{ '--motion-delay': '80ms' } as React.CSSProperties}>
-        <h1 id="login-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+        <h1 id="login-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
           Welcome back
         </h1>
         <p className="mt-1 text-sm leading-5 text-muted">Log in to pick up your next trip.</p>

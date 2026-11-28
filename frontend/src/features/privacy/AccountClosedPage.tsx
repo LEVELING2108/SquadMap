@@ -11,7 +11,7 @@ export function AccountClosedPage() {
   return (
     <AuthScreen titleId="closed-title" topSpace={360} backdrop="sky">
       <div className="motion-rise">
-        <h1 id="closed-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+        <h1 id="closed-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
           Your account is closed
         </h1>
         <p className="mt-1 text-sm leading-5 text-muted">

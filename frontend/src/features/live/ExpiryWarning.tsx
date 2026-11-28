@@ -61,7 +61,7 @@ export function ExpiryWarning({
         </svg>
         <Clock className="absolute inset-0 m-auto size-9 text-ink" />
       </div>
-      <h2 id="expiry-title" className="text-[22px] leading-7 font-extrabold tracking-[-0.3px]">
+      <h2 id="expiry-title" className="text-[22px] leading-7 font-heading tracking-[-0.3px]">
         Sharing ends in {minutes} min
       </h2>
       <p id="expiry-text" className="text-[15px] leading-[21px] text-muted">

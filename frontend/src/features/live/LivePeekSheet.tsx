@@ -86,7 +86,7 @@ export const LivePeekSheet = forwardRef<HTMLElement, LivePeekSheetProps>(functio
       {expanded ?? (
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h1 id="live-title" className="text-[20px] leading-[26px] font-extrabold">
+            <h1 id="live-title" className="text-[20px] leading-[26px] font-heading">
               {title}
             </h1>
             <p aria-live="polite" className="text-sm leading-5 text-muted">

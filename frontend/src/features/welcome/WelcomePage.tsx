@@ -44,7 +44,7 @@ export function WelcomePage() {
         <div aria-hidden="true" className="mx-auto mb-1 h-1 w-10 flex-none rounded-[2px] bg-handle" />
 
         <div className="motion-rise" style={step(1)}>
-          <h1 id="welcome-title" className="text-[28px] leading-[34px] font-extrabold tracking-[-0.5px]">
+          <h1 id="welcome-title" className="text-[28px] leading-[34px] font-heading tracking-[-0.5px]">
             Get there <span className="text-blue">together</span>
           </h1>
           <p className="mt-1.5 text-sm leading-5 text-muted">

@@ -1,6 +1,6 @@
 /*
- * Design tokens for the app. The values come from design/tokens/tokens.json;
- * src/styles/tokens.test.ts fails if the two ever disagree.
+ * Design tokens for the app. The values come from design/tokens/tokens.json (light and dark) and
+ * design/tokens/tokens-atlas.json (Atlas); src/styles/tokens.test.ts fails if they ever disagree.
  * Components never hard-code a color, radius, shadow or duration: they use these.
  */
 :root {
@@ -55,6 +55,7 @@
   --btn-glass-bg: rgba(255, 255, 255, 0.7);
   --btn-glass-border: rgba(255, 255, 255, 0.85);
   --btn-glass-shadow: 0 6px 18px rgba(14, 42, 71, 0.12);
+  --btn-glass-blur: 14px;
   --btn-shine: rgba(255, 255, 255, 0.35);
   --dot-idle: rgba(18, 38, 58, 0.2);
   --handle: rgba(18, 38, 58, 0.2);
@@ -95,6 +96,9 @@
   /* Type */
   --font-display: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-code: 'DM Mono', ui-monospace, monospace;
+  /* Page and dialog titles, and big numbers (the font-heading utility). */
+  --font-heading: var(--font-display);
+  --heading-weight: 800;
 }
 
 :root[data-theme='dark'] {
@@ -146,4 +150,77 @@
   --ticket-bg: #16263a;
   --perforation: rgba(255, 255, 255, 0.25);
   --scrim: rgba(3, 8, 16, 0.6);
+}
+
+/*
+ * Atlas: a printed-map look. Warm paper, forest ink, vermilion routes; flat paper panels with a hairline ink
+ * border instead of frosted glass; serif titles. Light only (no night version yet).
+ */
+:root[data-theme='atlas'] {
+  color-scheme: light;
+
+  --ink: #16221e;
+  --muted: #4a5a53;
+  --blue: #16221e;
+  --blue-d: #16221e;
+  --tint: #e6dfcb;
+  --coral: #e4472b;
+  --coral-d: #b3321b;
+  --sea: #0e5a57;
+  --sea-d: #0e5a57;
+  --sea-bg: rgba(14, 90, 87, 0.14);
+  --sun: #d8a03c;
+  --green: #1f6b3a;
+  --green-bg: #dde8cf;
+  --amber: #7a4a07;
+  --amber-bg: #f3e1b8;
+  --red: #b3321b;
+  --red-bg: #f6d9ce;
+  --sand: #f7f1e3;
+  --screen: #efe6d2;
+  --line: rgba(22, 34, 30, 0.16);
+  --on-primary: #efe6d2;
+  --you: #e4472b;
+
+  --glass-bg: #f7f1e3;
+  --glass-bg-strong: #f7f1e3;
+  --glass-border: rgba(22, 34, 30, 0.85);
+  --glass-blur: 0px;
+  --glass-saturate: 1;
+  --glass-shadow: 0 10px 24px rgba(22, 34, 30, 0.12);
+  --glass-fallback: #f7f1e3;
+
+  --shadow: 0 10px 24px rgba(22, 34, 30, 0.12);
+
+  --btn-primary-shadow: none;
+  --btn-glass-bg: transparent;
+  --btn-glass-border: #16221e;
+  --btn-glass-shadow: none;
+  --btn-glass-blur: 0px;
+  --btn-shine: rgba(239, 230, 210, 0.22);
+  --dot-idle: rgba(22, 34, 30, 0.22);
+  --handle: rgba(22, 34, 30, 0.3);
+
+  --input-bg: #f7f1e3;
+  --input-border: rgba(22, 34, 30, 0.4);
+  --input-placeholder: #6b6a57;
+  --track: rgba(22, 34, 30, 0.12);
+
+  --ticket-bg: #f7f1e3;
+  --ticket-shadow: rgba(22, 34, 30, 0.22);
+  --perforation: rgba(22, 34, 30, 0.4);
+  --scrim: rgba(22, 34, 30, 0.55);
+  --on-scrim: #efe6d2;
+
+  --hero-cloud: #f7f1e3;
+  --hero-plane: #f7f1e3;
+  --hero-plane-outline: #16221e;
+
+  --r-control: 8px;
+  --r-button: 10px;
+  --r-card: 14px;
+  --r-sheet: 22px;
+
+  --font-heading: 'Fraunces Variable', Georgia, serif;
+  --heading-weight: 420;
 }
