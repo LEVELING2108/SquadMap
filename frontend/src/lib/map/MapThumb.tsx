@@ -1,6 +1,7 @@
 import { Illustration } from '../../components/ui/Illustration';
 import { useState } from 'react';
 import { useMapStyle } from '../../features/profile/settingsApi';
+import { ATLAS_BASE_STYLE, ATLAS_STYLE } from './atlasStyle';
 import { staticMapUrl, type LatLng } from './geo';
 import { DestinationPin } from './MapView';
 
@@ -24,13 +25,18 @@ export function MapThumb({ center, className = '' }: { center: LatLng; className
     // The box keeps the picture's 3:1 shape, so Mapbox's logo and credit in its corners are never cropped.
     <div aria-hidden="true" className={`relative aspect-[3/1] overflow-hidden bg-sand ${className}`}>
       {real ? (
+        // Mapbox's picture service only knows its own styles, so in Atlas the Streets picture gets a paper tint.
         <img
-          src={staticMapUrl(center, style ?? 'mapbox/streets-v12', TOKEN)}
+          src={staticMapUrl(
+            center,
+            style === ATLAS_STYLE ? ATLAS_BASE_STYLE : (style ?? ATLAS_BASE_STYLE),
+            TOKEN,
+          )}
           alt=""
           loading="lazy"
           decoding="async"
           onError={() => setFailed(true)}
-          className="size-full object-cover"
+          className={`size-full object-cover ${style === ATLAS_STYLE ? 'saturate-[0.7] sepia-[0.35]' : ''}`}
         />
       ) : (
         <>
